@@ -12,6 +12,14 @@ environment_variables:
 # Use 'monk servers use <name>' to select target server (persistent across commands)
 
 commands:
+# Configuration initialization
+- name: init
+  help: Initialize configuration directory with required files
+  args:
+  - name: path
+    required: false
+    help: "Custom path for configuration directory (default: ~/.config/monk)"
+
 # Authentication and token management
 - name: auth
   help: Authentication and token management
