@@ -1,0 +1,14 @@
+# Bashly generated files
+/monk
+
+# Ruby
+.bundle/
+vendor/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
