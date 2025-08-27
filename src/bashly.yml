@@ -308,6 +308,47 @@ commands:
       required: true
       help: Bulk operation ID to cancel
 
+# Filesystem-like operations for API data exploration
+- name: fs
+  help: Filesystem-like operations for API data exploration via FTP middleware
+  
+  commands:
+  - name: ls
+    help: List directory contents with wildcard support
+    args:
+    - name: path
+      required: true
+      help: FTP path (e.g., /data/users/, /data/users/admin*)
+    flags:
+    - long: --long
+      short: -l
+      help: Use long listing format with detailed information
+      
+  - name: cat
+    help: Display file content or record data
+    args:
+    - name: path
+      required: true
+      help: FTP path to file or record (e.g., /data/users/user-123.json)
+      
+  - name: rm
+    help: Remove files, records, or fields
+    args:
+    - name: path
+      required: true
+      help: FTP path to delete (e.g., /data/users/user-123)
+    flags:
+    - long: --force
+      short: -f
+      help: Force permanent deletion (default is soft delete)
+      
+  - name: stat
+    help: Display detailed file/directory status and schema information
+    args:
+    - name: path
+      required: true
+      help: FTP path for status information
+
 # Advanced search with filter DSL
 - name: find
   help: Advanced search with enterprise Filter DSL via JSON input
