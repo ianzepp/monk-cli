@@ -60,14 +60,58 @@ commands:
       help: Server name to delete
       
   - name: ping
-    help: Health check specific server
+    help: Health check specific server (defaults to current server)
     args:
     - name: name
-      required: true
-      help: Server name to ping
+      required: false
+      help: Server name to ping (optional, defaults to current server)
       
   - name: ping-all
     help: Health check all registered servers
+
+# Multi-tenant database management
+- name: tenant
+  help: Multi-tenant database management
+  
+  commands:
+  - name: create
+    help: Create new tenant database and record
+    args:
+    - name: name
+      required: true
+      help: Name of the tenant database to create
+    flags:
+    - long: --host
+      arg: host
+      help: Database host
+      default: localhost
+    - long: --force
+      short: -f
+      help: Force creation by dropping existing database if it exists
+      
+  - name: delete
+    help: Delete tenant database
+    args:
+    - name: name
+      required: true
+      help: Name of the tenant database to delete
+      
+  - name: init
+    help: Truncate and re-initialize tenant database
+    args:
+    - name: name
+      required: true
+      help: Name of the existing tenant database to re-initialize
+      
+  - name: list
+    help: List all tenant databases
+    
+  - name: use
+    help: Switch to tenant database
+    args:
+    - name: name
+      required: true
+      help: Name of the tenant to switch to
 
 # Authentication and token management
 - name: auth
@@ -95,6 +139,38 @@ commands:
     
   - name: info
     help: Decode and display JWT token contents
+    
+  - name: ping
+    help: Authenticated API health check
+    flags:
+    - long: --verbose
+      short: -v
+      help: Verbose server information
+    - long: --jwt-token
+      short: -j
+      arg: token
+      help: Include JWT token in request
+      
+  - name: import
+    help: Import JWT token from external auth flow
+    args:
+    - name: tenant
+      required: true
+      help: Tenant name for this JWT token
+    - name: username
+      required: true
+      help: Username for this JWT token
+    flags:
+    - long: --token
+      short: -t
+      arg: token
+      help: JWT token to import (or provide via stdin)
+      
+  - name: expires
+    help: Show JWT token expiration time
+    
+  - name: expired
+    help: Check if JWT token is expired (exit code 0=valid, 1=expired)
 
 # Data operations on dynamic schemas
 - name: data
@@ -247,18 +323,6 @@ commands:
     short: -T
     help: Return only last record from results
 
-# Server connectivity testing
-- name: ping
-  help: Server connectivity testing
-  flags:
-  - long: --verbose
-    short: -v
-    help: Verbose server information
-  - long: --jwt-token
-    short: -j
-    arg: token
-    help: Include JWT token in request
-
 # External git-based test management
 - name: test
   help: External git-based test management
@@ -285,50 +349,6 @@ commands:
     - name: run2
       required: true
       help: Second test run to compare
-
-# Multi-tenant database management
-- name: tenant
-  help: Multi-tenant database management
-  
-  commands:
-  - name: create
-    help: Create new tenant database and record
-    args:
-    - name: name
-      required: true
-      help: Name of the tenant database to create
-    flags:
-    - long: --host
-      arg: host
-      help: Database host
-      default: localhost
-    - long: --force
-      short: -f
-      help: Force creation by dropping existing database if it exists
-      
-  - name: delete
-    help: Delete tenant database
-    args:
-    - name: name
-      required: true
-      help: Name of the tenant database to delete
-      
-  - name: init
-    help: Truncate and re-initialize tenant database
-    args:
-    - name: name
-      required: true
-      help: Name of the existing tenant database to re-initialize
-      
-  - name: list
-    help: List all tenant databases
-    
-  - name: use
-    help: Switch to tenant database
-    args:
-    - name: name
-      required: true
-      help: Name of the tenant to switch to
 
 # User management
 - name: user

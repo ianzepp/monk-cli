@@ -11,11 +11,24 @@ if ! command -v jq >/dev/null 2>&1; then
     exit 1
 fi
 
+# If no name provided, use current server
+if [ -z "$name" ]; then
+    name=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
+    
+    if [ -z "$name" ] || [ "$name" = "null" ]; then
+        print_error "No server specified and no current server selected"
+        print_info "Use 'monk server ping <name>' or 'monk server use <name>' first"
+        exit 1
+    fi
+    
+    print_info "Using current server: $name"
+fi
+
 # Get server info
 server_info=$(jq -r ".servers.\"$name\"" "$SERVER_CONFIG" 2>/dev/null)
 if [ "$server_info" = "null" ]; then
     print_error "Server '$name' not found"
-    print_info "Use 'monk servers list' to see available servers"
+    print_info "Use 'monk server list' to see available servers"
     exit 1
 fi
 
@@ -26,7 +39,8 @@ base_url="$protocol://$hostname:$port"
 
 print_info "Pinging server: $name ($base_url)"
 
-if ping_server_url "$base_url" 10; then
+# Test connectivity to root endpoint
+if curl -s --max-time 10 --fail "$base_url/" >/dev/null 2>&1; then
     print_success "Server is up and responding"
     
     # Update status in config

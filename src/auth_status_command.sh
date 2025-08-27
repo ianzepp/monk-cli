@@ -1,3 +1,6 @@
+# Check dependencies
+check_dependencies
+
 token=$(get_jwt_token)
 
 if [ -n "$token" ]; then
@@ -38,8 +41,16 @@ if [ -n "$token" ]; then
         fi
     fi
     
-    echo "Token file: $JWT_TOKEN_FILE"
+    
+    # Show current context information
+    current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
+    current_tenant=$(jq -r '.current_tenant // empty' "$ENV_CONFIG" 2>/dev/null)
+    current_user=$(jq -r '.current_user // empty' "$ENV_CONFIG" 2>/dev/null)
+    
+    echo "Server: $current_server"
+    echo "Tenant: $current_tenant"
+    echo "User: $current_user"
 else
-    print_info "Not authenticated"
-    echo "Use 'monk auth login TENANT USERNAME' to authenticate"
+    print_info_always "Not authenticated"
+    print_info_always "Use 'monk auth login TENANT USERNAME' or 'monk auth import TENANT USERNAME' to authenticate"
 fi

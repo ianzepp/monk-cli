@@ -1,9 +1,24 @@
+#!/bin/bash
+
+# init_command.sh - Initialize CLI configuration directory with new structure
+#
+# This command creates the CLI configuration directory and initializes
+# the three separate config files for clean domain separation.
+#
+# Creates:
+#   ~/.config/monk/cli/server.json  - Infrastructure endpoints
+#   ~/.config/monk/cli/auth.json    - Authentication sessions  
+#   ~/.config/monk/cli/env.json     - Current working context
+
 # Get the configuration path
 if [[ -n "${args[path]}" ]]; then
     config_path="${args[path]}"
 else
     config_path="${HOME}/.config/monk"
 fi
+
+# Set CLI config directory
+cli_config_dir="${config_path}/cli"
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -12,52 +27,56 @@ BLUE='\033[0;34m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}Initializing Monk configuration directory...${NC}"
-echo "Configuration path: ${config_path}"
+echo -e "${BLUE}Initializing Monk CLI configuration...${NC}"
+echo "Configuration path: ${cli_config_dir}"
 
-# Create directory if it doesn't exist
-if [[ ! -d "$config_path" ]]; then
-    echo -e "${YELLOW}→${NC} Creating directory: ${config_path}"
-    mkdir -p "$config_path"
+# Create CLI directory if it doesn't exist
+if [[ ! -d "$cli_config_dir" ]]; then
+    echo -e "${YELLOW}→${NC} Creating CLI directory: ${cli_config_dir}"
+    mkdir -p "$cli_config_dir"
 else
-    echo -e "${GREEN}✓${NC} Directory already exists: ${config_path}"
+    echo -e "${GREEN}✓${NC} CLI directory exists: ${cli_config_dir}"
 fi
 
-# Initialize servers.json
-servers_file="${config_path}/servers.json"
-if [[ ! -f "$servers_file" ]]; then
-    echo -e "${YELLOW}→${NC} Creating servers.json"
-    cat > "$servers_file" << 'EOF'
+# Initialize server.json
+server_file="${cli_config_dir}/server.json"
+if [[ ! -f "$server_file" ]]; then
+    echo -e "${YELLOW}→${NC} Creating server.json"
+    cat > "$server_file" << 'EOF'
 {
-  "servers": {
-    "local": {
-      "hostname": "localhost",
-      "port": 9001,
-      "protocol": "http",
-      "description": "Local development server",
-      "added_at": "",
-      "last_ping": "",
-      "status": "unknown"
-    }
-  },
-  "current": "local"
+  "servers": {}
 }
 EOF
-    echo -e "${GREEN}✓${NC} Created servers.json"
+    echo -e "${GREEN}✓${NC} Created server.json"
 else
-    echo -e "${GREEN}✓${NC} servers.json already exists"
+    echo -e "${GREEN}✓${NC} server.json already exists"
 fi
 
-# Initialize env.json
-env_file="${config_path}/env.json"
+# Initialize auth.json
+auth_file="${cli_config_dir}/auth.json"
+if [[ ! -f "$auth_file" ]]; then
+    echo -e "${YELLOW}→${NC} Creating auth.json"
+    cat > "$auth_file" << 'EOF'
+{
+  "sessions": {}
+}
+EOF
+    chmod 600 "$auth_file"
+    echo -e "${GREEN}✓${NC} Created auth.json (secure permissions)"
+else
+    echo -e "${GREEN}✓${NC} auth.json already exists"
+fi
+
+# Initialize env.json  
+env_file="${cli_config_dir}/env.json"
 if [[ ! -f "$env_file" ]]; then
     echo -e "${YELLOW}→${NC} Creating env.json"
     cat > "$env_file" << 'EOF'
 {
-  "DATABASE_URL": "postgresql://user:password@localhost:5432/monk-api-auth",
-  "NODE_ENV": "development",
-  "PORT": "9001",
-  "JWT_SECRET": "development-test-secret-key-change-in-production"
+  "current_server": null,
+  "current_tenant": null,
+  "current_user": null,
+  "recents": []
 }
 EOF
     echo -e "${GREEN}✓${NC} Created env.json"
@@ -65,38 +84,15 @@ else
     echo -e "${GREEN}✓${NC} env.json already exists"
 fi
 
-# Initialize test.json
-test_file="${config_path}/test.json"
-if [[ ! -f "$test_file" ]]; then
-    echo -e "${YELLOW}→${NC} Creating test.json"
-    cat > "$test_file" << 'EOF'
-{
-  "base_directory": "/tmp/monk-builds",
-  "default_settings": {
-    "git_remote": "https://github.com/ianzepp/monk-api.git",
-    "default_port_range": {
-      "git_tests": {
-        "start": 3000,
-        "end": 3999
-      }
-    }
-  },
-  "runs": {}
-}
-EOF
-    echo -e "${GREEN}✓${NC} Created test.json"
-else
-    echo -e "${GREEN}✓${NC} test.json already exists"
-fi
-
-echo -e "${GREEN}✓${NC} Monk configuration initialized successfully!"
+echo -e "${GREEN}✓${NC} Monk CLI configuration initialized successfully!"
 echo
-echo "Configuration files created in: ${config_path}"
-echo "  - servers.json: Server configurations and current selection"
-echo "  - env.json: Environment variables for API connection"
-echo "  - test.json: Test run configurations and history"
+echo "CLI configuration files created in: ${cli_config_dir}"
+echo "  - server.json: Server endpoint configurations"
+echo "  - auth.json: Authentication sessions per server+tenant"  
+echo "  - env.json: Current working context (server+tenant+user)"
 echo
 echo "Next steps:"
-echo "  1. Update servers.json with your server details"
-echo "  2. Configure env.json with your database and API settings"
-echo "  3. Use 'monk servers add' to register additional servers"
+echo "  1. Add a server: monk server add <name> <hostname:port>"
+echo "  2. Select server: monk server use <name>"
+echo "  3. Authenticate: monk auth login <tenant> <username>"
+echo "  4. Start working: monk data select <schema>"

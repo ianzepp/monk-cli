@@ -45,6 +45,11 @@ print_info() {
     fi
 }
 
+print_info_always() {
+    # Always print info messages (ignores CLI_VERBOSE)
+    echo -e "${YELLOW}ℹ $1${NC}" >&2
+}
+
 print_warning() {
     echo -e "${YELLOW}⚠ $1${NC}" >&2
 }
