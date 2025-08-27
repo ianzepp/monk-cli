@@ -1,18 +1,18 @@
 #!/bin/bash
 
-# fs_cat_command.sh - Display file content via FTP retrieve
+# fs_cat_command.sh - Display file content with multi-tenant support
 
 # Check dependencies
 check_dependencies
 
 # Get arguments from bashly
 path="${args[path]}"
+tenant_flag="${args[--tenant]}"
 
 print_info "Reading file content: $path"
 
-# Build payload and make request
-payload=$(build_ftp_payload "$path")
-response=$(make_ftp_request "retrieve" "$payload")
+# Make request with tenant routing
+response=$(make_ftp_request_with_routing "retrieve" "$path" "" "$tenant_flag")
 
 # Extract and display content
 content=$(process_ftp_response "$response" "content")

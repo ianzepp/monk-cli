@@ -1,18 +1,18 @@
 #!/bin/bash
 
-# fs_stat_command.sh - Display detailed file/directory status and schema information
+# fs_stat_command.sh - Display detailed status with multi-tenant support
 
 # Check dependencies
 check_dependencies
 
 # Get arguments from bashly  
 path="${args[path]}"
+tenant_flag="${args[--tenant]}"
 
 print_info "Getting status for: $path"
 
-# Build payload and make request
-payload=$(build_ftp_payload "$path")
-response=$(make_ftp_request "stat" "$payload")
+# Make request with tenant routing
+response=$(make_ftp_request_with_routing "stat" "$path" "" "$tenant_flag")
 
 # Extract basic information
 file_type=$(process_ftp_response "$response" "type")

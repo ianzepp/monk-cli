@@ -318,36 +318,54 @@ commands:
     args:
     - name: path
       required: true
-      help: FTP path (e.g., /data/users/, /data/users/admin*)
+      help: FTP path (e.g., /data/users/, /tenant/tenant-a/data/users/)
     flags:
     - long: --long
       short: -l
       help: Use long listing format with detailed information
+    - long: --tenant
+      short: -t
+      arg: tenant
+      help: Target tenant (tenant-name or server:tenant-name)
       
   - name: cat
     help: Display file content or record data
     args:
     - name: path
       required: true
-      help: FTP path to file or record (e.g., /data/users/user-123.json)
+      help: FTP path to file or record (e.g., /data/users/user-123.json, /tenant/tenant-a/data/users/user-123.json)
+    flags:
+    - long: --tenant
+      short: -t
+      arg: tenant
+      help: Target tenant (tenant-name or server:tenant-name)
       
   - name: rm
     help: Remove files, records, or fields
     args:
     - name: path
       required: true
-      help: FTP path to delete (e.g., /data/users/user-123)
+      help: FTP path to delete (e.g., /data/users/user-123, /tenant/tenant-a/data/users/user-123)
     flags:
     - long: --force
       short: -f
       help: Force permanent deletion (default is soft delete)
+    - long: --tenant
+      short: -t
+      arg: tenant
+      help: Target tenant (tenant-name or server:tenant-name)
       
   - name: stat
     help: Display detailed file/directory status and schema information
     args:
     - name: path
       required: true
-      help: FTP path for status information
+      help: FTP path for status information (e.g., /data/users/, /tenant/tenant-a/meta/schema/)
+    flags:
+    - long: --tenant
+      short: -t
+      arg: tenant
+      help: Target tenant (tenant-name or server:tenant-name)
 
 # Advanced search with filter DSL
 - name: find

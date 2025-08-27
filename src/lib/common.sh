@@ -954,6 +954,204 @@ format_ls_output() {
     echo "$entries" | jq -r '.[] | .name'
 }
 
+# Parse tenant path and extract routing information
+parse_tenant_path() {
+    local path="$1"
+    
+    if [[ "$path" =~ ^/tenant/([^/]+)/(.*) ]]; then
+        local tenant_spec="${BASH_REMATCH[1]}"
+        local api_path="/${BASH_REMATCH[2]}"
+        
+        # Parse tenant specification (server:tenant or just tenant)
+        if [[ "$tenant_spec" =~ ^([^:]+):(.+)$ ]]; then
+            # Full server:tenant specification
+            echo "server=${BASH_REMATCH[1]};tenant=${BASH_REMATCH[2]};path=$api_path;tenant_routing=true"
+        else
+            # Tenant only, use current server
+            echo "server=current;tenant=$tenant_spec;path=$api_path;tenant_routing=true"
+        fi
+    else
+        # Standard path, use current session
+        echo "server=current;tenant=current;path=$path;tenant_routing=false"
+    fi
+}
+
+# Get current session key (server:tenant)
+current_session_key() {
+    local current_server current_tenant
+    current_server=$(jq -r '.current_server' "$ENV_CONFIG" 2>/dev/null)
+    current_tenant=$(jq -r '.current_tenant' "$ENV_CONFIG" 2>/dev/null)
+    
+    if [ -n "$current_server" ] && [ "$current_server" != "null" ] && 
+       [ -n "$current_tenant" ] && [ "$current_tenant" != "null" ]; then
+        echo "${current_server}:${current_tenant}"
+    else
+        return 1
+    fi
+}
+
+# Resolve session key from server and tenant specifications
+resolve_session() {
+    local server="$1"
+    local tenant="$2" 
+    
+    # Handle "current" values
+    if [ "$server" = "current" ]; then
+        server=$(jq -r '.current_server' "$ENV_CONFIG" 2>/dev/null)
+    fi
+    if [ "$tenant" = "current" ]; then
+        tenant=$(jq -r '.current_tenant' "$ENV_CONFIG" 2>/dev/null)
+    fi
+    
+    # Validate inputs
+    if [ -z "$server" ] || [ "$server" = "null" ]; then
+        print_error "No server specified and no current server selected"
+        return 1
+    fi
+    if [ -z "$tenant" ] || [ "$tenant" = "null" ]; then
+        print_error "No tenant specified and no current tenant selected"  
+        return 1
+    fi
+    
+    # Build and validate session key
+    local session_key="${server}:${tenant}"
+    
+    if jq -e ".sessions.\"$session_key\"" "$AUTH_CONFIG" >/dev/null 2>&1; then
+        echo "$session_key"
+    else
+        print_error "No authentication found for $session_key"
+        print_info_always "Use 'monk auth login $tenant <username>' on server '$server' to authenticate"
+        return 1
+    fi
+}
+
+# Temporarily switch context for single operation
+with_tenant_context() {
+    local target_session_key="$1"
+    local operation_func="$2"
+    shift 2
+    local args=("$@")
+    
+    # Save current context
+    local original_server original_tenant original_user
+    original_server=$(jq -r '.current_server' "$ENV_CONFIG" 2>/dev/null)
+    original_tenant=$(jq -r '.current_tenant' "$ENV_CONFIG" 2>/dev/null)  
+    original_user=$(jq -r '.current_user' "$ENV_CONFIG" 2>/dev/null)
+    
+    # Parse target session
+    local target_server target_tenant
+    target_server=$(echo "$target_session_key" | cut -d':' -f1)
+    target_tenant=$(echo "$target_session_key" | cut -d':' -f2)
+    
+    # Get user from session
+    local target_user
+    target_user=$(jq -r ".sessions.\"$target_session_key\".user" "$AUTH_CONFIG" 2>/dev/null)
+    
+    print_info "Switching to context: $target_session_key (user: $target_user)"
+    
+    # Temporarily update env context
+    local temp_file=$(mktemp)
+    jq --arg server "$target_server" \
+       --arg tenant "$target_tenant" \
+       --arg user "$target_user" \
+       '.current_server = $server | .current_tenant = $tenant | .current_user = $user' \
+       "$ENV_CONFIG" > "$temp_file" && mv "$temp_file" "$ENV_CONFIG"
+    
+    # Execute operation with new context
+    local result exit_code
+    result=$("$operation_func" "${args[@]}")
+    exit_code=$?
+    
+    # Restore original context  
+    temp_file=$(mktemp)
+    jq --arg server "$original_server" \
+       --arg tenant "$original_tenant" \
+       --arg user "$original_user" \
+       '.current_server = $server | .current_tenant = $tenant | .current_user = $user' \
+       "$ENV_CONFIG" > "$temp_file" && mv "$temp_file" "$ENV_CONFIG"
+       
+    print_info "Restored context: $original_server:$original_tenant"
+    
+    echo "$result"
+    return $exit_code
+}
+
+# Enhanced FTP request with tenant routing support
+make_ftp_request_with_routing() {
+    local endpoint="$1"    # list, stat, retrieve, delete
+    local path="$2"
+    local options="$3"
+    local tenant_flag="$4" # Optional --tenant flag value
+    
+    local routing_info target_session_key api_path
+    
+    # Determine routing: flag takes precedence over path-based routing
+    if [ -n "$tenant_flag" ]; then
+        # Use --tenant flag specification
+        if [[ "$tenant_flag" =~ ^([^:]+):(.+)$ ]]; then
+            # Full server:tenant from flag
+            target_session_key=$(resolve_session "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}")
+        else
+            # Tenant only from flag, use current server  
+            target_session_key=$(resolve_session "current" "$tenant_flag")
+        fi
+        api_path="$path"  # Use path as-is when flag provided
+        
+    else
+        # Parse path for tenant routing
+        routing_info=$(parse_tenant_path "$path")
+        eval "$routing_info"  # Sets server, tenant, path, tenant_routing variables
+        
+        if [ "$tenant_routing" = "true" ]; then
+            target_session_key=$(resolve_session "$server" "$tenant")
+            api_path="$path"  # api_path from parsing
+        else
+            # Standard operation with current session
+            target_session_key=$(current_session_key)
+            api_path="$path"
+        fi
+    fi
+    
+    # Validate session exists
+    if ! validate_session "$target_session_key"; then
+        return 1
+    fi
+    
+    # Build payload
+    local payload
+    payload=$(build_ftp_payload "$api_path" "$options")
+    
+    # Execute request with appropriate context
+    local current_key
+    current_key=$(current_session_key 2>/dev/null)
+    
+    if [ "$target_session_key" = "$current_key" ]; then
+        # Same as current context - direct execution
+        make_ftp_request "$endpoint" "$payload"
+    else
+        # Different context - use temporary switching
+        with_tenant_context "$target_session_key" make_ftp_request "$endpoint" "$payload"
+    fi
+}
+
+# Validate session exists and has valid authentication
+validate_session() {
+    local session_key="$1"
+    
+    if [ -z "$session_key" ]; then
+        return 1
+    fi
+    
+    local jwt_token
+    jwt_token=$(jq -r ".sessions.\"$session_key\".jwt_token" "$AUTH_CONFIG" 2>/dev/null)
+    
+    if [ -n "$jwt_token" ] && [ "$jwt_token" != "null" ]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
 # Validate schema exists (best effort)
 validate_schema() {
     local schema="$1"

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# fs_ls_command.sh - List directory contents with wildcard support via FTP middleware
+# fs_ls_command.sh - List directory contents with multi-tenant support
 
 # Check dependencies
 check_dependencies
@@ -8,6 +8,7 @@ check_dependencies
 # Get arguments from bashly
 path="${args[path]}"
 long_flag="${args[--long]}"
+tenant_flag="${args[--tenant]}"
 
 print_info "Listing directory: $path"
 
@@ -25,9 +26,8 @@ ftp_options=$(jq -n \
         "long_format": $long_format
     }')
 
-# Build payload and make request
-payload=$(build_ftp_payload "$path" "$ftp_options")
-response=$(make_ftp_request "list" "$payload")
+# Make request with tenant routing
+response=$(make_ftp_request_with_routing "list" "$path" "$ftp_options" "$tenant_flag")
 
 # Extract and format entries
 entries=$(process_ftp_response "$response" "data")
