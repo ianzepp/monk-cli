@@ -37,53 +37,45 @@ if [ ! -d "$directory" ]; then
     exit 1
 fi
 
-if [ "$CLI_VERBOSE" = "true" ]; then
-    print_info "Importing $schema records from: $directory"
-fi
+print_info "Importing $schema records from: $directory"
 
-# Collect all JSON files into an array for bulk import
-if command -v python3 >/dev/null 2>&1; then
-    records_json=$(python3 -c "
-import sys, json, os, glob
-records = []
-json_files = glob.glob(os.path.join('$directory', '*.json'))
-
-if not json_files:
-    print('No .json files found in $directory', file=sys.stderr)
-    sys.exit(1)
-
-for filepath in sorted(json_files):
-    filename = os.path.basename(filepath)
-    try:
-        with open(filepath, 'r') as f:
-            record = json.load(f)
-        records.append(record)
-        if '$CLI_VERBOSE' == 'true':
-            print(f'Loaded: {filename}', file=sys.stderr)
-    except Exception as e:
-        print(f'Error loading {filename}: {e}', file=sys.stderr)
-        sys.exit(1)
-
-if '$CLI_VERBOSE' == 'true':
-    print(f'Prepared {len(records)} records for import', file=sys.stderr)
-json.dump(records, sys.stdout)
-")
-    
-    if [ -n "$records_json" ]; then
-        if [ "$CLI_VERBOSE" = "true" ]; then
-            print_info "Making bulk import request..."
-        fi
-        
-        response=$(make_request_json "PUT" "/api/data/$schema" "$records_json")
-        
-        print_success "Import completed successfully"
-        handle_response_json "$response" "import"
-    else
-        print_error "Failed to prepare records for import"
-        exit 1
-    fi
-else
-    print_error "Python3 required for import functionality"
-    print_info "Please install Python 3 to use import operations"
+# Check if jq is available (should be, since it's a hard dependency)
+if ! command -v jq >/dev/null 2>&1; then
+    print_error "jq is required for import functionality"
     exit 1
 fi
+
+# Check for JSON files in directory
+json_files=("$directory"/*.json)
+
+# Check if glob found any files (if not, array contains the literal pattern)
+if [ ! -f "${json_files[0]}" ]; then
+    print_error "No .json files found in directory: $directory"
+    exit 1
+fi
+
+print_info "Found ${#json_files[@]} JSON files to import"
+
+# Collect all JSON files into an array using jq
+records_json=$(jq -n --slurpfile records <(cat "${json_files[@]}") '$records')
+
+if [ -z "$records_json" ] || [ "$records_json" = "null" ]; then
+    print_error "Failed to process JSON files"
+    exit 1
+fi
+
+# Validate each file was valid JSON (jq would have failed above if not)
+count=0
+for file in "${json_files[@]}"; do
+    filename=$(basename "$file")
+    print_info "Loaded: $filename"
+    count=$((count + 1))
+done
+
+print_info "Prepared $count records for import"
+
+# Make bulk import request
+response=$(make_request_json "PUT" "/api/data/$schema" "$records_json")
+
+print_success "Import completed successfully"
+handle_response_json "$response" "import"

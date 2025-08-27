@@ -34,52 +34,51 @@ validate_schema "$schema"
 
 # Create directory if it doesn't exist
 if [ ! -d "$directory" ]; then
-    if [ "$CLI_VERBOSE" = "true" ]; then
-        print_info "Creating directory: $directory"
-    fi
+    print_info "Creating directory: $directory"
     mkdir -p "$directory"
 fi
 
-if [ "$CLI_VERBOSE" = "true" ]; then
-    print_info "Exporting $schema records to: $directory"
-fi
+print_info "Exporting $schema records to: $directory"
 
 # Get all records using the API
 response=$(make_request_json "GET" "/api/data/$schema" "")
 
-# Use python3 to parse JSON and export individual files
-if command -v python3 >/dev/null 2>&1; then
-    echo "$response" | python3 -c "
-import sys, json, os
-try:
-    data = json.load(sys.stdin)
-    if data.get('success') and 'data' in data:
-        records = data['data']
-        count = 0
-        for record in records:
-            if 'id' in record:
-                filename = os.path.join('$directory', record['id'] + '.json')
-                with open(filename, 'w') as f:
-                    json.dump(record, f, indent=4)
-                count += 1
-                if '$CLI_VERBOSE' == 'true':
-                    print(f'Exported: {filename}')
-            else:
-                print('Warning: Record missing id field', file=sys.stderr)
-        print(f'Successfully exported {count} records to $directory')
-    else:
-        print('Error: Invalid API response format', file=sys.stderr)
-        print(f'Response: {data}', file=sys.stderr)
-        sys.exit(1)
-except json.JSONDecodeError as e:
-    print(f'Error: Invalid JSON in API response: {e}', file=sys.stderr)
-    sys.exit(1)
-except Exception as e:
-    print(f'Error: {e}', file=sys.stderr)
-    sys.exit(1)
-"
-else
-    print_error "Python3 required for export functionality"
-    print_info "Please install Python 3 to use export operations"
+# Check if jq is available (should be, since it's a hard dependency)
+if ! command -v jq >/dev/null 2>&1; then
+    print_error "jq is required for export functionality"
     exit 1
 fi
+
+# Validate API response format
+if ! echo "$response" | jq -e '.success == true and .data' >/dev/null 2>&1; then
+    print_error "Invalid API response format"
+    echo "$response"
+    exit 1
+fi
+
+# Export each record to individual JSON file
+count=0
+while IFS= read -r record; do
+    # Extract ID from record
+    id=$(echo "$record" | jq -r '.id // empty')
+    
+    if [ -z "$id" ] || [ "$id" = "null" ]; then
+        print_warning "Skipping record without id field"
+        continue
+    fi
+    
+    # Write pretty-formatted JSON to file
+    filename="$directory/$id.json"
+    echo "$record" | jq '.' > "$filename"
+    
+    if [ $? -eq 0 ]; then
+        print_info "Exported: $filename"
+        count=$((count + 1))
+    else
+        print_error "Failed to write: $filename"
+        exit 1
+    fi
+    
+done < <(echo "$response" | jq -c '.data[]')
+
+print_success "Successfully exported $count records to $directory"
