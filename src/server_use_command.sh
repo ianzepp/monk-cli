@@ -4,7 +4,7 @@ check_dependencies
 # Get arguments from bashly
 name="${args[name]}"
 
-init_servers_config
+init_cli_configs
 
 if ! command -v jq >/dev/null 2>&1; then
     print_error "jq is required for server management"
@@ -13,7 +13,7 @@ fi
 
 # If no name provided, show current server (alias for 'current' command)
 if [ -z "$name" ]; then
-    current_server=$(jq -r '.current // empty' "$SERVERS_CONFIG" 2>/dev/null)
+    current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
     
     if [ -z "$current_server" ] || [ "$current_server" = "null" ]; then
         print_info "No current server selected"
@@ -21,7 +21,7 @@ if [ -z "$name" ]; then
         exit 0
     fi
     
-    server_info=$(jq -r ".servers.\"$current_server\"" "$SERVERS_CONFIG" 2>/dev/null)
+    server_info=$(jq -r ".servers.\"$current_server\"" "$SERVER_CONFIG" 2>/dev/null)
     if [ "$server_info" = "null" ]; then
         print_error "Current server '$current_server' not found in registry"
         print_info "The server may have been deleted. Use 'monk servers list' to see available servers"
@@ -52,7 +52,7 @@ if [ -z "$name" ]; then
 fi
 
 # Check if server exists
-server_info=$(jq -r ".servers.\"$name\"" "$SERVERS_CONFIG" 2>/dev/null)
+server_info=$(jq -r ".servers.\"$name\"" "$SERVER_CONFIG" 2>/dev/null)
 if [ "$server_info" = "null" ]; then
     print_error "Server '$name' not found"
     print_info "Use 'monk servers list' to see available servers"
@@ -61,7 +61,7 @@ fi
 
 # Set as current server
 temp_file=$(mktemp)
-jq --arg name "$name" '.current = $name' "$SERVERS_CONFIG" > "$temp_file" && mv "$temp_file" "$SERVERS_CONFIG"
+jq --arg name "$name" '.current_server = $name' "$ENV_CONFIG" > "$temp_file" && mv "$temp_file" "$ENV_CONFIG"
 
 # Get server details for confirmation
 hostname=$(echo "$server_info" | jq -r '.hostname')

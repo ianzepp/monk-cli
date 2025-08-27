@@ -1,7 +1,7 @@
 # Check dependencies
 check_dependencies
 
-init_servers_config
+init_cli_configs
 
 if ! command -v jq >/dev/null 2>&1; then
     print_error "jq is required for server management"
@@ -12,7 +12,7 @@ echo
 print_info "Pinging All Servers"
 echo
 
-server_names=$(jq -r '.servers | keys[]' "$SERVERS_CONFIG" 2>/dev/null)
+server_names=$(jq -r '.servers | keys[]' "$SERVER_CONFIG" 2>/dev/null)
 
 if [ -z "$server_names" ]; then
     print_info "No servers configured"
@@ -30,7 +30,7 @@ echo "$server_names" | while read -r name; do
     if [ -n "$name" ]; then
         echo "$((total_count + 1))" > "$temp_results.count"
         
-        server_info=$(jq -r ".servers.\"$name\"" "$SERVERS_CONFIG")
+        server_info=$(jq -r ".servers.\"$name\"" "$SERVER_CONFIG")
         hostname=$(echo "$server_info" | jq -r '.hostname')
         port=$(echo "$server_info" | jq -r '.port')
         protocol=$(echo "$server_info" | jq -r '.protocol')
@@ -46,7 +46,7 @@ echo "$server_names" | while read -r name; do
             jq --arg name "$name" \
                --arg timestamp "$timestamp" \
                '.servers[$name].last_ping = $timestamp | .servers[$name].status = "up"' \
-               "$SERVERS_CONFIG" > "$temp_file" && mv "$temp_file" "$SERVERS_CONFIG"
+               "$SERVER_CONFIG" > "$temp_file" && mv "$temp_file" "$SERVER_CONFIG"
             
             # Count successful pings
             if [ -f "$temp_results.up" ]; then
@@ -63,7 +63,7 @@ echo "$server_names" | while read -r name; do
             jq --arg name "$name" \
                --arg timestamp "$timestamp" \
                '.servers[$name].last_ping = $timestamp | .servers[$name].status = "down"' \
-               "$SERVERS_CONFIG" > "$temp_file" && mv "$temp_file" "$SERVERS_CONFIG"
+               "$SERVER_CONFIG" > "$temp_file" && mv "$temp_file" "$SERVER_CONFIG"
         fi
     fi
 done

@@ -4,7 +4,7 @@ check_dependencies
 # Get arguments from bashly
 name="${args[name]}"
 
-init_servers_config
+init_cli_configs
 
 if ! command -v jq >/dev/null 2>&1; then
     print_error "jq is required for server management"
@@ -12,7 +12,7 @@ if ! command -v jq >/dev/null 2>&1; then
 fi
 
 # Check if server exists
-if ! jq -e ".servers.\"$name\"" "$SERVERS_CONFIG" >/dev/null 2>&1; then
+if ! jq -e ".servers.\"$name\"" "$SERVER_CONFIG" >/dev/null 2>&1; then
     print_error "Server '$name' not found"
     print_info "Use 'monk servers list' to see available servers"
     exit 1
@@ -22,12 +22,12 @@ print_info "Deleting server: $name"
 
 # Remove server from config
 temp_file=$(mktemp)
-jq --arg name "$name" 'del(.servers[$name])' "$SERVERS_CONFIG" > "$temp_file" && mv "$temp_file" "$SERVERS_CONFIG"
+jq --arg name "$name" 'del(.servers[$name])' "$SERVER_CONFIG" > "$temp_file" && mv "$temp_file" "$SERVER_CONFIG"
 
 # If this was the current server, clear current
-current_server=$(jq -r '.current // empty' "$SERVERS_CONFIG" 2>/dev/null)
+current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
 if [ "$current_server" = "$name" ]; then
-    jq '.current = null' "$SERVERS_CONFIG" > "$temp_file" && mv "$temp_file" "$SERVERS_CONFIG"
+    jq '.current_server = null' "$ENV_CONFIG" > "$temp_file" && mv "$temp_file" "$ENV_CONFIG"
     print_info "Cleared current server (was deleted server)"
 fi
 

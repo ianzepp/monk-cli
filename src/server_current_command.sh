@@ -1,14 +1,14 @@
 # Check dependencies
 check_dependencies
 
-init_servers_config
+init_cli_configs
 
 if ! command -v jq >/dev/null 2>&1; then
     print_error "jq is required for server management"
     exit 1
 fi
 
-current_server=$(jq -r '.current // empty' "$SERVERS_CONFIG" 2>/dev/null)
+current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
 
 if [ -z "$current_server" ] || [ "$current_server" = "null" ]; then
     print_info "No current server selected"
@@ -16,7 +16,7 @@ if [ -z "$current_server" ] || [ "$current_server" = "null" ]; then
     exit 0
 fi
 
-server_info=$(jq -r ".servers.\"$current_server\"" "$SERVERS_CONFIG" 2>/dev/null)
+server_info=$(jq -r ".servers.\"$current_server\"" "$SERVER_CONFIG" 2>/dev/null)
 if [ "$server_info" = "null" ]; then
     print_error "Current server '$current_server' not found in registry"
     print_info "The server may have been deleted. Use 'monk servers list' to see available servers"

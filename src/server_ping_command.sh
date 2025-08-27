@@ -4,7 +4,7 @@ check_dependencies
 # Get arguments from bashly
 name="${args[name]}"
 
-init_servers_config
+init_cli_configs
 
 if ! command -v jq >/dev/null 2>&1; then
     print_error "jq is required for server management"
@@ -12,7 +12,7 @@ if ! command -v jq >/dev/null 2>&1; then
 fi
 
 # Get server info
-server_info=$(jq -r ".servers.\"$name\"" "$SERVERS_CONFIG" 2>/dev/null)
+server_info=$(jq -r ".servers.\"$name\"" "$SERVER_CONFIG" 2>/dev/null)
 if [ "$server_info" = "null" ]; then
     print_error "Server '$name' not found"
     print_info "Use 'monk servers list' to see available servers"
@@ -35,7 +35,7 @@ if ping_server_url "$base_url" 10; then
     jq --arg name "$name" \
        --arg timestamp "$timestamp" \
        '.servers[$name].last_ping = $timestamp | .servers[$name].status = "up"' \
-       "$SERVERS_CONFIG" > "$temp_file" && mv "$temp_file" "$SERVERS_CONFIG"
+       "$SERVER_CONFIG" > "$temp_file" && mv "$temp_file" "$SERVER_CONFIG"
 else
     print_error "Server is down or not responding"
     
@@ -45,6 +45,6 @@ else
     jq --arg name "$name" \
        --arg timestamp "$timestamp" \
        '.servers[$name].last_ping = $timestamp | .servers[$name].status = "down"' \
-       "$SERVERS_CONFIG" > "$temp_file" && mv "$temp_file" "$SERVERS_CONFIG"
+       "$SERVER_CONFIG" > "$temp_file" && mv "$temp_file" "$SERVER_CONFIG"
     exit 1
 fi

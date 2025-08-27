@@ -111,7 +111,7 @@ migrate_legacy_config() {
         # Extract server info and current server from legacy config
         local servers_data current_server
         servers_data=$(jq '.servers' "$LEGACY_SERVERS_CONFIG" 2>/dev/null)
-        current_server=$(jq -r '.current // empty' "$LEGACY_SERVERS_CONFIG" 2>/dev/null)
+        current_server=$(jq -r '.current_server // empty' "$LEGACY_SERVERS_CONFIG" 2>/dev/null)
         
         # Create new server.json (infrastructure only)
         echo "{\"servers\": $servers_data}" > "$SERVER_CONFIG"

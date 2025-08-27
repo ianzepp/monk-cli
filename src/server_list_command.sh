@@ -1,7 +1,7 @@
 # Check dependencies
 check_dependencies
 
-init_servers_config
+init_cli_configs
 
 if ! command -v jq >/dev/null 2>&1; then
     print_error "jq is required for server management"
@@ -12,9 +12,9 @@ echo
 print_info "Registered Servers"
 echo
 
-current_server=$(jq -r '.current // empty' "$SERVERS_CONFIG" 2>/dev/null)
+current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
 
-server_names=$(jq -r '.servers | keys[]' "$SERVERS_CONFIG" 2>/dev/null)
+server_names=$(jq -r '.servers | keys[]' "$SERVER_CONFIG" 2>/dev/null)
 
 if [ -z "$server_names" ]; then
     print_info "No servers configured"
@@ -27,7 +27,7 @@ echo "--------------------------------------------------------------------------
 
 echo "$server_names" | while read -r name; do
     if [ -n "$name" ]; then
-        server_info=$(jq -r ".servers.\"$name\"" "$SERVERS_CONFIG")
+        server_info=$(jq -r ".servers.\"$name\"" "$SERVER_CONFIG")
         
         hostname=$(echo "$server_info" | jq -r '.hostname')
         port=$(echo "$server_info" | jq -r '.port')
