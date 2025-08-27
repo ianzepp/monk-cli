@@ -6,7 +6,7 @@ name="${args[name]}"
 endpoint="${args[endpoint]}"
 description="${args[--description]}"
 
-init_servers_config
+init_cli_configs
 
 # Parse endpoint
 parsed=$(parse_endpoint "$endpoint")
@@ -22,9 +22,9 @@ fi
 
 # Check if server already exists
 if command -v jq >/dev/null 2>&1; then
-    if jq -e ".servers.\"$name\"" "$SERVERS_CONFIG" >/dev/null 2>&1; then
+    if jq -e ".servers.\"$name\"" "$SERVER_CONFIG" >/dev/null 2>&1; then
         print_error "Server '$name' already exists"
-        print_info "Use 'monk servers delete $name' first, or choose a different name"
+        print_info "Use 'monk server delete $name' first, or choose a different name"
         exit 1
     fi
 fi
@@ -62,14 +62,15 @@ if command -v jq >/dev/null 2>&1; then
            "added_at": $timestamp,
            "last_ping": $timestamp,
            "status": $status
-       }' "$SERVERS_CONFIG" > "$temp_file" && mv "$temp_file" "$SERVERS_CONFIG"
+       }' "$SERVER_CONFIG" > "$temp_file" && mv "$temp_file" "$SERVER_CONFIG"
     
     print_success "Server '$name' added successfully"
     
-    # If this is the first server, make it current
-    server_count=$(jq '.servers | length' "$SERVERS_CONFIG")
+    # If this is the first server, make it current in env config
+    server_count=$(jq '.servers | length' "$SERVER_CONFIG")
     if [ "$server_count" -eq 1 ]; then
-        jq --arg name "$name" '.current = $name' "$SERVERS_CONFIG" > "$temp_file" && mv "$temp_file" "$SERVERS_CONFIG"
+        temp_file=$(mktemp)
+        jq --arg name "$name" '.current_server = $name' "$ENV_CONFIG" > "$temp_file" && mv "$temp_file" "$ENV_CONFIG"
         print_info "Set as current server (first server added)"
     fi
 else

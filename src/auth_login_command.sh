@@ -5,17 +5,13 @@ check_dependencies
 tenant="${args[tenant]}"
 username="${args[username]}"
 
-if [ "$CLI_VERBOSE" = "true" ]; then
-    print_info "Authenticating with tenant: $tenant, username: $username"
-fi
+print_info "Authenticating with tenant: $tenant, username: $username"
 
 # Prepare authentication request
 auth_data="{\"tenant\": \"$tenant\", \"username\": \"$username\"}"
 base_url=$(get_base_url)
 
-if [ "$CLI_VERBOSE" = "true" ]; then
-    print_info "Sending authentication request to: ${base_url}/auth/login"
-fi
+print_info "Sending authentication request to: ${base_url}/auth/login"
 
 # Make authentication request
 if response=$(make_request_json "POST" "/auth/login" "$auth_data"); then
@@ -31,19 +27,14 @@ if response=$(make_request_json "POST" "/auth/login" "$auth_data"); then
     fi
     
     if [ -n "$token" ] && [ "$token" != "null" ]; then
-        # Store token
-        store_token "$token"
+        # Store token with tenant and username
+        store_token "$token" "$tenant" "$username"
         
         print_success "Authentication successful"
-        
-        if [ "$CLI_VERBOSE" = "true" ]; then
-            print_info "JWT token stored in: $JWT_TOKEN_FILE"
-        fi
+        print_info "JWT token stored for server+tenant context"
     else
         print_error "Failed to extract JWT token from response"
-        if [ "$CLI_VERBOSE" = "true" ]; then
-            print_info "Response: $response"
-        fi
+        print_info "Response: $response"
         exit 1
     fi
 else
