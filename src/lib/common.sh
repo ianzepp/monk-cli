@@ -904,6 +904,56 @@ redirect_to_find() {
     echo "$json_data" | "${BASH_SOURCE[0]%/*}/find_command.sh" "$schema"
 }
 
+# Build FTP request payload with path and options
+build_ftp_payload() {
+    local path="$1"
+    local options="$2"
+    
+    if [ -n "$options" ]; then
+        jq -n --arg path "$path" --argjson options "$options" \
+           '{"path": $path, "ftp_options": $options}'
+    else
+        jq -n --arg path "$path" '{"path": $path}'
+    fi
+}
+
+# Process FTP response and extract specific field
+process_ftp_response() {
+    local response="$1"
+    local extract_field="$2"  # "content", "data", etc. (optional)
+    
+    if [ "$JSON_PARSER" = "jq" ]; then
+        if [ -n "$extract_field" ]; then
+            echo "$response" | jq ".$extract_field" 2>/dev/null
+        else
+            echo "$response"
+        fi
+    else
+        print_error "jq required for FTP operations"
+        exit 1
+    fi
+}
+
+# Make FTP request with standard error handling
+make_ftp_request() {
+    local endpoint="$1"    # list, stat, retrieve, delete
+    local payload="$2"
+    
+    local response
+    response=$(make_request_json "POST" "/ftp/$endpoint" "$payload")
+    
+    # Check for FTP-specific error handling if needed
+    echo "$response"
+}
+
+# Format ls-style output from FTP list entries
+format_ls_output() {
+    local entries="$1"
+    local long_format="${2:-false}"
+    
+    echo "$entries" | jq -r '.[] | .name'
+}
+
 # Validate schema exists (best effort)
 validate_schema() {
     local schema="$1"
