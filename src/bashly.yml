@@ -51,23 +51,16 @@ commands:
 - name: data
   help: Data operations on dynamic schemas
   
-  commands:
-  - name: list
-    help: List all records for schema
-    args:
-    - name: schema
-      required: true
-      help: Schema name to list records from
-      
+  commands:      
   - name: select
-    help: Select specific record
+    help: Select record(s) with flexible query support
     args:
     - name: schema
       required: true
       help: Schema name
     - name: id
-      required: true
-      help: Record ID to retrieve
+      required: false
+      help: Record ID to retrieve (optional - supports query parameters via stdin)
       
   - name: create
     help: Create record from stdin

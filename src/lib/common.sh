@@ -656,6 +656,79 @@ process_data_operation() {
     fi
 }
 
+# Check if JSON has complex where clause (indicating need for find command)
+has_complex_query() {
+    local json_data="$1"
+    
+    if [ "$JSON_PARSER" = "jq" ]; then
+        # Check if 'where' field exists
+        echo "$json_data" | jq -e '.where' >/dev/null 2>&1
+    elif [ "$JSON_PARSER" = "jshon" ]; then
+        echo "$json_data" | jshon -e where >/dev/null 2>&1
+    else
+        # Fallback: basic grep for "where" key
+        echo "$json_data" | grep -q '"where"[[:space:]]*:'
+    fi
+}
+
+# Build query string from JSON parameters (excluding 'where')
+build_query_string() {
+    local json_data="$1"
+    local query_params=""
+    
+    if [ "$JSON_PARSER" = "jq" ]; then
+        # Extract all keys except 'where' and build query string
+        local keys
+        keys=$(echo "$json_data" | jq -r 'del(.where) | to_entries[] | "\(.key)=\(.value)"' 2>/dev/null)
+        
+        if [ -n "$keys" ]; then
+            # URL encode and join with &
+            query_params=$(echo "$keys" | sed 's/ /+/g' | tr '\n' '&' | sed 's/&$//')
+        fi
+    elif [ "$JSON_PARSER" = "jshon" ]; then
+        # Basic jshon parsing (limited functionality)
+        local limit offset order
+        limit=$(echo "$json_data" | jshon -e limit -u 2>/dev/null || echo "")
+        offset=$(echo "$json_data" | jshon -e offset -u 2>/dev/null || echo "")
+        order=$(echo "$json_data" | jshon -e order -u 2>/dev/null || echo "")
+        
+        local params=""
+        [ -n "$limit" ] && params="${params}limit=${limit}&"
+        [ -n "$offset" ] && params="${params}offset=${offset}&"
+        [ -n "$order" ] && params="${params}order=$(echo "$order" | sed 's/ /+/g')&"
+        
+        query_params="${params%&}"  # Remove trailing &
+    else
+        # Fallback: basic regex extraction for common parameters
+        local limit offset order
+        limit=$(echo "$json_data" | grep -o '"limit"[[:space:]]*:[[:space:]]*[0-9]*' | sed 's/.*:[[:space:]]*//')
+        offset=$(echo "$json_data" | grep -o '"offset"[[:space:]]*:[[:space:]]*[0-9]*' | sed 's/.*:[[:space:]]*//')
+        order=$(echo "$json_data" | grep -o '"order"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*:[[:space:]]*"\([^"]*\)".*/\1/' | sed 's/ /+/g')
+        
+        local params=""
+        [ -n "$limit" ] && params="${params}limit=${limit}&"
+        [ -n "$offset" ] && params="${params}offset=${offset}&"
+        [ -n "$order" ] && params="${params}order=${order}&"
+        
+        query_params="${params%&}"  # Remove trailing &
+    fi
+    
+    if [ -n "$query_params" ]; then
+        echo "?${query_params}"
+    fi
+}
+
+# Redirect to find command with JSON input
+redirect_to_find() {
+    local schema="$1"
+    local json_data="$2"
+    
+    print_info "Complex query detected, redirecting to 'monk find $schema'"
+    
+    # Execute find command with the JSON data
+    echo "$json_data" | "${BASH_SOURCE[0]%/*}/find_command.sh" "$schema"
+}
+
 # Validate schema exists (best effort)
 validate_schema() {
     local schema="$1"
