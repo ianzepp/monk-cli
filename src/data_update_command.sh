@@ -7,18 +7,8 @@ id="${args[id]}"
 
 validate_schema "$schema"
 
-# Read JSON data from stdin
-json_data=$(cat)
+# Read and validate JSON input
+json_data=$(read_and_validate_json_input "updating" "$schema")
 
-if [ -z "$json_data" ]; then
-    print_error "No JSON data provided on stdin"
-    exit 1
-fi
-
-if [ "$CLI_VERBOSE" = "true" ]; then
-    print_info "Updating $schema record $id with data:"
-    echo "$json_data" | sed 's/^/  /'
-fi
-
-response=$(make_request_json "PUT" "/api/data/$schema/$id" "$json_data")
-handle_response_json "$response" "update"
+# Process the update operation
+process_data_operation "update" "PUT" "$schema" "$id" "$json_data"

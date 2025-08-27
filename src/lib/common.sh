@@ -22,20 +22,19 @@ NC='\033[0m' # No Color
 
 # Print colored output
 print_error() {
-    echo -e "${RED}✗ $1${NC}" >&2
-}
+    echo -e "${RED}✗ $1${NC}"}
 
 print_success() {
-    echo -e "${GREEN}✓ $1${NC}"
-}
+    echo -e "${GREEN}✓ $1${NC}"}
 
 print_info() {
-    echo -e "${YELLOW}ℹ $1${NC}"
+    # Only print if CLI_VERBOSE is true
+    if [ "$CLI_VERBOSE" = "true" ]; then
+        echo -e "${YELLOW}ℹ $1${NC}"    fi
 }
 
 print_warning() {
-    echo -e "${YELLOW}⚠ $1${NC}"
-}
+    echo -e "${YELLOW}⚠ $1${NC}"}
 
 # Get base URL from servers config - fail if not configured
 get_base_url() {
@@ -43,16 +42,12 @@ get_base_url() {
     
     # Check if jq is available
     if ! command -v jq >/dev/null 2>&1; then
-        echo "Error: jq is required for server configuration" >&2
-        echo "Install jq to use server configuration" >&2
-        exit 1
+        echo "Error: jq is required for server configuration"        echo "Install jq to use server configuration"        exit 1
     fi
     
     # Check if config file exists
     if [[ ! -f "$servers_config" ]]; then
-        echo "Error: No server configuration found" >&2
-        echo "Use 'monk servers add <name> <hostname:port>' to add a server" >&2
-        exit 1
+        echo "Error: No server configuration found"        echo "Use 'monk servers add <name> <hostname:port>' to add a server"        exit 1
     fi
     
     # Get current server
@@ -60,9 +55,7 @@ get_base_url() {
     current_server=$(jq -r '.current // empty' "$servers_config" 2>/dev/null)
     
     if [[ -z "$current_server" || "$current_server" == "null" ]]; then
-        echo "Error: No current server selected" >&2
-        echo "Use 'monk servers use <name>' to select a server" >&2
-        exit 1
+        echo "Error: No current server selected"        echo "Use 'monk servers use <name>' to select a server"        exit 1
     fi
     
     # Get server info
@@ -70,9 +63,7 @@ get_base_url() {
     server_info=$(jq -r ".servers.\"$current_server\"" "$servers_config" 2>/dev/null)
     
     if [[ "$server_info" == "null" ]]; then
-        echo "Error: Current server '$current_server' not found in configuration" >&2
-        echo "Use 'monk servers list' to see available servers" >&2
-        exit 1
+        echo "Error: Current server '$current_server' not found in configuration"        echo "Use 'monk servers list' to see available servers"        exit 1
     fi
     
     # Extract connection details
@@ -82,9 +73,7 @@ get_base_url() {
     
     # Validate required fields
     if [[ "$hostname" == "null" || "$port" == "null" || "$protocol" == "null" ]]; then
-        echo "Error: Invalid server configuration for '$current_server'" >&2
-        echo "Server configuration is missing required fields (hostname, port, protocol)" >&2
-        exit 1
+        echo "Error: Invalid server configuration for '$current_server'"        echo "Server configuration is missing required fields (hostname, port, protocol)"        exit 1
     fi
     
     echo "$protocol://$hostname:$port"
@@ -95,8 +84,7 @@ get_jwt_token() {
     init_servers_config
     
     if ! command -v jq >/dev/null 2>&1; then
-        echo "Error: jq is required for JWT token management" >&2
-        return 1
+        echo "Error: jq is required for JWT token management"        return 1
     fi
     
     # Get current server name
@@ -126,8 +114,7 @@ store_token() {
     init_servers_config
     
     if ! command -v jq >/dev/null 2>&1; then
-        echo "Error: jq is required for JWT token management" >&2
-        return 1
+        echo "Error: jq is required for JWT token management"        return 1
     fi
     
     # Get current server name
@@ -135,8 +122,7 @@ store_token() {
     current_server=$(jq -r '.current // empty' "$SERVERS_CONFIG" 2>/dev/null)
     
     if [ -z "$current_server" ] || [ "$current_server" = "null" ]; then
-        echo "Error: No current server selected. Use 'monk servers use <name>' first" >&2
-        return 1
+        echo "Error: No current server selected. Use 'monk servers use <name>' first"        return 1
     fi
     
     # Store token in server configuration
@@ -155,8 +141,7 @@ remove_stored_token() {
     init_servers_config
     
     if ! command -v jq >/dev/null 2>&1; then
-        echo "Error: jq is required for JWT token management" >&2
-        return 1
+        echo "Error: jq is required for JWT token management"        return 1
     fi
     
     # Get current server name
@@ -164,8 +149,7 @@ remove_stored_token() {
     current_server=$(jq -r '.current // empty' "$SERVERS_CONFIG" 2>/dev/null)
     
     if [ -z "$current_server" ] || [ "$current_server" = "null" ]; then
-        echo "Error: No current server selected" >&2
-        return 1
+        echo "Error: No current server selected"        return 1
     fi
     
     # Remove token from server configuration
@@ -183,11 +167,7 @@ make_request_json() {
     local base_url=$(get_base_url)
     local full_url="${base_url}${url}"
     
-    # Only show verbose info if CLI_VERBOSE is set
-    if [ "$CLI_VERBOSE" = "true" ]; then
-        print_info "Making $method request to: $full_url" >&2
-    fi
-    
+    print_info "Making $method request to: $full_url"    
     local curl_args=(-s -X "$method" -H "Content-Type: application/json")
     
     # Add JWT token if available (unless it's an auth request)
@@ -196,10 +176,7 @@ make_request_json() {
         jwt_token=$(get_jwt_token)
         if [ -n "$jwt_token" ]; then
             curl_args+=(-H "Authorization: Bearer $jwt_token")
-            if [ "$CLI_VERBOSE" = "true" ]; then
-                print_info "Using stored JWT token" >&2
-            fi
-        fi
+            print_info "Using stored JWT token"        fi
     fi
     
     if [ -n "$data" ]; then
@@ -217,26 +194,15 @@ make_request_json() {
     # Handle HTTP errors
     case "$http_code" in
         200|201)
-            if [ "$CLI_VERBOSE" = "true" ]; then
-                print_success "Success ($http_code)" >&2
-            fi
-            # Return response without formatting - let caller handle it
+            print_success "Success ($http_code)"            # Return response without formatting - let caller handle it
             echo "$response"
             return 0
             ;;
         400|404|500)
-            if [ "$CLI_VERBOSE" = "true" ]; then
-                print_error "HTTP Error ($http_code)" >&2
-            fi
-            echo "$response" >&2
-            exit 1
+            print_error "HTTP Error ($http_code)"            echo "$response"            exit 1
             ;;
         *)
-            if [ "$CLI_VERBOSE" = "true" ]; then
-                print_error "HTTP $http_code" >&2
-            fi
-            echo "$response" >&2
-            exit 1
+            print_error "HTTP $http_code"            echo "$response"            exit 1
             ;;
     esac
 }
@@ -275,31 +241,23 @@ handle_response_json() {
                 # Array case - extract field from each item
                 echo "$response" | jq -r ".data[].${CLI_FORMAT}" 2>/dev/null || {
                     if [ "$CLI_VERBOSE" = "true" ]; then
-                        print_error "Failed to extract field: $CLI_FORMAT" >&2
-                    fi
+                        print_error "Failed to extract field: $CLI_FORMAT"                    fi
                     exit 1
                 }
             else
                 # Single object case - extract field directly
                 echo "$response" | jq -r ".data.${CLI_FORMAT}" 2>/dev/null || {
                     if [ "$CLI_VERBOSE" = "true" ]; then
-                        print_error "Failed to extract field: $CLI_FORMAT" >&2
-                    fi
+                        print_error "Failed to extract field: $CLI_FORMAT"                    fi
                     exit 1
                 }
             fi
         elif [ "$JSON_PARSER" = "jshon" ]; then
             echo "$response" | jshon -e data -e "$CLI_FORMAT" -u 2>/dev/null || {
-                if [ "$CLI_VERBOSE" = "true" ]; then
-                    print_error "Failed to extract field: $CLI_FORMAT" >&2
-                fi
-                exit 1
+                print_error "Failed to extract field: $CLI_FORMAT"                exit 1
             }
         else
-            if [ "$CLI_VERBOSE" = "true" ]; then
-                print_error "jq or jshon required for field extraction" >&2
-            fi
-            exit 1
+            print_error "jq or jshon required for field extraction"            exit 1
         fi
         return
     fi
@@ -467,11 +425,7 @@ make_request_yaml() {
     local base_url=$(get_base_url)
     local full_url="${base_url}${url}"
     
-    # Only show verbose info if CLI_VERBOSE is set
-    if [ "$CLI_VERBOSE" = "true" ]; then
-        print_info "Making $method request to: $full_url with YAML content-type" >&2
-    fi
-    
+    print_info "Making $method request to: $full_url with YAML content-type"    
     local curl_args=(-s -X "$method" -H "Content-Type: text/yaml")
     
     # Add JWT token if available (unless it's an auth request)
@@ -480,10 +434,7 @@ make_request_yaml() {
         jwt_token=$(get_jwt_token)
         if [ -n "$jwt_token" ]; then
             curl_args+=(-H "Authorization: Bearer $jwt_token")
-            if [ "$CLI_VERBOSE" = "true" ]; then
-                print_info "Using stored JWT token" >&2
-            fi
-        fi
+            print_info "Using stored JWT token"        fi
     fi
     
     if [ -n "$data" ]; then
@@ -501,26 +452,15 @@ make_request_yaml() {
     # Handle HTTP errors
     case "$http_code" in
         200|201|204)
-            if [ "$CLI_VERBOSE" = "true" ]; then
-                print_success "Success ($http_code)" >&2
-            fi
-            # Return response directly (YAML format)
+            print_success "Success ($http_code)"            # Return response directly (YAML format)
             echo "$response"
             return 0
             ;;
         400|404|500)
-            if [ "$CLI_VERBOSE" = "true" ]; then
-                print_error "HTTP Error ($http_code)" >&2
-            fi
-            echo "$response" >&2
-            exit 1
+            print_error "HTTP Error ($http_code)"            echo "$response"            exit 1
             ;;
         *)
-            if [ "$CLI_VERBOSE" = "true" ]; then
-                print_error "HTTP $http_code" >&2
-            fi
-            echo "$response" >&2
-            exit 1
+            print_error "HTTP $http_code"            echo "$response"            exit 1
             ;;
     esac
 }
@@ -543,6 +483,179 @@ handle_response_yaml() {
     echo "$response"
 }
 
+# Detect if input is array or object
+detect_input_type() {
+    local input="$1"
+    
+    if [ "$JSON_PARSER" = "jq" ]; then
+        if echo "$input" | jq -e 'type == "array"' >/dev/null 2>&1; then
+            echo "array"
+        else
+            echo "object"
+        fi
+    else
+        # Fallback detection - check first non-whitespace character
+        first_char=$(echo "$input" | sed 's/^[[:space:]]*//' | cut -c1)
+        if [ "$first_char" = "[" ]; then
+            echo "array"
+        else
+            echo "object"
+        fi
+    fi
+}
+
+# Extract ID from object
+extract_id_from_object() {
+    local input="$1"
+    
+    if [ "$JSON_PARSER" = "jq" ]; then
+        echo "$input" | jq -r '.id // empty'
+    elif [ "$JSON_PARSER" = "jshon" ]; then
+        echo "$input" | jshon -e id -u 2>/dev/null || echo ""
+    else
+        # Fallback extraction
+        echo "$input" | grep -o '"id"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*"id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/' | head -1
+    fi
+}
+
+# Remove ID from object (for update operations)
+remove_id_from_object() {
+    local input="$1"
+    
+    if [ "$JSON_PARSER" = "jq" ]; then
+        echo "$input" | jq 'del(.id)'
+    elif [ "$JSON_PARSER" = "jshon" ]; then
+        echo "$input" | jshon -d id 2>/dev/null || echo "$input"
+    else
+        # Fallback - remove id field (basic regex)
+        echo "$input" | sed 's/"id"[[:space:]]*:[[:space:]]*"[^"]*"[[:space:]]*,\?//g' | sed 's/,[[:space:]]*}/}/g'
+    fi
+}
+
+# Read and validate JSON input from stdin
+read_and_validate_json_input() {
+    local operation="$1"
+    local schema="$2"
+    
+    # Read JSON data from stdin
+    local json_data
+    json_data=$(cat)
+    
+    if [ -z "$json_data" ]; then
+        print_error "No JSON data provided on stdin"
+        exit 1
+    fi
+    
+    print_info "${operation^} $schema record(s) with data:"
+    if [ "$CLI_VERBOSE" = "true" ]; then
+        echo "$json_data" | sed 's/^/  /'
+    fi
+    
+    echo "$json_data"
+}
+
+# Process data operations with flexible input handling
+process_data_operation() {
+    local operation="$1"      # create/update/delete
+    local http_method="$2"    # POST/PUT/DELETE
+    local schema="$3"
+    local id="$4"            # optional
+    local json_data="$5"
+    local confirmation="${6:-false}"  # require confirmation for destructive ops
+    
+    # Special case: DELETE with ID but no JSON data
+    if [ "$operation" = "delete" ] && [ -n "$id" ] && [ -z "$json_data" ]; then
+        if [ "$confirmation" = "true" ] && [ "$CLI_VERBOSE" = "true" ]; then
+            print_warning "Are you sure you want to delete $schema record: $id? (y/N)"            read -r user_confirmation
+            
+            if ! echo "$user_confirmation" | grep -E "^[Yy]$" >/dev/null 2>&1; then
+                print_info "Operation cancelled"                exit 0
+            fi
+        fi
+        
+        response=$(make_request_json "$http_method" "/api/data/$schema/$id" "")
+        handle_response_json "$response" "$operation"
+        return
+    fi
+    
+    # All other cases require JSON data
+    if [ -z "$json_data" ]; then
+        print_error "No JSON data provided"
+        exit 1
+    fi
+    
+    # Detect input type and handle accordingly
+    input_type=$(detect_input_type "$json_data")
+    
+    if [ -n "$id" ]; then
+        # ID provided as parameter - use object endpoint
+        print_info "Using provided ID: $id"
+        
+        # For object endpoint, remove ID from payload if present (API doesn't expect it)
+        local clean_data
+        if [ "$operation" = "update" ]; then
+            clean_data=$(remove_id_from_object "$json_data")
+        else
+            clean_data="$json_data"
+        fi
+        
+        response=$(make_request_json "$http_method" "/api/data/$schema/$id" "$clean_data")
+        handle_response_json "$response" "$operation"
+        
+    elif [ "$input_type" = "array" ]; then
+        # Array input → Bulk operation via array endpoint
+        print_info "Processing array input for bulk $operation"
+        response=$(make_request_json "$http_method" "/api/data/$schema" "$json_data")
+        handle_response_json "$response" "$operation"
+        
+    elif [ "$operation" = "create" ]; then
+        # CREATE: Object input → Array API → Object output (unwrap)
+        print_info "Processing single object input"
+        array_data="[$json_data]"
+        response=$(make_request_json "$http_method" "/api/data/$schema" "$array_data")
+        
+        # Extract single object from array response to match input format
+        if [ "$JSON_PARSER" = "jq" ]; then
+            single_response=$(echo "$response" | jq '{"success": .success, "data": .data[0], "error": .error, "error_code": .error_code}' 2>/dev/null || echo "$response")
+            handle_response_json "$single_response" "$operation"
+        else
+            handle_response_json "$response" "$operation"
+        fi
+        
+    else
+        # UPDATE/DELETE: Object input, no ID param → Extract ID from object, use object endpoint
+        extracted_id=$(extract_id_from_object "$json_data")
+        
+        if [ -z "$extracted_id" ] || [ "$extracted_id" = "null" ]; then
+            print_error "No ID provided as parameter and no 'id' field found in JSON object"
+            print_info "Usage: monk data $operation $schema <id> OR provide JSON with 'id' field"
+            exit 1
+        fi
+        
+        print_info "Extracted ID from object: $extracted_id"
+        
+        # Confirmation for extracted ID delete operations
+        if [ "$operation" = "delete" ] && [ "$confirmation" = "true" ] && [ "$CLI_VERBOSE" = "true" ]; then
+            print_warning "Are you sure you want to delete $schema record: $extracted_id? (y/N)"            read -r user_confirmation
+            
+            if ! echo "$user_confirmation" | grep -E "^[Yy]$" >/dev/null 2>&1; then
+                print_info "Operation cancelled"                exit 0
+            fi
+        fi
+        
+        # Remove ID from payload for object endpoint (UPDATE only)
+        local clean_data
+        if [ "$operation" = "update" ]; then
+            clean_data=$(remove_id_from_object "$json_data")
+        else
+            clean_data=""  # DELETE doesn't need payload
+        fi
+        
+        response=$(make_request_json "$http_method" "/api/data/$schema/$extracted_id" "$clean_data")
+        handle_response_json "$response" "$operation"
+    fi
+}
+
 # Validate schema exists (best effort)
 validate_schema() {
     local schema="$1"
@@ -556,15 +669,11 @@ validate_schema() {
     local response
     if response=$(make_request_json "GET" "/api/meta/schema" "" 2>/dev/null); then
         if echo "$response" | grep -q "\"$schema\""; then
-            if [ "$CLI_VERBOSE" = "true" ]; then
-                print_info "Schema validated: $schema"
-            fi
+            print_info "Schema validated: $schema"
         else
             print_warning "Schema '$schema' not found in meta API, but continuing anyway"
         fi
     else
-        if [ "$CLI_VERBOSE" = "true" ]; then
-            print_info "Could not validate schema dynamically, assuming valid: $schema"
-        fi
+        print_info "Could not validate schema dynamically, assuming valid: $schema"
     fi
 }

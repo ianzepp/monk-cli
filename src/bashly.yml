@@ -77,24 +77,24 @@ commands:
       help: Schema name to create record in
       
   - name: update
-    help: Update record from stdin
+    help: Update record(s) from stdin
     args:
     - name: schema
       required: true
       help: Schema name
     - name: id
-      required: true
-      help: Record ID to update
+      required: false
+      help: Record ID to update (optional if ID in JSON)
       
   - name: delete
-    help: Delete record
+    help: Delete record(s)
     args:
     - name: schema
       required: true
       help: Schema name
     - name: id
-      required: true
-      help: Record ID to delete
+      required: false
+      help: Record ID to delete (optional if ID in JSON or using stdin)
       
   - name: export
     help: Export records to JSON files

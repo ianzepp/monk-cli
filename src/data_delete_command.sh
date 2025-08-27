@@ -7,16 +7,16 @@ id="${args[id]}"
 
 validate_schema "$schema"
 
-# Confirmation prompt in verbose mode
-if [ "$CLI_VERBOSE" = "true" ]; then
-    print_warning "Are you sure you want to delete $schema record: $id? (y/N)" >&2
-    read -r confirmation
-    
-    if ! echo "$confirmation" | grep -E "^[Yy]$" >/dev/null 2>&1; then
-        print_info "Operation cancelled" >&2
-        exit 0
-    fi
+if [ -n "$id" ]; then
+    # ID provided - direct delete, no stdin needed
+    process_data_operation "delete" "DELETE" "$schema" "$id" "" "true"
+elif [ -t 0 ]; then
+    # No ID and no stdin (terminal input) - error
+    print_error "No ID provided and no JSON data on stdin"
+    print_info "Usage: monk data delete $schema <id> OR provide JSON with 'id' field(s) via stdin"
+    exit 1
+else
+    # No ID but have stdin - read and process JSON data
+    json_data=$(read_and_validate_json_input "deleting" "$schema")
+    process_data_operation "delete" "DELETE" "$schema" "" "$json_data" "true"
 fi
-
-response=$(make_request_json "DELETE" "/api/data/$schema/$id" "")
-handle_response_json "$response" "delete"
