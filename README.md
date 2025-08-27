@@ -7,60 +7,67 @@
 ### Project Overview
 - **Language**: Shell scripting with Bashly CLI framework
 - **Purpose**: Complete command-line interface for Monk API PaaS platform management
-- **Architecture**: Modular command-based architecture with 45 individual command implementations
+- **Architecture**: Modular command-based architecture with 50+ individual command implementations
 - **Integration**: Direct HTTP API integration with Monk API backend services
 - **Distribution**: Compiled binary for easy installation and deployment
 
 ### Key Features
 - **Complete API Coverage**: Full command-line access to all Monk API functionality
-- **Tenant Management**: Create, configure, and manage multi-tenant environments
-- **Authentication**: Secure JWT-based authentication and session management
-- **Data Operations**: CRUD operations for all data schemas and records
-- **Schema Management**: Create, update, and manage database schemas via CLI
-- **Server Management**: Multi-server configuration and environment switching
+- **Flexible Data Operations**: Smart input detection with array/object handling and unified select command
+- **Bulk Operations**: Batch processing with immediate execution and planned async capabilities
+- **Multi-Server Management**: Clean server registry with health monitoring and environment switching
+- **Advanced Authentication**: JWT management with external token import and expiration tracking
+- **Tenant Management**: Create, configure, and manage multi-tenant environments  
+- **Schema Management**: YAML-based schema operations with automatic DDL generation
+- **Enterprise Search**: Advanced filtering with Filter DSL and intelligent query routing
 
 ### Technical Architecture
-- **CLI Framework** (45 command implementations):
+- **CLI Framework** (50+ command implementations):
   - **Bashly Framework**: Modern CLI framework for organized shell script development
   - **Modular Commands**: Individual shell scripts for each CLI operation
   - **Shared Libraries**: Common functionality in `src/lib/` for code reuse
-  - **Configuration Management**: Centralized CLI configuration and state management
+  - **Clean Config Separation**: Domain-separated configuration (server/auth/context)
+- **Smart Input Processing**: Automatic array/object detection and API endpoint routing
 - **Build System**: Automated compilation to single distributable binary
 - **Installation**: User and system-wide installation support
 
 ### Command Categories
 
-#### **Authentication & Authorization**
-- `monk auth login/logout` - JWT-based authentication management
-- `monk auth info/status` - Authentication state and token information
+#### **Setup & Configuration**
+- `monk init` - Initialize CLI configuration with clean domain separation
+- `monk server add/list/use/current/ping` - Multi-server infrastructure management
+- `monk tenant create/delete/list/use/init` - Multi-tenant environment administration
 
-#### **Tenant Management**
-- `monk tenant create/delete/list` - Multi-tenant environment administration
-- `monk tenant use/init` - Tenant switching and initialization
-
-#### **Server Configuration**
-- `monk servers add/delete/list` - Multi-server environment management
-- `monk servers use/current/ping` - Server switching and connectivity testing
-
-#### **Schema Management**
-- `monk meta create/get/list/update/delete` - Database schema administration
-- Schema operations with YAML input and JSON output
+#### **Authentication & Authorization**  
+- `monk auth login/logout` - Standard JWT authentication flows
+- `monk auth import` - Import JWT tokens from external auth systems (OAuth, SSO)
+- `monk auth token/info/status` - Token inspection and context information
+- `monk auth expires/expired` - Token expiration checking and validation
+- `monk auth ping` - Authenticated API health checks
 
 #### **Data Operations**
-- `monk data create/get/list/update/delete` - Complete CRUD operations
-- `monk data import/export` - Bulk data import and export functionality
+- `monk data select` - Unified selection with intelligent query routing (replaces list/get)
+- `monk data create/update/delete` - Flexible CRUD with smart input detection
+- `monk data export/import` - Directory-based JSON file operations
+
+#### **Advanced Operations**
+- `monk bulk raw` - Immediate bulk operations across multiple schemas  
+- `monk find` - Enterprise Filter DSL with complex query support
+- `monk meta select/create/update/delete` - YAML-based schema management
 
 #### **System Operations**
-- `monk ping` - API connectivity testing
-- `monk find` - Advanced search and filtering operations
-- `monk test` - Testing and validation operations
+- `monk test git/diff` - Git-based test environment management
+- `monk user` - User management operations (placeholder implementations)  
+- `monk root` - Administrative operations (placeholder implementations)
 
 ### CLI Design Patterns
-- **Consistent Interface**: Uniform command structure across all operations
-- **JSON/YAML Support**: Structured data input and output formats
-- **Environment Variables**: Configuration via environment variables
-- **Error Handling**: Comprehensive error reporting and user feedback
-- **Help System**: Built-in help and usage documentation
+- **Logical Command Flow**: init → server → tenant → auth → data workflow
+- **Smart Input Detection**: Automatic array/object routing to appropriate API endpoints
+- **Flexible Parameters**: Optional ID parameters with JSON extraction fallbacks
+- **Clean Config Separation**: server.json (infrastructure) + auth.json (sessions) + env.json (context)
+- **Consistent Output**: Input format preserved in output (array→array, object→object)
+- **Pipe-Safe Design**: Status messages to stderr, data to stdout for clean pipelines
+- **External Auth Support**: JWT import from OAuth, SSO, and external authentication systems
 
 ### Development Workflow Integration
 - **Remote Management**: Complete API management from command line
@@ -69,12 +76,19 @@
 - **Testing Support**: Built-in connectivity and functionality testing
 - **Configuration Management**: Centralized CLI configuration with environment switching
 
-### Installation & Distribution
+### Installation & Quick Start
 - **One-Command Install**: `./install.sh` handles complete installation
 - **Binary Distribution**: Compiled binary for easy deployment
+- **Quick Start Workflow**:
+  ```bash
+  monk init                           # Initialize CLI configuration
+  monk server add local localhost:9001 # Add server endpoint  
+  monk tenant create my-tenant        # Create tenant database
+  monk auth login my-tenant admin     # Authenticate
+  monk data select users              # Start working with data
+  ```
 - **User Installation**: Install to `~/.local/bin` without sudo requirements
 - **System Installation**: Optional system-wide installation to `/usr/local/bin`
-- **Path Management**: Automatic PATH configuration for immediate usage
 
 ### Enterprise Features
 - **Multi-Tenant Support**: Complete tenant isolation and management
