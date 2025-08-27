@@ -1,6 +1,6 @@
 name: monk
 help: Monk CLI - Command-line interface for PaaS Backend API
-version: 2.1.0
+version: 2.1.1
 
 environment_variables:
 - name: CLI_VERBOSE
@@ -380,31 +380,5 @@ commands:
     short: -T
     help: Return only last record from results
 
-# External git-based test management
-- name: test
-  help: External git-based test management
-  
-  commands:      
-  - name: git
-    help: Create/update git-aware test environment
-    args:
-    - name: branch
-      required: true
-      help: Git branch or reference
-    - name: commit
-      help: Specific commit (optional)
-    flags:
-    - long: --clean
-      help: Force clean build by removing existing environment
-      
-  - name: diff
-    help: Compare test results between environments
-    args:
-    - name: run1
-      required: true
-      help: First test run to compare
-    - name: run2
-      required: true
-      help: Second test run to compare
 
 

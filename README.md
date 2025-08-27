@@ -65,8 +65,6 @@
 - **Path-based routing**: `/tenant/tenant-a/data/users/` for intuitive multi-tenant access
 - **Flag-based targeting**: `--tenant tenant-a` for explicit tenant specification
 
-#### **System Operations**
-- `monk test git/diff` - Git-based test environment management
 
 ### CLI Design Patterns
 - **Logical Command Flow**: init → server → tenant → auth → data workflow
