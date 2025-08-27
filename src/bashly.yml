@@ -59,8 +59,8 @@ commands:
       required: true
       help: Schema name to list records from
       
-  - name: get
-    help: Get specific record
+  - name: select
+    help: Select specific record
     args:
     - name: schema
       required: true
@@ -128,11 +128,11 @@ commands:
       help: Type to list
       default: schema
       
-  - name: get
-    help: Get specific schema
+  - name: select
+    help: Select specific schema
     args:
     - name: type
-      help: Type to get
+      help: Type to select
       required: true
     - name: name
       required: true
@@ -333,8 +333,8 @@ commands:
   - name: list
     help: List all users
     
-  - name: get
-    help: Get specific user
+  - name: select
+    help: Select specific user
     args:
     - name: id
       required: true
