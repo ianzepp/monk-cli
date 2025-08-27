@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Common functions for bashly CLI commands
-# This file contains shared functionality migrated from cli/common.sh
+# Clean rewrite to eliminate syntax errors and improve maintainability
 
 # JWT tokens are stored per-server in servers.json (no global fallback)
 
@@ -20,21 +20,25 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Print colored output
+# Print colored output - all go to stderr to avoid interfering with data pipes
 print_error() {
-    echo -e "${RED}✗ $1${NC}"}
+    echo -e "${RED}✗ $1${NC}" >&2
+}
 
 print_success() {
-    echo -e "${GREEN}✓ $1${NC}"}
+    echo -e "${GREEN}✓ $1${NC}" >&2
+}
 
 print_info() {
     # Only print if CLI_VERBOSE is true
     if [ "$CLI_VERBOSE" = "true" ]; then
-        echo -e "${YELLOW}ℹ $1${NC}"    fi
+        echo -e "${YELLOW}ℹ $1${NC}" >&2
+    fi
 }
 
 print_warning() {
-    echo -e "${YELLOW}⚠ $1${NC}"}
+    echo -e "${YELLOW}⚠ $1${NC}" >&2
+}
 
 # Get base URL from servers config - fail if not configured
 get_base_url() {
@@ -42,12 +46,16 @@ get_base_url() {
     
     # Check if jq is available
     if ! command -v jq >/dev/null 2>&1; then
-        echo "Error: jq is required for server configuration"        echo "Install jq to use server configuration"        exit 1
+        echo "Error: jq is required for server configuration" >&2
+        echo "Install jq to use server configuration" >&2
+        exit 1
     fi
     
     # Check if config file exists
     if [[ ! -f "$servers_config" ]]; then
-        echo "Error: No server configuration found"        echo "Use 'monk servers add <name> <hostname:port>' to add a server"        exit 1
+        echo "Error: No server configuration found" >&2
+        echo "Use 'monk servers add <name> <hostname:port>' to add a server" >&2
+        exit 1
     fi
     
     # Get current server
@@ -55,7 +63,9 @@ get_base_url() {
     current_server=$(jq -r '.current // empty' "$servers_config" 2>/dev/null)
     
     if [[ -z "$current_server" || "$current_server" == "null" ]]; then
-        echo "Error: No current server selected"        echo "Use 'monk servers use <name>' to select a server"        exit 1
+        echo "Error: No current server selected" >&2
+        echo "Use 'monk servers use <name>' to select a server" >&2
+        exit 1
     fi
     
     # Get server info
@@ -63,7 +73,9 @@ get_base_url() {
     server_info=$(jq -r ".servers.\"$current_server\"" "$servers_config" 2>/dev/null)
     
     if [[ "$server_info" == "null" ]]; then
-        echo "Error: Current server '$current_server' not found in configuration"        echo "Use 'monk servers list' to see available servers"        exit 1
+        echo "Error: Current server '$current_server' not found in configuration" >&2
+        echo "Use 'monk servers list' to see available servers" >&2
+        exit 1
     fi
     
     # Extract connection details
@@ -73,7 +85,9 @@ get_base_url() {
     
     # Validate required fields
     if [[ "$hostname" == "null" || "$port" == "null" || "$protocol" == "null" ]]; then
-        echo "Error: Invalid server configuration for '$current_server'"        echo "Server configuration is missing required fields (hostname, port, protocol)"        exit 1
+        echo "Error: Invalid server configuration for '$current_server'" >&2
+        echo "Server configuration is missing required fields (hostname, port, protocol)" >&2
+        exit 1
     fi
     
     echo "$protocol://$hostname:$port"
@@ -84,7 +98,8 @@ get_jwt_token() {
     init_servers_config
     
     if ! command -v jq >/dev/null 2>&1; then
-        echo "Error: jq is required for JWT token management"        return 1
+        echo "Error: jq is required for JWT token management" >&2
+        return 1
     fi
     
     # Get current server name
@@ -114,7 +129,8 @@ store_token() {
     init_servers_config
     
     if ! command -v jq >/dev/null 2>&1; then
-        echo "Error: jq is required for JWT token management"        return 1
+        echo "Error: jq is required for JWT token management" >&2
+        return 1
     fi
     
     # Get current server name
@@ -122,7 +138,8 @@ store_token() {
     current_server=$(jq -r '.current // empty' "$SERVERS_CONFIG" 2>/dev/null)
     
     if [ -z "$current_server" ] || [ "$current_server" = "null" ]; then
-        echo "Error: No current server selected. Use 'monk servers use <name>' first"        return 1
+        echo "Error: No current server selected. Use 'monk servers use <name>' first" >&2
+        return 1
     fi
     
     # Store token in server configuration
@@ -141,7 +158,8 @@ remove_stored_token() {
     init_servers_config
     
     if ! command -v jq >/dev/null 2>&1; then
-        echo "Error: jq is required for JWT token management"        return 1
+        echo "Error: jq is required for JWT token management" >&2
+        return 1
     fi
     
     # Get current server name
@@ -149,7 +167,8 @@ remove_stored_token() {
     current_server=$(jq -r '.current // empty' "$SERVERS_CONFIG" 2>/dev/null)
     
     if [ -z "$current_server" ] || [ "$current_server" = "null" ]; then
-        echo "Error: No current server selected"        return 1
+        echo "Error: No current server selected" >&2
+        return 1
     fi
     
     # Remove token from server configuration
@@ -167,7 +186,8 @@ make_request_json() {
     local base_url=$(get_base_url)
     local full_url="${base_url}${url}"
     
-    print_info "Making $method request to: $full_url"    
+    print_info "Making $method request to: $full_url"
+    
     local curl_args=(-s -X "$method" -H "Content-Type: application/json")
     
     # Add JWT token if available (unless it's an auth request)
@@ -176,7 +196,8 @@ make_request_json() {
         jwt_token=$(get_jwt_token)
         if [ -n "$jwt_token" ]; then
             curl_args+=(-H "Authorization: Bearer $jwt_token")
-            print_info "Using stored JWT token"        fi
+            print_info "Using stored JWT token"
+        fi
     fi
     
     if [ -n "$data" ]; then
@@ -194,15 +215,20 @@ make_request_json() {
     # Handle HTTP errors
     case "$http_code" in
         200|201)
-            print_success "Success ($http_code)"            # Return response without formatting - let caller handle it
+            print_success "Success ($http_code)"
+            # Return response without formatting - let caller handle it
             echo "$response"
             return 0
             ;;
         400|404|500)
-            print_error "HTTP Error ($http_code)"            echo "$response"            exit 1
+            print_error "HTTP Error ($http_code)"
+            echo "$response" >&2
+            exit 1
             ;;
         *)
-            print_error "HTTP $http_code"            echo "$response"            exit 1
+            print_error "HTTP $http_code"
+            echo "$response" >&2
+            exit 1
             ;;
     esac
 }
@@ -210,7 +236,7 @@ make_request_json() {
 # Handle response based on CLI flags - optimized for testing
 handle_response_json() {
     local response="$1"
-    local operation_type="$2"  # "list", "create", "get", etc.
+    local operation_type="$2"  # "list", "create", "select", etc.
     
     # Exit code only mode - no output, just exit status
     if [ "$CLI_EXIT_CODE_ONLY" = "true" ]; then
@@ -240,24 +266,24 @@ handle_response_json() {
             if echo "$response" | jq -e '.data | type == "array"' >/dev/null 2>&1; then
                 # Array case - extract field from each item
                 echo "$response" | jq -r ".data[].${CLI_FORMAT}" 2>/dev/null || {
-                    if [ "$CLI_VERBOSE" = "true" ]; then
-                        print_error "Failed to extract field: $CLI_FORMAT"                    fi
+                    print_error "Failed to extract field: $CLI_FORMAT"
                     exit 1
                 }
             else
                 # Single object case - extract field directly
                 echo "$response" | jq -r ".data.${CLI_FORMAT}" 2>/dev/null || {
-                    if [ "$CLI_VERBOSE" = "true" ]; then
-                        print_error "Failed to extract field: $CLI_FORMAT"                    fi
+                    print_error "Failed to extract field: $CLI_FORMAT"
                     exit 1
                 }
             fi
         elif [ "$JSON_PARSER" = "jshon" ]; then
             echo "$response" | jshon -e data -e "$CLI_FORMAT" -u 2>/dev/null || {
-                print_error "Failed to extract field: $CLI_FORMAT"                exit 1
+                print_error "Failed to extract field: $CLI_FORMAT"
+                exit 1
             }
         else
-            print_error "jq or jshon required for field extraction"            exit 1
+            print_error "jq or jshon required for field extraction"
+            exit 1
         fi
         return
     fi
@@ -425,7 +451,8 @@ make_request_yaml() {
     local base_url=$(get_base_url)
     local full_url="${base_url}${url}"
     
-    print_info "Making $method request to: $full_url with YAML content-type"    
+    print_info "Making $method request to: $full_url with YAML content-type"
+    
     local curl_args=(-s -X "$method" -H "Content-Type: text/yaml")
     
     # Add JWT token if available (unless it's an auth request)
@@ -434,7 +461,8 @@ make_request_yaml() {
         jwt_token=$(get_jwt_token)
         if [ -n "$jwt_token" ]; then
             curl_args+=(-H "Authorization: Bearer $jwt_token")
-            print_info "Using stored JWT token"        fi
+            print_info "Using stored JWT token"
+        fi
     fi
     
     if [ -n "$data" ]; then
@@ -452,15 +480,20 @@ make_request_yaml() {
     # Handle HTTP errors
     case "$http_code" in
         200|201|204)
-            print_success "Success ($http_code)"            # Return response directly (YAML format)
+            print_success "Success ($http_code)"
+            # Return response directly (YAML format)
             echo "$response"
             return 0
             ;;
         400|404|500)
-            print_error "HTTP Error ($http_code)"            echo "$response"            exit 1
+            print_error "HTTP Error ($http_code)"
+            echo "$response" >&2
+            exit 1
             ;;
         *)
-            print_error "HTTP $http_code"            echo "$response"            exit 1
+            print_error "HTTP $http_code"
+            echo "$response" >&2
+            exit 1
             ;;
     esac
 }
@@ -468,7 +501,7 @@ make_request_yaml() {
 # Handle YAML response - much simpler than JSON
 handle_response_yaml() {
     local response="$1"
-    local operation_type="$2"  # "create", "get", "update", "delete"
+    local operation_type="$2"  # "create", "select", "update", "delete"
     
     # Exit code only mode - check if response is not empty for success
     if [ "$CLI_EXIT_CODE_ONLY" = "true" ]; then
@@ -548,7 +581,7 @@ read_and_validate_json_input() {
     
     print_info "${operation^} $schema record(s) with data:"
     if [ "$CLI_VERBOSE" = "true" ]; then
-        echo "$json_data" | sed 's/^/  /'
+        echo "$json_data" | sed 's/^/  /' >&2
     fi
     
     echo "$json_data"
@@ -566,10 +599,12 @@ process_data_operation() {
     # Special case: DELETE with ID but no JSON data
     if [ "$operation" = "delete" ] && [ -n "$id" ] && [ -z "$json_data" ]; then
         if [ "$confirmation" = "true" ] && [ "$CLI_VERBOSE" = "true" ]; then
-            print_warning "Are you sure you want to delete $schema record: $id? (y/N)"            read -r user_confirmation
+            print_warning "Are you sure you want to delete $schema record: $id? (y/N)"
+            read -r user_confirmation
             
             if ! echo "$user_confirmation" | grep -E "^[Yy]$" >/dev/null 2>&1; then
-                print_info "Operation cancelled"                exit 0
+                print_info "Operation cancelled"
+                exit 0
             fi
         fi
         
@@ -636,10 +671,12 @@ process_data_operation() {
         
         # Confirmation for extracted ID delete operations
         if [ "$operation" = "delete" ] && [ "$confirmation" = "true" ] && [ "$CLI_VERBOSE" = "true" ]; then
-            print_warning "Are you sure you want to delete $schema record: $extracted_id? (y/N)"            read -r user_confirmation
+            print_warning "Are you sure you want to delete $schema record: $extracted_id? (y/N)"
+            read -r user_confirmation
             
             if ! echo "$user_confirmation" | grep -E "^[Yy]$" >/dev/null 2>&1; then
-                print_info "Operation cancelled"                exit 0
+                print_info "Operation cancelled"
+                exit 0
             fi
         fi
         
