@@ -9,7 +9,7 @@ environment_variables:
   help: "Authentication token (managed by monk auth)"
 
 # Server selection is automatically handled via ~/.config/monk/servers.json
-# Use 'monk servers use <name>' to select target server (persistent across commands)
+# Use 'monk server use <name>' to select target server (persistent across commands)
 
 commands:
 # Configuration initialization
@@ -19,6 +19,55 @@ commands:
   - name: path
     required: false
     help: "Custom path for configuration directory (default: ~/.config/monk)"
+
+# Remote server management
+- name: server
+  help: Remote server management
+  
+  commands:
+  - name: add
+    help: Register remote server
+    args:
+    - name: name
+      required: true
+      help: Server name
+    - name: endpoint
+      required: true
+      help: "Server endpoint (host:port)"
+    flags:
+    - long: --description
+      arg: description
+      help: Optional server description
+      
+  - name: list
+    help: List all servers with health status
+    
+  - name: current
+    help: Show currently selected server
+    
+  - name: use
+    help: "Switch to server (persistent selection) or show current server"
+    args:
+    - name: name
+      required: false
+      help: Server name to switch to (omit to show current server)
+      
+  - name: delete
+    help: Remove server from registry
+    args:
+    - name: name
+      required: true
+      help: Server name to delete
+      
+  - name: ping
+    help: Health check specific server
+    args:
+    - name: name
+      required: true
+      help: Server name to ping
+      
+  - name: ping-all
+    help: Health check all registered servers
 
 # Authentication and token management
 - name: auth
@@ -151,6 +200,38 @@ commands:
       required: true
       help: Schema name to delete
 
+# Bulk operations for batch processing
+- name: bulk
+  help: Bulk operations for batch processing across multiple schemas
+  
+  commands:
+  - name: raw
+    help: Execute bulk operations immediately (synchronous)
+    
+  - name: submit
+    help: Submit bulk operations for async processing (future feature)
+    
+  - name: status
+    help: Check status of async bulk operation (future feature)
+    args:
+    - name: operation_id
+      required: true
+      help: Bulk operation ID from submit command
+      
+  - name: result
+    help: Download results of completed bulk operation (future feature)
+    args:
+    - name: operation_id
+      required: true
+      help: Bulk operation ID from submit command
+      
+  - name: cancel
+    help: Cancel pending bulk operation (future feature)
+    args:
+    - name: operation_id
+      required: true
+      help: Bulk operation ID to cancel
+
 # Advanced search with filter DSL
 - name: find
   help: Advanced search with enterprise Filter DSL via JSON input
@@ -204,55 +285,6 @@ commands:
     - name: run2
       required: true
       help: Second test run to compare
-
-# Remote server management
-- name: servers
-  help: Remote server management
-  
-  commands:
-  - name: add
-    help: Register remote server
-    args:
-    - name: name
-      required: true
-      help: Server name
-    - name: endpoint
-      required: true
-      help: "Server endpoint (host:port)"
-    flags:
-    - long: --description
-      arg: description
-      help: Optional server description
-      
-  - name: list
-    help: List all servers with health status
-    
-  - name: current
-    help: Show currently selected server
-    
-  - name: use
-    help: "Switch to server (persistent selection) or show current server"
-    args:
-    - name: name
-      required: false
-      help: Server name to switch to (omit to show current server)
-      
-  - name: delete
-    help: Remove server from registry
-    args:
-    - name: name
-      required: true
-      help: Server name to delete
-      
-  - name: ping
-    help: Health check specific server
-    args:
-    - name: name
-      required: true
-      help: Server name to ping
-      
-  - name: ping-all
-    help: Health check all registered servers
 
 # Multi-tenant database management
 - name: tenant
