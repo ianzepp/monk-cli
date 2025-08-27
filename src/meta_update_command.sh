@@ -47,17 +47,17 @@ case "$type" in
         ;;
 esac
 
-# Read YAML/JSON data from stdin
+# Read YAML data from stdin
 data=$(cat)
 
 if [ -z "$data" ]; then
-    print_error "No YAML/JSON data provided on stdin"
+    print_error "No YAML data provided on stdin"
     print_info "Usage: cat schema.yaml | monk meta update schema <name>"
     exit 1
 fi
 
+print_info "Updating $type '$name' with YAML data:"
 if [ "$CLI_VERBOSE" = "true" ]; then
-    print_info "Updating $type '$name' with data:"
     echo "$data" | sed 's/^/  /'
 fi
 

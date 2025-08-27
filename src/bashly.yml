@@ -114,13 +114,6 @@ commands:
   help: Schema and metadata management
   
   commands:
-  - name: list
-    help: List all schemas
-    args:
-    - name: type
-      help: Type to list
-      default: schema
-      
   - name: select
     help: Select specific schema
     args:

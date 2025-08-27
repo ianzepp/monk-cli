@@ -42,17 +42,17 @@ case "$type" in
         ;;
 esac
 
-# Read YAML/JSON data from stdin
+# Read YAML data from stdin
 data=$(cat)
 
 if [ -z "$data" ]; then
-    print_error "No YAML/JSON data provided on stdin"
+    print_error "No YAML data provided on stdin"
     print_info "Usage: cat schema.yaml | monk meta create schema"
     exit 1
 fi
 
+print_info "Creating $type with YAML data:"
 if [ "$CLI_VERBOSE" = "true" ]; then
-    print_info "Creating $type with data:"
     echo "$data" | sed 's/^/  /'
 fi
 

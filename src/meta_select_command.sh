@@ -36,9 +36,7 @@ case "$type" in
         ;;
 esac
 
-if [ "$CLI_VERBOSE" = "true" ]; then
-    print_info "Getting $type object: $name"
-fi
+print_info "Selecting $type object: $name"
 
 response=$(make_request_yaml "GET" "/api/meta/$type/$name" "")
-handle_response_yaml "$response" "get"
+handle_response_yaml "$response" "select"

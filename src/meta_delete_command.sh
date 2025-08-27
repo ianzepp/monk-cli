@@ -48,11 +48,11 @@ case "$type" in
 esac
 
 if [ "$CLI_VERBOSE" = "true" ]; then
-    print_warning "Are you sure you want to delete $type '$name'? (y/N)" >&2
+    print_warning "Are you sure you want to delete $type '$name'? (y/N)"
     read -r confirmation
     
     if ! echo "$confirmation" | grep -E "^[Yy]$" >/dev/null 2>&1; then
-        print_info "Operation cancelled" >&2
+        print_info "Operation cancelled"
         exit 0
     fi
 fi
