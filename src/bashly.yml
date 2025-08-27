@@ -160,31 +160,18 @@ commands:
 
 # Advanced search with filter DSL
 - name: find
-  help: Advanced search with filter DSL
+  help: Advanced search with enterprise Filter DSL via JSON input
   args:
   - name: schema
     required: true
     help: Schema to search
   flags:
-  - long: --field
-    short: -f
-    arg: field
-    help: Extract specific field from results
-  - long: --count
-    short: -c
-    help: Return count of matching records only
-  - long: --exit-code
-    short: -x
-    help: Exit with code only (no output)
-  - long: --verbose
-    short: -v
-    help: Verbose output
   - long: --head
     short: -H
-    help: Return only first record
+    help: Return only first record from results
   - long: --tail
     short: -T
-    help: Return only last record
+    help: Return only last record from results
 
 # Server connectivity testing
 - name: ping

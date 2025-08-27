@@ -1,68 +1,52 @@
+#!/bin/bash
+
+# find_command.sh - Advanced search with enterprise Filter DSL
+#
+# This command performs complex searches using the enterprise Filter DSL with support
+# for advanced filtering, nested queries, and result limiting options.
+#
+# Usage Examples:
+#   echo '{"where": {"name": {"$like": "john*"}}}' | monk find users
+#   echo '{"where": {"age": {"$gt": 25}}, "limit": 10}' | monk find users
+#   echo '{"where": {"$and": [{"status": "active"}, {"role": "admin"}]}}' | monk find users --head
+#   cat complex-query.json | monk find documents --tail
+#
+# Filter DSL Support:
+#   - Comparison operators: $eq, $ne, $gt, $gte, $lt, $lte
+#   - Array operators: $in, $nin, $any, $nany  
+#   - Pattern matching: $like, $ilike (case-insensitive)
+#   - Logical operators: $and, $or, $not
+#   - Range operators: $between
+#   - Nested object queries and complex expressions
+#
+# Output Options:
+#   --head/-H: Return only the first record from results
+#   --tail/-T: Return only the last record from results
+#   (default): Return all matching records
+#
+# API Endpoint:
+#   POST /api/find/:schema (with Filter DSL JSON payload)
+
 # Check dependencies
 check_dependencies
 
-# Get arguments and flags from bashly
+# Get arguments from bashly
 schema="${args[schema]}"
-field_flag="${args[--field]}"
-count_flag="${args[--count]}"
-exit_code_flag="${args[--exit-code]}"
-verbose_flag="${args[--verbose]}"
 head_flag="${args[--head]}"
 tail_flag="${args[--tail]}"
 
-# Set environment variables based on flags
-if [ "$field_flag" ]; then
-    export CLI_EXTRACT_FIELD="$field_flag"
-fi
+validate_schema "$schema"
 
-if [ "$count_flag" = "1" ]; then
-    export CLI_COUNT_MODE=true
-fi
-
-if [ "$exit_code_flag" = "1" ]; then
-    export CLI_EXIT_CODE_ONLY=true
-fi
-
-if [ "$verbose_flag" = "1" ]; then
-    export CLI_VERBOSE=true
-fi
-
-if [ "$head_flag" = "1" ]; then
-    export CLI_HEAD_MODE=true
-fi
-
-if [ "$tail_flag" = "1" ]; then
-    export CLI_TAIL_MODE=true
-fi
-
-# Check if we have input data
-if [ -t 0 ]; then
-    echo '{"error":"find expects JSON search criteria via STDIN","success":false}' >&2
-    exit 1
-fi
-
-# Read JSON data from STDIN
-input_data=$(cat)
-
-# Validate JSON format (basic check)
-if [ "$JSON_PARSER" = "jq" ]; then
-    if ! echo "$input_data" | jq . >/dev/null 2>&1; then
-        echo '{"error":"Invalid JSON format in search criteria","success":false}' >&2
-        exit 1
-    fi
-elif command -v jshon >/dev/null 2>&1; then
-    if ! echo "$input_data" | jshon >/dev/null 2>&1; then
-        echo '{"error":"Invalid JSON format in search criteria","success":false}' >&2
-        exit 1
-    fi
-fi
+# Read and validate JSON input (Filter DSL)
+json_data=$(read_and_validate_json_input "searching" "$schema")
 
 # Make the find request
-response=$(make_request_json "POST" "/api/find/$schema" "$input_data")
+response=$(make_request_json "POST" "/api/find/$schema" "$json_data")
 
 # Process response with head/tail support
-if [ "$CLI_HEAD_MODE" = "true" ]; then
+if [ "$head_flag" = "true" ]; then
     # Extract first record from array
+    print_info "Returning first record only"
     if [ "$JSON_PARSER" = "jq" ]; then
         if echo "$response" | jq -e '.success == true' >/dev/null 2>&1; then
             first_record=$(echo "$response" | jq '.data[0] // null')
@@ -83,8 +67,9 @@ if [ "$CLI_HEAD_MODE" = "true" ]; then
             echo "$response"
         fi
     fi
-elif [ "$CLI_TAIL_MODE" = "true" ]; then
+elif [ "$tail_flag" = "true" ]; then
     # Extract last record from array
+    print_info "Returning last record only"
     if [ "$JSON_PARSER" = "jq" ]; then
         if echo "$response" | jq -e '.success == true' >/dev/null 2>&1; then
             last_record=$(echo "$response" | jq '.data[-1] // null')
