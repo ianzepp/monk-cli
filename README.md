@@ -12,6 +12,8 @@
 - **Distribution**: Compiled binary for easy installation and deployment
 
 ### Key Features
+- **Multi-Tenant Filesystem Interface**: Explore API data across tenants using familiar unix commands (ls, cat, rm, stat)
+- **Cross-Tenant Operations**: Path-based and flag-based tenant routing for multi-environment workflows
 - **Complete API Coverage**: Full command-line access to all Monk API functionality
 - **Flexible Data Operations**: Smart input detection with array/object handling and unified select command
 - **Bulk Operations**: Batch processing with immediate execution and planned async capabilities
@@ -55,6 +57,14 @@
 - `monk find` - Enterprise Filter DSL with complex query support
 - `monk meta select/create/update/delete` - YAML-based schema management
 
+#### **Multi-Tenant Filesystem Interface**
+- `monk fs ls` - Browse schemas and records like directories with cross-tenant support
+- `monk fs cat` - Display record content and individual field values across tenants
+- `monk fs rm` - Safe deletion operations with soft delete defaults
+- `monk fs stat` - Rich metadata and schema introspection with tenant context
+- **Path-based routing**: `/tenant/tenant-a/data/users/` for intuitive multi-tenant access
+- **Flag-based targeting**: `--tenant tenant-a` for explicit tenant specification
+
 #### **System Operations**
 - `monk test git/diff` - Git-based test environment management
 - `monk user` - User management operations (placeholder implementations)  
@@ -62,12 +72,14 @@
 
 ### CLI Design Patterns
 - **Logical Command Flow**: init → server → tenant → auth → data workflow
+- **Multi-Tenant Operations**: Path-based (`/tenant/name/data/`) and flag-based (`--tenant name`) tenant routing
 - **Smart Input Detection**: Automatic array/object routing to appropriate API endpoints
 - **Flexible Parameters**: Optional ID parameters with JSON extraction fallbacks
 - **Clean Config Separation**: server.json (infrastructure) + auth.json (sessions) + env.json (context)
 - **Consistent Output**: Input format preserved in output (array→array, object→object)
 - **Pipe-Safe Design**: Status messages to stderr, data to stdout for clean pipelines
 - **External Auth Support**: JWT import from OAuth, SSO, and external authentication systems
+- **Cross-Environment Access**: Operate on multiple tenants/servers without manual context switching
 
 ### Development Workflow Integration
 - **Remote Management**: Complete API management from command line
@@ -86,6 +98,12 @@
   monk tenant create my-tenant        # Create tenant database
   monk auth login my-tenant admin     # Authenticate
   monk data select users              # Start working with data
+  
+  # Multi-tenant filesystem exploration
+  monk fs ls /data/                   # Browse current tenant
+  monk fs ls /tenant/other-tenant/data/ # Browse different tenant
+  monk fs cat /data/users/user-123.json # Read complete record
+  monk fs cat /data/users/user-123/email # Read specific field
   ```
 - **User Installation**: Install to `~/.local/bin` without sudo requirements
 - **System Installation**: Optional system-wide installation to `/usr/local/bin`
