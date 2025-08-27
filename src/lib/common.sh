@@ -3,10 +3,19 @@
 # Common functions for bashly CLI commands
 # Clean rewrite to eliminate syntax errors and improve maintainability
 
-# JWT tokens are stored per-server in servers.json (no global fallback)
+# Clean separation of concerns:
+# - server.json: Infrastructure endpoints  
+# - auth.json: Authentication sessions per server+tenant
+# - env.json: Current working context (server+tenant selection)
 
-# Servers configuration file
-SERVERS_CONFIG="${HOME}/.config/monk/servers.json"
+# CLI configuration files  
+CLI_CONFIG_DIR="${HOME}/.config/monk/cli"
+SERVER_CONFIG="${CLI_CONFIG_DIR}/server.json"
+AUTH_CONFIG="${CLI_CONFIG_DIR}/auth.json"
+ENV_CONFIG="${CLI_CONFIG_DIR}/env.json"
+
+# Legacy config file (for migration)
+LEGACY_SERVERS_CONFIG="${HOME}/.config/monk/servers.json"
 
 # Default configuration
 DEFAULT_BASE_URL="http://localhost:3000"
@@ -40,9 +49,98 @@ print_warning() {
     echo -e "${YELLOW}⚠ $1${NC}" >&2
 }
 
-# Get base URL from servers config - fail if not configured
+# Initialize CLI config directory and files
+init_cli_configs() {
+    # Ensure CLI config directory exists
+    mkdir -p "$CLI_CONFIG_DIR"
+    
+    # Initialize individual config files
+    init_server_config
+    init_auth_config  
+    init_env_config
+}
+
+# Initialize server config if it doesn't exist
+init_server_config() {
+    if [ ! -f "$SERVER_CONFIG" ]; then
+        mkdir -p "$(dirname "$SERVER_CONFIG")"
+        cat > "$SERVER_CONFIG" << 'EOF'
+{
+  "servers": {}
+}
+EOF
+    fi
+}
+
+# Initialize auth config if it doesn't exist  
+init_auth_config() {
+    if [ ! -f "$AUTH_CONFIG" ]; then
+        mkdir -p "$(dirname "$AUTH_CONFIG")"
+        cat > "$AUTH_CONFIG" << 'EOF'
+{
+  "sessions": {}
+}
+EOF
+    fi
+}
+
+# Initialize env config if it doesn't exist
+init_env_config() {
+    if [ ! -f "$ENV_CONFIG" ]; then
+        mkdir -p "$(dirname "$ENV_CONFIG")"
+        cat > "$ENV_CONFIG" << 'EOF'
+{
+  "current_server": null,
+  "current_tenant": null,
+  "current_user": null,
+  "recents": []
+}
+EOF
+    fi
+}
+
+# Migrate from legacy servers.json to new CLI config structure
+migrate_legacy_config() {
+    # Only migrate if legacy file exists and new structure doesn't
+    if [[ -f "$LEGACY_SERVERS_CONFIG" && ! -f "$SERVER_CONFIG" ]]; then
+        print_info "Migrating legacy configuration to new CLI structure..."
+        
+        # Ensure new config directory exists
+        mkdir -p "$CLI_CONFIG_DIR"
+        
+        # Extract server info and current server from legacy config
+        local servers_data current_server
+        servers_data=$(jq '.servers' "$LEGACY_SERVERS_CONFIG" 2>/dev/null)
+        current_server=$(jq -r '.current // empty' "$LEGACY_SERVERS_CONFIG" 2>/dev/null)
+        
+        # Create new server.json (infrastructure only)
+        echo "{\"servers\": $servers_data}" > "$SERVER_CONFIG"
+        
+        # Create env.json with current server selection
+        cat > "$ENV_CONFIG" << EOF
+{
+  "current_server": "$current_server",
+  "current_tenant": null,
+  "current_user": null,
+  "recents": []
+}
+EOF
+        
+        # Create empty auth.json (tokens will be re-established)
+        cat > "$AUTH_CONFIG" << 'EOF'
+{
+  "sessions": {}
+}
+EOF
+        
+        print_success "Configuration migrated to ~/.config/monk/cli/"
+        print_warning "JWT tokens were not migrated - please re-authenticate with 'monk auth login'"
+    fi
+}
+
+# Get base URL from server config - fail if not configured
 get_base_url() {
-    local servers_config="${HOME}/.config/monk/servers.json"
+    migrate_legacy_config
     
     # Check if jq is available
     if ! command -v jq >/dev/null 2>&1; then
@@ -52,29 +150,30 @@ get_base_url() {
     fi
     
     # Check if config file exists
-    if [[ ! -f "$servers_config" ]]; then
+    if [[ ! -f "$SERVER_CONFIG" ]]; then
         echo "Error: No server configuration found" >&2
-        echo "Use 'monk servers add <name> <hostname:port>' to add a server" >&2
+        echo "Use 'monk server add <name> <hostname:port>' to add a server" >&2
         exit 1
     fi
     
-    # Get current server
+    # Get current server from env config
+    init_env_config
     local current_server
-    current_server=$(jq -r '.current // empty' "$servers_config" 2>/dev/null)
+    current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
     
     if [[ -z "$current_server" || "$current_server" == "null" ]]; then
         echo "Error: No current server selected" >&2
-        echo "Use 'monk servers use <name>' to select a server" >&2
+        echo "Use 'monk server use <name>' to select a server" >&2
         exit 1
     fi
     
-    # Get server info
+    # Get server info from server config
     local server_info
-    server_info=$(jq -r ".servers.\"$current_server\"" "$servers_config" 2>/dev/null)
+    server_info=$(jq -r ".servers.\"$current_server\"" "$SERVER_CONFIG" 2>/dev/null)
     
     if [[ "$server_info" == "null" ]]; then
         echo "Error: Current server '$current_server' not found in configuration" >&2
-        echo "Use 'monk servers list' to see available servers" >&2
+        echo "Use 'monk server list' to see available servers" >&2
         exit 1
     fi
     
@@ -93,27 +192,34 @@ get_base_url() {
     echo "$protocol://$hostname:$port"
 }
 
-# Get stored JWT token for current server
+# Get stored JWT token for current server+tenant context
 get_jwt_token() {
-    init_servers_config
+    init_cli_configs
     
     if ! command -v jq >/dev/null 2>&1; then
         echo "Error: jq is required for JWT token management" >&2
         return 1
     fi
     
-    # Get current server name
-    local current_server
-    current_server=$(jq -r '.current // empty' "$SERVERS_CONFIG" 2>/dev/null)
+    # Get current context
+    local current_server current_tenant
+    current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
+    current_tenant=$(jq -r '.current_tenant // empty' "$ENV_CONFIG" 2>/dev/null)
     
     if [ -z "$current_server" ] || [ "$current_server" = "null" ]; then
         # No current server selected
         return 1
     fi
     
-    # Get server-specific token
+    if [ -z "$current_tenant" ] || [ "$current_tenant" = "null" ]; then
+        # No current tenant selected
+        return 1
+    fi
+    
+    # Get session-specific token using server:tenant key
+    local session_key="${current_server}:${current_tenant}"
     local token
-    token=$(jq -r ".servers.\"$current_server\".jwt_token // empty" "$SERVERS_CONFIG" 2>/dev/null)
+    token=$(jq -r ".sessions.\"$session_key\".jwt_token // empty" "$AUTH_CONFIG" 2>/dev/null)
     
     if [ -n "$token" ] && [ "$token" != "null" ]; then
         echo "$token"
@@ -122,60 +228,96 @@ get_jwt_token() {
     fi
 }
 
-# Store JWT token for current server
+# Store JWT token for current server+tenant context
 store_token() {
     local token="$1"
+    local tenant="$2"
+    local user="$3"
     
-    init_servers_config
+    init_cli_configs
     
     if ! command -v jq >/dev/null 2>&1; then
         echo "Error: jq is required for JWT token management" >&2
         return 1
     fi
     
-    # Get current server name
+    # Get current server from env config
     local current_server
-    current_server=$(jq -r '.current // empty' "$SERVERS_CONFIG" 2>/dev/null)
+    current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
     
     if [ -z "$current_server" ] || [ "$current_server" = "null" ]; then
-        echo "Error: No current server selected. Use 'monk servers use <name>' first" >&2
+        echo "Error: No current server selected. Use 'monk server use <name>' first" >&2
         return 1
     fi
     
-    # Store token in server configuration
+    # Update env config with current tenant and user
     local temp_file=$(mktemp)
-    jq --arg server "$current_server" \
-       --arg token "$token" \
-       '.servers[$server].jwt_token = $token' \
-       "$SERVERS_CONFIG" > "$temp_file" && mv "$temp_file" "$SERVERS_CONFIG"
+    jq --arg tenant "$tenant" \
+       --arg user "$user" \
+       '.current_tenant = $tenant | .current_user = $user' \
+       "$ENV_CONFIG" > "$temp_file" && mv "$temp_file" "$ENV_CONFIG"
     
-    # Set secure permissions on config file
-    chmod 600 "$SERVERS_CONFIG"
+    # Store token in auth config using server:tenant key
+    local session_key="${current_server}:${tenant}"
+    local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    
+    temp_file=$(mktemp)
+    jq --arg session_key "$session_key" \
+       --arg token "$token" \
+       --arg tenant "$tenant" \
+       --arg user "$user" \
+       --arg server "$current_server" \
+       --arg timestamp "$timestamp" \
+       '.sessions[$session_key] = {
+           "jwt_token": $token,
+           "tenant": $tenant,
+           "user": $user, 
+           "server": $server,
+           "created_at": $timestamp
+       }' "$AUTH_CONFIG" > "$temp_file" && mv "$temp_file" "$AUTH_CONFIG"
+    
+    # Set secure permissions on auth file
+    chmod 600 "$AUTH_CONFIG"
 }
 
-# Remove stored JWT token for current server
+# Remove stored JWT token for current server+tenant context
 remove_stored_token() {
-    init_servers_config
+    init_cli_configs
     
     if ! command -v jq >/dev/null 2>&1; then
         echo "Error: jq is required for JWT token management" >&2
         return 1
     fi
     
-    # Get current server name
-    local current_server
-    current_server=$(jq -r '.current // empty' "$SERVERS_CONFIG" 2>/dev/null)
+    # Get current context
+    local current_server current_tenant
+    current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
+    current_tenant=$(jq -r '.current_tenant // empty' "$ENV_CONFIG" 2>/dev/null)
     
     if [ -z "$current_server" ] || [ "$current_server" = "null" ]; then
         echo "Error: No current server selected" >&2
         return 1
     fi
     
-    # Remove token from server configuration
+    if [ -z "$current_tenant" ] || [ "$current_tenant" = "null" ]; then
+        # Clear all tenant info from env
+        local temp_file=$(mktemp)
+        jq '.current_tenant = null | .current_user = null' \
+           "$ENV_CONFIG" > "$temp_file" && mv "$temp_file" "$ENV_CONFIG"
+        return 0
+    fi
+    
+    # Remove session from auth config
+    local session_key="${current_server}:${current_tenant}"
     local temp_file=$(mktemp)
-    jq --arg server "$current_server" \
-       'del(.servers[$server].jwt_token)' \
-       "$SERVERS_CONFIG" > "$temp_file" && mv "$temp_file" "$SERVERS_CONFIG"
+    jq --arg session_key "$session_key" \
+       'del(.sessions[$session_key])' \
+       "$AUTH_CONFIG" > "$temp_file" && mv "$temp_file" "$AUTH_CONFIG"
+    
+    # Clear current tenant from env config
+    temp_file=$(mktemp)
+    jq '.current_tenant = null | .current_user = null' \
+       "$ENV_CONFIG" > "$temp_file" && mv "$temp_file" "$ENV_CONFIG"
 }
 
 # Make HTTP request with JSON content-type - programmatic by default
@@ -346,19 +488,10 @@ check_dependencies() {
     fi
 }
 
-# Initialize servers config if it doesn't exist
+# Legacy function - kept for compatibility
 init_servers_config() {
-    # Ensure config directory exists
-    mkdir -p "$(dirname "$SERVERS_CONFIG")"
-    
-    if [ ! -f "$SERVERS_CONFIG" ]; then
-        cat > "$SERVERS_CONFIG" << 'EOF'
-{
-  "servers": {},
-  "current": null
-}
-EOF
-    fi
+    # Redirect to new CLI config initialization
+    init_cli_configs
 }
 
 # Parse hostname:port into components
