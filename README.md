@@ -67,8 +67,6 @@
 
 #### **System Operations**
 - `monk test git/diff` - Git-based test environment management
-- `monk user` - User management operations (placeholder implementations)  
-- `monk root` - Administrative operations (placeholder implementations)
 
 ### CLI Design Patterns
 - **Logical Command Flow**: init → server → tenant → auth → data workflow
