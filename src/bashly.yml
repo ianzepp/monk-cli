@@ -5,8 +5,6 @@ version: 2.1.0
 environment_variables:
 - name: CLI_VERBOSE
   help: Enable verbose output for all commands
-- name: JWT_TOKEN
-  help: "Authentication token (managed by monk auth)"
 
 # Server selection is automatically handled via ~/.config/monk/servers.json
 # Use 'monk server use <name>' to select target server (persistent across commands)

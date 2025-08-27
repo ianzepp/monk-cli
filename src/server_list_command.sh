@@ -33,7 +33,6 @@ echo "$server_names" | while read -r name; do
         port=$(echo "$server_info" | jq -r '.port')
         protocol=$(echo "$server_info" | jq -r '.protocol')
         status=$(echo "$server_info" | jq -r '.status // "unknown"')
-        jwt_token=$(echo "$server_info" | jq -r '.jwt_token // ""')
         last_ping=$(echo "$server_info" | jq -r '.last_ping // "never"')
         added_at=$(echo "$server_info" | jq -r '.added_at // "unknown"')
         description=$(echo "$server_info" | jq -r '.description // ""')
@@ -48,10 +47,11 @@ echo "$server_names" | while read -r name; do
             added_at=$(echo "$added_at" | cut -d'T' -f1)
         fi
         
-        # Check if authenticated
+        # Check if authenticated (look for any sessions for this server)
         auth_status="no"
-        if [ -n "$jwt_token" ]; then
-            auth_status="yes"
+        auth_count=$(jq --arg server "$name" '[.sessions | to_entries[] | select(.key | startswith($server + ":"))] | length' "$AUTH_CONFIG" 2>/dev/null || echo "0")
+        if [ "$auth_count" -gt 0 ]; then
+            auth_status="yes ($auth_count)"
         fi
         
         # Mark current server
