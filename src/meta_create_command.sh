@@ -1,3 +1,29 @@
+#!/bin/bash
+
+# meta_create_command.sh - Create new schema from YAML definition
+#
+# This command creates a new schema in the database from a YAML schema definition.
+# The schema definition includes JSON Schema validation rules and generates database DDL.
+#
+# Usage Examples:
+#   cat users.yaml | monk meta create schema           # Create from file
+#   echo "name: test..." | monk meta create schema     # Create from inline YAML
+#
+# Input Format:
+#   - YAML schema definition via stdin
+#   - Must include 'name' field for schema identification  
+#   - Supports full JSON Schema specification (type, properties, required, etc.)
+#   - Optional metadata (title, description)
+#
+# Schema Processing:
+#   - Validates YAML syntax and schema structure
+#   - Generates PostgreSQL table DDL automatically
+#   - Creates schema cache entry for performance
+#   - Prevents modification of system schemas
+#
+# API Endpoint:
+#   POST /api/meta/schema (Content-Type: application/yaml)
+
 # Check dependencies
 check_dependencies
 

@@ -1,3 +1,26 @@
+#!/bin/bash
+
+# data_update_command.sh - Update records with flexible ID handling
+#
+# This command updates existing records with multiple input patterns:
+# - ID as parameter: uses object endpoint, removes ID from JSON payload
+# - ID extracted from JSON: uses object endpoint for single updates
+# - Array input: uses array endpoint for bulk updates
+#
+# Usage Examples:
+#   echo '{"name": "Updated Name"}' | monk data update users 123  # ID as param
+#   echo '{"id": 123, "name": "Updated Name"}' | monk data update users  # ID in JSON  
+#   echo '[{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]' | monk data update users  # Bulk
+#
+# API Endpoints:
+#   PUT /api/data/:schema/:id  (single record - ID from parameter or extracted)
+#   PUT /api/data/:schema      (bulk update - array input)
+#
+# ID Handling:
+#   - Parameter ID takes precedence over JSON ID
+#   - JSON ID automatically extracted when parameter omitted
+#   - ID removed from payload for object endpoints (API requirement)
+
 # Check dependencies
 check_dependencies
 

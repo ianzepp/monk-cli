@@ -1,3 +1,29 @@
+#!/bin/bash
+
+# data_delete_command.sh - Delete records with confirmation and flexible input
+#
+# This command deletes records with multiple input patterns and safety confirmations:
+# - Direct ID deletion with optional confirmation prompts  
+# - ID extracted from JSON objects for scripted deletions
+# - Bulk deletion from array input
+#
+# Usage Examples:
+#   monk data delete users 123                           # Direct ID deletion
+#   echo '{"id": 123}' | monk data delete users         # ID from JSON
+#   echo '[{"id": 1}, {"id": 2}]' | monk data delete users  # Bulk deletion
+#
+# Safety Features:
+#   - Confirmation prompts in CLI_VERBOSE mode for destructive operations
+#   - Clear error messages when ID missing from both parameter and JSON
+#
+# API Endpoints:
+#   DELETE /api/data/:schema/:id  (single record deletion)  
+#   DELETE /api/data/:schema      (bulk deletion from array)
+#
+# Input Requirements:
+#   - Either ID parameter OR JSON with 'id' field(s) required
+#   - No payload sent for single deletions (just endpoint)
+
 # Check dependencies
 check_dependencies
 

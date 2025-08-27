@@ -1,3 +1,28 @@
+#!/bin/bash
+
+# data_export_command.sh - Export schema records to individual JSON files
+#
+# This command exports all records from a schema to separate JSON files in a directory.
+# Each record is saved as {record_id}.json with pretty-formatted JSON content.
+#
+# Usage Examples:
+#   monk data export users ./backup/users/              # Export to directory
+#   monk data export products /tmp/export-$(date +%Y%m%d)/  # Timestamped export
+#
+# Output Structure:
+#   - Creates target directory if it doesn't exist
+#   - One file per record: {directory}/{record_id}.json
+#   - Pretty-formatted JSON with 4-space indentation
+#   - Verbose progress reporting when CLI_VERBOSE=true
+#
+# Requirements:
+#   - Python3 required for JSON parsing and file operations
+#   - Records must have 'id' field for filename generation
+#   - Write permissions needed for target directory
+#
+# API Endpoint:
+#   GET /api/data/:schema (retrieves all records)
+
 # Check dependencies
 check_dependencies
 

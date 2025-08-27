@@ -1,3 +1,28 @@
+#!/bin/bash
+
+# data_import_command.sh - Bulk import JSON files as records
+#
+# This command imports multiple JSON files from a directory as records in a schema.
+# All .json files are collected into an array and sent in a single bulk API request.
+#
+# Usage Examples:
+#   monk data import users ./backup/users/              # Import from directory
+#   monk data import products /tmp/migration/           # Migration import
+#
+# Input Structure:
+#   - Scans directory for all *.json files
+#   - Each file should contain a valid JSON object (one record)
+#   - Files processed in sorted order by filename
+#   - All records combined into array for bulk import
+#
+# Requirements:
+#   - Python3 required for JSON parsing and file operations
+#   - Directory must exist and contain .json files
+#   - Each JSON file must be valid and represent one record
+#
+# API Endpoint:  
+#   PUT /api/data/:schema (bulk import with array payload)
+
 # Check dependencies
 check_dependencies
 

@@ -1,3 +1,22 @@
+#!/bin/bash
+
+# meta_select_command.sh - Retrieve specific schema definition  
+#
+# This command retrieves the complete YAML schema definition for a named schema.
+# Returns the full schema specification including validation rules, properties, and metadata.
+#
+# Usage Examples:
+#   monk meta select schema users           # Get users schema definition
+#   monk meta select schema products > products.yaml  # Save schema to file
+#
+# Output Format:
+#   - Returns complete YAML schema definition
+#   - Includes JSON Schema validation rules, properties, required fields
+#   - Contains metadata like title, description, and custom attributes
+#
+# API Endpoint:
+#   GET /api/meta/schema/:name (returns YAML content)
+
 # Check dependencies
 check_dependencies
 

@@ -1,3 +1,21 @@
+#!/bin/bash
+
+# meta_list_command.sh - List all schemas in the current tenant
+#
+# This command lists all available schemas in the current tenant's database.
+# Returns an array of schema names for discovery and validation purposes.
+#
+# Usage Examples:
+#   monk meta list schema                    # List all schemas
+#   monk meta list schema | jq '.[]'        # Pretty print each schema name
+#
+# Output Format:
+#   - Returns JSON array of schema names
+#   - Currently only supports 'schema' type (extensible for future metadata types)
+#
+# API Endpoint:
+#   GET /api/meta/schema
+
 # Check dependencies
 check_dependencies
 

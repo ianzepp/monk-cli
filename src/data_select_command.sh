@@ -1,3 +1,30 @@
+#!/bin/bash
+
+# data_select_command.sh - Unified data selection with intelligent query routing
+#
+# This command handles all data selection scenarios with flexible input:
+# 1. Direct ID selection for single records
+# 2. Default listing when no parameters provided  
+# 3. Simple query parameters via JSON (limit, order, offset)
+# 4. Complex queries automatically redirected to 'find' command
+#
+# Usage Examples:
+#   monk data select users 123                    # Get specific user by ID
+#   monk data select users                        # List all users (default)
+#   echo '{"limit": 10}' | monk data select users           # Limit results
+#   echo '{"order": "name asc"}' | monk data select users   # Sort by name
+#   echo '{"limit": 5, "offset": 10}' | monk data select users  # Pagination
+#   echo '{"where": {"status": "active"}}' | monk data select users  # → Redirects to find
+#
+# API Endpoints:
+#   GET /api/data/:schema/:id     (direct ID)
+#   GET /api/data/:schema         (default listing)
+#   GET /api/data/:schema?params  (with query string)
+#
+# Complex Query Redirection:
+#   JSON with 'where' field automatically redirects to 'monk find :schema'
+#   for advanced filtering capabilities using the enterprise Filter DSL
+
 # Check dependencies
 check_dependencies
 
