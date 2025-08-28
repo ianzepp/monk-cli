@@ -19,7 +19,7 @@
 - **Bulk Operations**: Batch processing with immediate execution and planned async capabilities
 - **Multi-Server Management**: Clean server registry with health monitoring and environment switching
 - **Advanced Authentication**: JWT management with external token import and expiration tracking
-- **Tenant Management**: Create, configure, and manage multi-tenant environments  
+- **Tenant Management**: Server-scoped tenant registry with JSON support for UI integration  
 - **Schema Management**: YAML-based schema operations with automatic DDL generation
 - **Enterprise Search**: Advanced filtering with Filter DSL and intelligent query routing
 
@@ -38,7 +38,7 @@
 #### **Setup & Configuration**
 - `monk init` - Initialize CLI configuration with clean domain separation
 - `monk server add/list/use/current/ping` - Multi-server infrastructure management
-- `monk tenant create/delete/list/use/init` - Multi-tenant environment administration
+- `monk tenant add/delete/list/use` - Server-scoped tenant registry management
 
 #### **Authentication & Authorization**  
 - `monk auth login/logout` - Standard JWT authentication flows
@@ -71,7 +71,7 @@
 - **Multi-Tenant Operations**: Path-based (`/tenant/name/data/`) and flag-based (`--tenant name`) tenant routing
 - **Smart Input Detection**: Automatic array/object routing to appropriate API endpoints
 - **Flexible Parameters**: Optional ID parameters with JSON extraction fallbacks
-- **Clean Config Separation**: server.json (infrastructure) + auth.json (sessions) + env.json (context)
+- **Clean Config Separation**: server.json (infrastructure) + tenant.json (tenant registry) + auth.json (sessions) + env.json (context)
 - **Consistent Output**: Input format preserved in output (array→array, object→object)
 - **Pipe-Safe Design**: Status messages to stderr, data to stdout for clean pipelines
 - **External Auth Support**: JWT import from OAuth, SSO, and external authentication systems
@@ -91,8 +91,10 @@
   ```bash
   monk init                           # Initialize CLI configuration
   monk server add local localhost:9001 # Add server endpoint  
-  monk tenant create my-tenant        # Create tenant database
-  monk auth login my-tenant admin     # Authenticate
+  monk tenant add my-tenant "My Tenant" # Register tenant for server
+  monk server use local               # Select server
+  monk tenant use my-tenant           # Select tenant
+  monk auth login my-tenant admin     # Authenticate to server+tenant
   monk data select users              # Start working with data
   
   # Multi-tenant filesystem exploration
