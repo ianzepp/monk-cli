@@ -129,6 +129,21 @@ monk fs cat /data/users/user-123.json # Read complete record
 monk fs cat /data/users/user-123/email # Read specific field
 ```
 
+### Administrative Operations (Development)
+
+```bash
+# Root tenant management (localhost development only)
+monk root tenant list               # List all tenants with status
+monk root tenant create "My App"    # Create new tenant (Unicode supported)
+monk root tenant show my-app        # Show detailed tenant information
+monk root tenant health my-app      # Database connectivity health check
+
+# Tenant lifecycle management
+monk root tenant trash my-app       # Soft delete (recoverable)
+monk root tenant restore my-app     # Restore from trash
+monk root tenant delete my-app      # Hard delete (permanent)
+```
+
 ## Development Setup
 
 ### Local Toolchain Setup
