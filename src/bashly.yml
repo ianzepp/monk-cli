@@ -39,9 +39,15 @@ commands:
       
   - name: list
     help: List all servers with health status
+    flags:
+    - long: --json
+      help: Output in JSON format
     
   - name: current
     help: Show currently selected server
+    flags:
+    - long: --json
+      help: Output in JSON format
     
   - name: use
     help: "Switch to server (persistent selection) or show current server"
@@ -63,9 +69,15 @@ commands:
     - name: name
       required: false
       help: Server name to ping (optional, defaults to current server)
+    flags:
+    - long: --json
+      help: Output in JSON format
       
   - name: ping-all
     help: Health check all registered servers
+    flags:
+    - long: --json
+      help: Output in JSON format
 
 # Multi-tenant database management
 - name: tenant
