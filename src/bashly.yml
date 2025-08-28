@@ -401,5 +401,85 @@ commands:
     short: -T
     help: Return only last record from results
 
+# Administrative operations (development only)
+- name: root
+  help: Administrative operations for tenant management (localhost development only)
+  
+  commands:
+  - name: tenant
+    help: Tenant management operations
+    
+    commands:
+    - name: list
+      help: List all tenants
+      alias: ls
+      flags:
+      - long: --include-trashed
+        help: Include soft-deleted tenants
+      - long: --include-deleted
+        help: Include hard-deleted tenants
+      - long: --json
+        help: Output in JSON format
+        
+    - name: create
+      help: Create new tenant
+      alias: add
+      args:
+      - name: name
+        required: true
+        help: Tenant name
+      flags:
+      - long: --host
+        arg: hostname
+        help: "Database host (default: localhost)"
+      - long: --force
+        help: Force creation even if exists
+        
+    - name: show
+      help: Show tenant details
+      alias: info
+      args:
+      - name: name
+        required: true
+        help: Tenant name
+      flags:
+      - long: --json
+        help: Output in JSON format
+        
+    - name: trash
+      help: Soft delete tenant (set trashed_at)
+      args:
+      - name: name
+        required: true
+        help: Tenant name
+        
+    - name: restore
+      help: Restore soft deleted tenant
+      args:
+      - name: name
+        required: true
+        help: Tenant name
+        
+    - name: delete
+      help: Hard delete tenant (permanent)
+      alias: purge
+      args:
+      - name: name
+        required: true
+        help: Tenant name
+      flags:
+      - long: --force
+        help: Skip confirmation
+        
+    - name: health
+      help: Check tenant database health
+      args:
+      - name: name
+        required: true
+        help: Tenant name
+      flags:
+      - long: --json
+        help: Output in JSON format
+
 
 

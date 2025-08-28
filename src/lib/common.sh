@@ -1187,3 +1187,151 @@ validate_schema() {
         print_info "Could not validate schema dynamically, assuming valid: $schema"
     fi
 }
+
+# URL encode a string for safe HTTP requests
+url_encode() {
+    local string="$1"
+    # Use python for proper URL encoding if available, otherwise basic sed
+    if command -v python3 >/dev/null 2>&1; then
+        python3 -c "import urllib.parse; print(urllib.parse.quote('''$string''', safe=''))"
+    else
+        # Fallback: basic encoding for common characters
+        printf '%s' "$string" | sed \
+            -e 's/ /%20/g' \
+            -e 's/!/%21/g' \
+            -e 's/"/%22/g' \
+            -e 's/#/%23/g' \
+            -e 's/\$/%24/g' \
+            -e 's/%/%25/g' \
+            -e 's/&/%26/g' \
+            -e "s/'/%27/g"
+    fi
+}
+
+# Make HTTP request to root API (no authentication required for localhost development)
+make_root_request() {
+    local method="$1"
+    local endpoint="$2"  # e.g., "tenant", "tenant/my_app"
+    local data="$3"
+    local base_url=$(get_base_url)
+    
+    # URL encode tenant names in endpoints for proper HTTP handling
+    if [[ "$endpoint" == tenant/* ]]; then
+        local tenant_path="${endpoint#tenant/}"
+        # Split on additional path segments (e.g., tenant/name/health)
+        if [[ "$tenant_path" == */* ]]; then
+            local tenant_name="${tenant_path%%/*}"
+            local remaining_path="${tenant_path#*/}"
+            local encoded_name=$(url_encode "$tenant_name")
+            endpoint="tenant/${encoded_name}/${remaining_path}"
+        else
+            local encoded_name=$(url_encode "$tenant_path")
+            endpoint="tenant/${encoded_name}"
+        fi
+    fi
+    
+    local full_url="${base_url}/api/root/${endpoint}"
+    
+    print_info "Making $method request to: $full_url"
+    
+    local curl_args=(-s -X "$method")
+    
+    # Add content-type header if data provided
+    if [ -n "$data" ]; then
+        curl_args+=(-H "Content-Type: application/json" -d "$data")
+    fi
+    
+    local response
+    local http_code
+    
+    # Make request and capture both response and HTTP status code
+    response=$(curl "${curl_args[@]}" -w "\n%{http_code}" "$full_url")
+    http_code=$(echo "$response" | tail -n1)
+    response=$(echo "$response" | sed '$d')
+    
+    # Handle HTTP errors
+    case "$http_code" in
+        200|201|204)
+            print_success "Success ($http_code)"
+            echo "$response"
+            return 0
+            ;;
+        400|404|500)
+            print_error "HTTP Error ($http_code)"
+            echo "$response" >&2
+            exit 1
+            ;;
+        *)
+            print_error "HTTP $http_code"
+            echo "$response" >&2
+            exit 1
+            ;;
+    esac
+}
+
+# Format tenant data for table output
+format_tenant_table() {
+    local tenants="$1"
+    local include_trashed="$2"
+    local include_deleted="$3"
+    
+    if [ "$JSON_PARSER" != "jq" ]; then
+        print_error "jq required for tenant table formatting"
+        exit 1
+    fi
+    
+    local count
+    count=$(echo "$tenants" | jq 'length')
+    
+    echo
+    print_info "Total tenants: $count"
+    echo
+    
+    if [[ "$count" -gt 0 ]]; then
+        printf "%-20s %-10s %-20s %-20s %-20s\n" "NAME" "STATUS" "DATABASE" "HOST" "CREATED"
+        echo "--------------------------------------------------------------------------------"
+        
+        echo "$tenants" | jq -r '.[] | [.name, .status, .database, .host, (.created_at | split("T")[0])] | @tsv' | \
+        while IFS=$'\t' read -r name status database host created; do
+            printf "%-20s %-10s %-20s %-20s %-20s\n" "$name" "$status" "$database" "$host" "$created"
+        done
+    else
+        print_info "No tenants found"
+    fi
+    echo
+}
+
+# Confirm destructive operation with user input
+confirm_destructive_operation() {
+    local operation="$1"
+    local target="$2"
+    local force_flag="$3"
+    local confirmation_word="${4:-y}"  # Default to 'y', or use custom word like 'DELETE'
+    
+    if [[ "$force_flag" == "1" ]]; then
+        return 0  # Skip confirmation if --force used
+    fi
+    
+    if [[ "$confirmation_word" == "y" ]]; then
+        print_warning "Are you sure you want to $operation '$target'? (y/N)"
+        read -r user_input
+        
+        if echo "$user_input" | grep -E "^[Yy]$" >/dev/null 2>&1; then
+            return 0
+        else
+            print_info "Operation cancelled"
+            exit 0
+        fi
+    else
+        print_warning "DANGER: This will $operation '$target'!"
+        print_warning "Type '$confirmation_word' to confirm:"
+        read -r user_input
+        
+        if [[ "$user_input" == "$confirmation_word" ]]; then
+            return 0
+        else
+            print_info "Operation cancelled"
+            exit 0
+        fi
+    fi
+}
