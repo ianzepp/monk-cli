@@ -55,20 +55,34 @@ if [ -n "$decoded" ]; then
         print_success "JWT Token Information:"
         echo
         
-        # Pretty print JSON if jq is available
         if command -v jq >/dev/null 2>&1; then
-            echo "$decoded" | jq .
-        else
-            echo "$decoded"
-        fi
-        
-        echo
-        if command -v jq >/dev/null 2>&1; then
-            exp_timestamp=$(echo "$decoded" | jq -r '.exp' 2>/dev/null)
-            if [ "$exp_timestamp" != "null" ] && [ -n "$exp_timestamp" ]; then
-                exp_date=$(date -r "$exp_timestamp" 2>/dev/null || echo 'unknown')
-                print_info "Token expires: $exp_date"
+            # Extract key fields for human-readable display
+            sub=$(echo "$decoded" | jq -r '.sub // "unknown"' 2>/dev/null)
+            name=$(echo "$decoded" | jq -r '.name // "unknown"' 2>/dev/null)
+            tenant=$(echo "$decoded" | jq -r '.tenant // "unknown"' 2>/dev/null)
+            database=$(echo "$decoded" | jq -r '.database // "unknown"' 2>/dev/null)
+            access=$(echo "$decoded" | jq -r '.access // "unknown"' 2>/dev/null)
+            iat=$(echo "$decoded" | jq -r '.iat // "unknown"' 2>/dev/null)
+            exp=$(echo "$decoded" | jq -r '.exp // "unknown"' 2>/dev/null)
+            
+            echo "Subject: $sub"
+            echo "Name: $name" 
+            echo "Tenant: $tenant"
+            echo "Database: $database"
+            echo "Access Level: $access"
+            
+            if [ "$iat" != "unknown" ] && [ "$iat" != "null" ]; then
+                iat_date=$(date -r "$iat" 2>/dev/null || echo 'unknown')
+                echo "Issued At: $iat_date"
             fi
+            
+            if [ "$exp" != "unknown" ] && [ "$exp" != "null" ]; then
+                exp_date=$(date -r "$exp" 2>/dev/null || echo 'unknown')
+                echo "Expires: $exp_date"
+            fi
+        else
+            # Fallback if jq not available - show raw JSON
+            echo "$decoded"
         fi
     fi
 else

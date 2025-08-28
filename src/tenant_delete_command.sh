@@ -1,43 +1,61 @@
 # Check dependencies
 check_dependencies
 
+init_cli_configs
+
+if ! command -v jq >/dev/null 2>&1; then
+    print_error "jq is required for tenant management"
+    exit 1
+fi
+
 # Get arguments from bashly
-tenant_name="${args[name]}"
+name="${args[name]}"
 
-print_info "Deleting tenant: $tenant_name"
-
-db_user=$(whoami)
-
-# Get database name from tenant record
-database_name=$(psql -U "$db_user" -d monk-api-auth -t -c "SELECT database FROM tenants WHERE name = '$tenant_name';" 2>/dev/null | tr -d ' ')
-
-if [ -z "$database_name" ]; then
-    print_error "Tenant '$tenant_name' not found in auth database"
+# Check if tenant exists
+tenant_info=$(jq -r ".tenants.\"$name\"" "$TENANT_CONFIG" 2>/dev/null)
+if [ "$tenant_info" = "null" ]; then
+    print_error "Tenant '$name' not found"
     exit 1
 fi
 
-print_info "Database name: $database_name"
+display_name=$(echo "$tenant_info" | jq -r '.display_name')
 
-# Check if database exists
-if ! psql -U "$db_user" -lqt | cut -d'|' -f1 | grep -qw "$database_name" 2>/dev/null; then
-    print_error "Database '$database_name' does not exist"
+# Check if this is the current tenant
+current_tenant=$(jq -r '.current_tenant // empty' "$ENV_CONFIG" 2>/dev/null)
+if [ "$name" = "$current_tenant" ]; then
+    print_warning "Cannot delete current tenant '$name'"
+    print_info "Use 'monk tenant use <other_tenant>' to switch first"
     exit 1
 fi
 
-# First remove record from auth database tenants table
-sql_delete="DELETE FROM tenants WHERE name = '$tenant_name';"
-
-if psql -U "$db_user" -d monk-api-auth -c "$sql_delete" >/dev/null 2>&1; then
-    print_success "Tenant record removed from auth database"
-else
-    print_error "Failed to remove tenant record from auth database"
-    exit 1
+# Check for active sessions
+auth_count=$(jq --arg tenant "$name" '[.sessions | to_entries[] | select(.key | endswith(":" + $tenant))] | length' "$AUTH_CONFIG" 2>/dev/null || echo "0")
+if [ "$auth_count" -gt 0 ]; then
+    print_warning "Tenant '$name' has $auth_count active sessions"
+    print_info "Sessions will be removed along with tenant"
 fi
 
-# Then drop the actual PostgreSQL database
-if dropdb "$database_name" -U "$db_user" 2>/dev/null; then
-    print_success "Database '$database_name' deleted successfully"
-else
-    print_error "Failed to delete database '$database_name'"
-    exit 1
+# Confirmation
+print_warning "Are you sure you want to delete tenant '$name' ($display_name)? (y/N)"
+read -r confirmation
+if ! echo "$confirmation" | grep -E "^[Yy]$" >/dev/null 2>&1; then
+    print_info "Operation cancelled"
+    exit 0
+fi
+
+# Remove tenant from config
+temp_file=$(mktemp)
+jq --arg name "$name" \
+   'del(.tenants[$name])' \
+   "$TENANT_CONFIG" > "$temp_file" && mv "$temp_file" "$TENANT_CONFIG"
+
+# Remove any sessions for this tenant
+temp_file=$(mktemp)
+jq --arg tenant "$name" \
+   'del(.sessions[] | select(.tenant == $tenant))' \
+   "$AUTH_CONFIG" > "$temp_file" && mv "$temp_file" "$AUTH_CONFIG"
+
+print_success "Deleted tenant '$name' ($display_name)"
+if [ "$auth_count" -gt 0 ]; then
+    print_info "Removed $auth_count authentication sessions"
 fi

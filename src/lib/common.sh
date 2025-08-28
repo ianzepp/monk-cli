@@ -11,6 +11,7 @@
 # CLI configuration files  
 CLI_CONFIG_DIR="${HOME}/.config/monk/cli"
 SERVER_CONFIG="${CLI_CONFIG_DIR}/server.json"
+TENANT_CONFIG="${CLI_CONFIG_DIR}/tenant.json"
 AUTH_CONFIG="${CLI_CONFIG_DIR}/auth.json"
 ENV_CONFIG="${CLI_CONFIG_DIR}/env.json"
 
@@ -61,6 +62,7 @@ init_cli_configs() {
     
     # Initialize individual config files
     init_server_config
+    init_tenant_config
     init_auth_config  
     init_env_config
 }
@@ -72,6 +74,18 @@ init_server_config() {
         cat > "$SERVER_CONFIG" << 'EOF'
 {
   "servers": {}
+}
+EOF
+    fi
+}
+
+# Initialize tenant config if it doesn't exist
+init_tenant_config() {
+    if [ ! -f "$TENANT_CONFIG" ]; then
+        mkdir -p "$(dirname "$TENANT_CONFIG")"
+        cat > "$TENANT_CONFIG" << 'EOF'
+{
+  "tenants": {}
 }
 EOF
     fi

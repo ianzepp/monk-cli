@@ -79,49 +79,44 @@ commands:
     - long: --json
       help: Output in JSON format
 
-# Multi-tenant database management
+# Tenant registry management
 - name: tenant
-  help: Multi-tenant database management
+  help: Tenant registry management
   
   commands:
-  - name: create
-    help: Create new tenant database and record
+  - name: add
+    help: Register new tenant
     args:
     - name: name
       required: true
-      help: Name of the tenant database to create
+      help: Tenant identifier name
+    - name: display_name
+      required: true
+      help: Human-readable tenant name
     flags:
-    - long: --host
-      arg: host
-      help: Database host
-      default: localhost
-    - long: --force
-      short: -f
-      help: Force creation by dropping existing database if it exists
-      
-  - name: delete
-    help: Delete tenant database
-    args:
-    - name: name
-      required: true
-      help: Name of the tenant database to delete
-      
-  - name: init
-    help: Truncate and re-initialize tenant database
-    args:
-    - name: name
-      required: true
-      help: Name of the existing tenant database to re-initialize
+    - long: --description
+      arg: description
+      help: Optional tenant description
       
   - name: list
-    help: List all tenant databases
+    help: List all registered tenants
+    flags:
+    - long: --json
+      help: Output in JSON format
     
-  - name: use
-    help: Switch to tenant database
+  - name: delete
+    help: Remove tenant from registry
     args:
     - name: name
       required: true
-      help: Name of the tenant to switch to
+      help: Tenant name to delete
+      
+  - name: use
+    help: Switch to tenant (persistent selection)
+    args:
+    - name: name
+      required: true
+      help: Tenant name to switch to
 
 # Authentication and token management
 - name: auth
