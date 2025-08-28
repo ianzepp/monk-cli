@@ -1,6 +1,6 @@
 name: monk
 help: Monk CLI - Command-line interface for PaaS Backend API
-version: 2.1.1
+version: 2.2.0
 
 environment_variables:
 - name: CLI_VERBOSE
