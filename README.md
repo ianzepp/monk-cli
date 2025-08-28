@@ -84,27 +84,96 @@
 - **Testing Support**: Built-in connectivity and functionality testing
 - **Configuration Management**: Centralized CLI configuration with environment switching
 
-### Installation & Quick Start
-- **One-Command Install**: `./install.sh` handles complete installation
-- **Binary Distribution**: Compiled binary for easy deployment
-- **Quick Start Workflow**:
-  ```bash
-  monk init                           # Initialize CLI configuration
-  monk server add local localhost:9001 # Add server endpoint  
-  monk tenant add my-tenant "My Tenant" # Register tenant for server
-  monk server use local               # Select server
-  monk tenant use my-tenant           # Select tenant
-  monk auth login my-tenant admin     # Authenticate to server+tenant
-  monk data select users              # Start working with data
-  
-  # Multi-tenant filesystem exploration
-  monk fs ls /data/                   # Browse current tenant
-  monk fs ls /tenant/other-tenant/data/ # Browse different tenant
-  monk fs cat /data/users/user-123.json # Read complete record
-  monk fs cat /data/users/user-123/email # Read specific field
-  ```
-- **User Installation**: Install to `~/.local/bin` without sudo requirements
-- **System Installation**: Optional system-wide installation to `/usr/local/bin`
+## Installation
+
+### End Users (Simple Installation)
+
+**No development dependencies required** - uses prebuilt binaries:
+
+```bash
+# Clone repository
+git clone <repository-url>
+cd monk-cli
+
+# Install latest version
+./install.sh
+
+# OR install specific version
+./install.sh 2.2.0
+
+# Verify installation
+monk --version
+```
+
+**Features:**
+- **No bashly required** - Uses prebuilt binaries from `bin/` directory
+- **Version selection** - Install latest or specific version
+- **User installation** - Installs to `~/.local/bin` (no sudo required)
+- **System installation** - Automatic if you have sudo permissions
+
+### Quick Start Workflow
+
+```bash
+monk init                           # Initialize CLI configuration
+monk server add local localhost:9001 # Add server endpoint  
+monk tenant add my-tenant "My Tenant" # Register tenant for server
+monk server use local               # Select server
+monk tenant use my-tenant           # Select tenant
+monk auth login my-tenant admin     # Authenticate to server+tenant
+monk data select users              # Start working with data
+
+# Multi-tenant filesystem exploration
+monk fs ls /data/                   # Browse current tenant
+monk fs ls /tenant/other-tenant/data/ # Browse different tenant
+monk fs cat /data/users/user-123.json # Read complete record
+monk fs cat /data/users/user-123/email # Read specific field
+```
+
+## Development Setup
+
+### Local Toolchain Setup
+
+**Required for development** (not end users):
+
+```bash
+# Install Ruby and Bashly
+gem install bashly
+
+# Clone repository  
+git clone <repository-url>
+cd monk-cli
+```
+
+### Development Scripts
+
+**For developers modifying the CLI:**
+
+```bash
+# 1. Rebuild after making changes
+./rebuild.sh              # Requires bashly - creates bin/monk
+
+# 2. Test locally
+bin/monk --help           # Test development binary
+
+# 3. Create versioned release
+./release.sh              # Creates bin/monk-X.Y.Z from bin/monk
+
+# 4. Install locally for testing
+./install.sh              # Installs latest (bin/monk)
+./install.sh 2.2.0        # Installs specific version
+
+# 5. Commit release
+git add bin/monk-2.2.0 && git commit -m "Release v2.2.0"
+git tag v2.2.0 && git push --tags
+```
+
+### Binary Management
+
+- **`bin/monk`** - Latest development binary (ignored by git)
+- **`bin/monk-X.Y.Z`** - Versioned release binaries (committed to git)
+- **`rebuild.sh`** - Developer build script (requires bashly)
+- **`release.sh`** - Create versioned releases  
+- **`install.sh`** - End user installer (no dependencies)
 
 ### Enterprise Features
 - **Multi-Tenant Support**: Complete tenant isolation and management
@@ -145,4 +214,4 @@ Essential example of modern CLI development demonstrating comprehensive API mana
 
 ---
 
-**For installation instructions, quick start guide, and command examples, see [INSTALL.md](INSTALL.md)**
+**Complete installation guide and development setup included above. For additional examples, see [INSTALL.md](INSTALL.md)**
