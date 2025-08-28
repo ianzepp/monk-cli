@@ -3,6 +3,7 @@ check_dependencies
 
 # Get arguments from bashly
 name="${args[name]}"
+json_flag="${args[--json]}"
 
 init_cli_configs
 
@@ -16,7 +17,7 @@ if [ -z "$name" ]; then
     name=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
     
     if [ -z "$name" ] || [ "$name" = "null" ]; then
-        if [ "${args[--json]}" = "true" ]; then
+        if [ "$json_flag" = "1" ]; then
             echo '{"error": "No server specified and no current server selected"}'
         else
             print_error "No server specified and no current server selected"
@@ -25,7 +26,7 @@ if [ -z "$name" ]; then
         exit 1
     fi
     
-    if [ "${args[--json]}" != "true" ]; then
+    if [ "$json_flag" != "1" ]; then
         print_info "Using current server: $name"
     fi
 fi
@@ -33,7 +34,7 @@ fi
 # Get server info
 server_info=$(jq -r ".servers.\"$name\"" "$SERVER_CONFIG" 2>/dev/null)
 if [ "$server_info" = "null" ]; then
-    if [ "${args[--json]}" = "true" ]; then
+    if [ "$json_flag" = "1" ]; then
         echo "{\"server_name\": \"$name\", \"error\": \"Server not found\"}"
     else
         print_error "Server '$name' not found"
@@ -48,7 +49,7 @@ protocol=$(echo "$server_info" | jq -r '.protocol')
 base_url="$protocol://$hostname:$port"
 timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-if [ "${args[--json]}" != "true" ]; then
+if [ "$json_flag" != "1" ]; then
     print_info "Pinging server: $name ($base_url)"
 fi
 
@@ -65,7 +66,7 @@ if curl -s --max-time 10 --fail "$base_url/" >/dev/null 2>&1; then
        '.servers[$name].last_ping = $timestamp | .servers[$name].status = "up"' \
        "$SERVER_CONFIG" > "$temp_file" && mv "$temp_file" "$SERVER_CONFIG"
     
-    if [ "${args[--json]}" = "true" ]; then
+    if [ "$json_flag" = "1" ]; then
         jq -n \
             --arg server_name "$name" \
             --arg hostname "$hostname" \
@@ -97,7 +98,7 @@ else
        '.servers[$name].last_ping = $timestamp | .servers[$name].status = "down"' \
        "$SERVER_CONFIG" > "$temp_file" && mv "$temp_file" "$SERVER_CONFIG"
     
-    if [ "${args[--json]}" = "true" ]; then
+    if [ "$json_flag" = "1" ]; then
         jq -n \
             --arg server_name "$name" \
             --arg hostname "$hostname" \

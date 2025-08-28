@@ -1,6 +1,9 @@
 # Check dependencies
 check_dependencies
 
+# Get arguments from bashly
+json_flag="${args[--json]}"
+
 init_cli_configs
 
 if ! command -v jq >/dev/null 2>&1; then
@@ -11,7 +14,7 @@ fi
 server_names=$(jq -r '.servers | keys[]' "$SERVER_CONFIG" 2>/dev/null)
 
 if [ -z "$server_names" ]; then
-    if [ "${args[--json]}" = "true" ]; then
+    if [ "$json_flag" = "1" ]; then
         echo '{"servers": [], "summary": {"total": 0, "up": 0, "down": 0}}'
     else
         echo
@@ -23,7 +26,7 @@ if [ -z "$server_names" ]; then
     exit 0
 fi
 
-if [ "${args[--json]}" != "true" ]; then
+if [ "$json_flag" != "1" ]; then
     echo
     print_info "Pinging All Servers"
     echo
@@ -45,7 +48,7 @@ echo "$server_names" | while read -r name; do
         base_url="$protocol://$hostname:$port"
         timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
         
-        if [ "${args[--json]}" != "true" ]; then
+        if [ "$json_flag" != "1" ]; then
             print_info "Pinging server: $name ($base_url)"
         fi
         
@@ -62,7 +65,7 @@ echo "$server_names" | while read -r name; do
                '.servers[$name].last_ping = $timestamp | .servers[$name].status = "up"' \
                "$SERVER_CONFIG" > "$temp_file" && mv "$temp_file" "$SERVER_CONFIG"
             
-            if [ "${args[--json]}" = "true" ]; then
+            if [ "$json_flag" = "1" ]; then
                 server_result=$(jq -n \
                     --arg server_name "$name" \
                     --arg hostname "$hostname" \
@@ -95,7 +98,7 @@ echo "$server_names" | while read -r name; do
                '.servers[$name].last_ping = $timestamp | .servers[$name].status = "down"' \
                "$SERVER_CONFIG" > "$temp_file" && mv "$temp_file" "$SERVER_CONFIG"
             
-            if [ "${args[--json]}" = "true" ]; then
+            if [ "$json_flag" = "1" ]; then
                 server_result=$(jq -n \
                     --arg server_name "$name" \
                     --arg hostname "$hostname" \
@@ -121,7 +124,7 @@ echo "$server_names" | while read -r name; do
             fi
         fi
     fi
-done | if [ "${args[--json]}" = "true" ]; then
+done | if [ "$json_flag" = "1" ]; then
     # Collect all results and format as JSON
     jq -s '
     {

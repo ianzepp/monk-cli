@@ -8,11 +8,14 @@ if ! command -v jq >/dev/null 2>&1; then
     exit 1
 fi
 
+# Get arguments from bashly
+json_flag="${args[--json]}"
+
 current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
 server_names=$(jq -r '.servers | keys[]' "$SERVER_CONFIG" 2>/dev/null)
 
 if [ -z "$server_names" ]; then
-    if [ "${args[--json]}" = "true" ]; then
+    if [ "$json_flag" = "1" ]; then
         echo '{"servers": [], "current_server": null}'
     else
         echo
@@ -24,7 +27,7 @@ if [ -z "$server_names" ]; then
     exit 0
 fi
 
-if [ "${args[--json]}" = "true" ]; then
+if [ "$json_flag" = "1" ]; then
     # JSON output mode
     servers_array="[]"
     

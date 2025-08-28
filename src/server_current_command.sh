@@ -8,10 +8,13 @@ if ! command -v jq >/dev/null 2>&1; then
     exit 1
 fi
 
+# Get arguments from bashly
+json_flag="${args[--json]}"
+
 current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
 
 if [ -z "$current_server" ] || [ "$current_server" = "null" ]; then
-    if [ "${args[--json]}" = "true" ]; then
+    if [ "$json_flag" = "1" ]; then
         echo '{"current_server": null, "error": "No current server selected"}'
     else
         print_info "No current server selected"
@@ -22,7 +25,7 @@ fi
 
 server_info=$(jq -r ".servers.\"$current_server\"" "$SERVER_CONFIG" 2>/dev/null)
 if [ "$server_info" = "null" ]; then
-    if [ "${args[--json]}" = "true" ]; then
+    if [ "$json_flag" = "1" ]; then
         echo "{\"current_server\": \"$current_server\", \"error\": \"Server not found in registry\"}"
     else
         print_error "Current server '$current_server' not found in registry"
@@ -41,7 +44,7 @@ base_url="$protocol://$hostname:$port"
 # Check authentication count
 auth_count=$(jq --arg server "$current_server" '[.sessions | to_entries[] | select(.key | startswith($server + ":"))] | length' "$AUTH_CONFIG" 2>/dev/null || echo "0")
 
-if [ "${args[--json]}" = "true" ]; then
+if [ "$json_flag" = "1" ]; then
     # JSON output mode
     jq -n \
         --arg name "$current_server" \
