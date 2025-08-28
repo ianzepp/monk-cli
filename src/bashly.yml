@@ -16,7 +16,10 @@ commands:
   args:
   - name: path
     required: false
-    help: "Custom path for configuration directory (default: ~/.config/monk)"
+    help: "Custom path for configuration directory (default: ~/.config/monk/cli)"
+  flags:
+  - long: --force
+    help: Force reinitialization by overwriting existing config files (preserves env.json)
 
 # Remote server management
 - name: server

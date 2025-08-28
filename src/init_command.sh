@@ -1,24 +1,26 @@
 #!/bin/bash
 
-# init_command.sh - Initialize CLI configuration directory with new structure
+# init_command.sh - Initialize CLI configuration directory with complete structure
 #
-# This command creates the CLI configuration directory and initializes
-# the three separate config files for clean domain separation.
+# This command creates the CLI configuration directory and initializes all config files
+# for clean domain separation following the new architecture.
 #
 # Creates:
-#   ~/.config/monk/cli/server.json  - Infrastructure endpoints
-#   ~/.config/monk/cli/auth.json    - Authentication sessions  
-#   ~/.config/monk/cli/env.json     - Current working context
+#   ~/.config/monk/cli/server.json  - Server endpoint registry
+#   ~/.config/monk/cli/tenant.json  - Tenant registry (server-scoped)
+#   ~/.config/monk/cli/auth.json    - Authentication sessions (per server+tenant)
+#   ~/.config/monk/cli/env.json     - Current working context (server+tenant+user)
 
-# Get the configuration path
-if [[ -n "${args[path]}" ]]; then
-    config_path="${args[path]}"
+# Get arguments from bashly
+path="${args[path]}"
+force_flag="${args[--force]}"
+
+# Set configuration path
+if [[ -n "$path" ]]; then
+    cli_config_dir="$path"
 else
-    config_path="${HOME}/.config/monk"
+    cli_config_dir="${HOME}/.config/monk/cli"
 fi
-
-# Set CLI config directory
-cli_config_dir="${config_path}/cli"
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -40,8 +42,12 @@ fi
 
 # Initialize server.json
 server_file="${cli_config_dir}/server.json"
-if [[ ! -f "$server_file" ]]; then
-    echo -e "${YELLOW}→${NC} Creating server.json"
+if [[ ! -f "$server_file" ]] || [[ "$force_flag" = "1" ]]; then
+    if [[ -f "$server_file" ]] && [[ "$force_flag" = "1" ]]; then
+        echo -e "${YELLOW}→${NC} Force overwriting server.json"
+    else
+        echo -e "${YELLOW}→${NC} Creating server.json"
+    fi
     cat > "$server_file" << 'EOF'
 {
   "servers": {}
@@ -52,10 +58,32 @@ else
     echo -e "${GREEN}✓${NC} server.json already exists"
 fi
 
+# Initialize tenant.json
+tenant_file="${cli_config_dir}/tenant.json"
+if [[ ! -f "$tenant_file" ]] || [[ "$force_flag" = "1" ]]; then
+    if [[ -f "$tenant_file" ]] && [[ "$force_flag" = "1" ]]; then
+        echo -e "${YELLOW}→${NC} Force overwriting tenant.json"
+    else
+        echo -e "${YELLOW}→${NC} Creating tenant.json"
+    fi
+    cat > "$tenant_file" << 'EOF'
+{
+  "tenants": {}
+}
+EOF
+    echo -e "${GREEN}✓${NC} Created tenant.json"
+else
+    echo -e "${GREEN}✓${NC} tenant.json already exists"
+fi
+
 # Initialize auth.json
 auth_file="${cli_config_dir}/auth.json"
-if [[ ! -f "$auth_file" ]]; then
-    echo -e "${YELLOW}→${NC} Creating auth.json"
+if [[ ! -f "$auth_file" ]] || [[ "$force_flag" = "1" ]]; then
+    if [[ -f "$auth_file" ]] && [[ "$force_flag" = "1" ]]; then
+        echo -e "${YELLOW}→${NC} Force overwriting auth.json"
+    else
+        echo -e "${YELLOW}→${NC} Creating auth.json"
+    fi
     cat > "$auth_file" << 'EOF'
 {
   "sessions": {}
@@ -67,7 +95,7 @@ else
     echo -e "${GREEN}✓${NC} auth.json already exists"
 fi
 
-# Initialize env.json  
+# Initialize env.json (never force overwrite - preserve user context)
 env_file="${cli_config_dir}/env.json"
 if [[ ! -f "$env_file" ]]; then
     echo -e "${YELLOW}→${NC} Creating env.json"
@@ -81,18 +109,24 @@ if [[ ! -f "$env_file" ]]; then
 EOF
     echo -e "${GREEN}✓${NC} Created env.json"
 else
-    echo -e "${GREEN}✓${NC} env.json already exists"
+    echo -e "${GREEN}✓${NC} env.json already exists (preserved)"
+    if [[ "$force_flag" = "1" ]]; then
+        echo -e "${BLUE}ℹ${NC} env.json is never overwritten to preserve your context"
+    fi
 fi
 
 echo -e "${GREEN}✓${NC} Monk CLI configuration initialized successfully!"
 echo
 echo "CLI configuration files created in: ${cli_config_dir}"
-echo "  - server.json: Server endpoint configurations"
+echo "  - server.json: Server endpoint registry"
+echo "  - tenant.json: Tenant registry (server-scoped)"
 echo "  - auth.json: Authentication sessions per server+tenant"  
 echo "  - env.json: Current working context (server+tenant+user)"
 echo
 echo "Next steps:"
 echo "  1. Add a server: monk server add <name> <hostname:port>"
-echo "  2. Select server: monk server use <name>"
-echo "  3. Authenticate: monk auth login <tenant> <username>"
-echo "  4. Start working: monk data select <schema>"
+echo "  2. Add a tenant: monk tenant add <name> <display_name>"
+echo "  3. Select server: monk server use <name>"
+echo "  4. Select tenant: monk tenant use <name>"
+echo "  5. Authenticate: monk auth login <tenant> <username>"
+echo "  6. Start working: monk data select <schema>"
