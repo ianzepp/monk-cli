@@ -1,10 +1,23 @@
 # Check dependencies
 check_dependencies
 
+# Get arguments from bashly
+json_flag="${args[--json]}"
+
 token=$(get_jwt_token)
 
+# Get current context information
+current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
+current_tenant=$(jq -r '.current_tenant // empty' "$ENV_CONFIG" 2>/dev/null)
+current_user=$(jq -r '.current_user // empty' "$ENV_CONFIG" 2>/dev/null)
+
 if [ -n "$token" ]; then
-    print_success "Authenticated"
+    # Extract token info
+    payload=""
+    tenant="unknown"
+    database="unknown"
+    exp="unknown"
+    exp_date="unknown"
     
     # Try to extract domain from token (basic decode)
     if [ "$JSON_PARSER" = "jq" ] || [ "$JSON_PARSER" = "jshon" ]; then
@@ -29,28 +42,77 @@ if [ -n "$token" ]; then
                     exp=$(echo "$decoded" | jshon -e exp -u 2>/dev/null || echo "unknown")
                 fi
                 
-                echo "Tenant: $tenant"
-                echo "Database: $database"
                 if [ "$exp" != "unknown" ] && [ "$exp" != "null" ]; then
                     if command -v date &> /dev/null; then
                         exp_date=$(date -r "$exp" 2>/dev/null || echo "unknown")
-                        echo "Expires: $exp_date"
                     fi
                 fi
             fi
         fi
     fi
     
-    
-    # Show current context information
-    current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
-    current_tenant=$(jq -r '.current_tenant // empty' "$ENV_CONFIG" 2>/dev/null)
-    current_user=$(jq -r '.current_user // empty' "$ENV_CONFIG" 2>/dev/null)
-    
-    echo "Server: $current_server"
-    echo "Tenant: $current_tenant"
-    echo "User: $current_user"
+    if [ "$json_flag" = "1" ]; then
+        # JSON output mode
+        jq -n \
+            --arg authenticated "true" \
+            --arg tenant "$tenant" \
+            --arg database "$database" \
+            --arg exp "$exp" \
+            --arg exp_date "$exp_date" \
+            --arg current_server "$current_server" \
+            --arg current_tenant "$current_tenant" \
+            --arg current_user "$current_user" \
+            --arg has_token "true" \
+            '{
+                authenticated: ($authenticated == "true"),
+                has_token: ($has_token == "true"),
+                token_info: {
+                    tenant: $tenant,
+                    database: $database,
+                    exp: ($exp | if . == "unknown" then null else (. | tonumber) end),
+                    exp_date: ($exp_date | if . == "unknown" then null else . end)
+                },
+                current_context: {
+                    server: ($current_server | if . == "" or . == "null" then null else . end),
+                    tenant: ($current_tenant | if . == "" or . == "null" then null else . end),
+                    user: ($current_user | if . == "" or . == "null" then null else . end)
+                }
+            }'
+    else
+        # Human-readable output mode
+        print_success "Authenticated"
+        
+        echo "Tenant: $tenant"
+        echo "Database: $database"
+        if [ "$exp_date" != "unknown" ]; then
+            echo "Expires: $exp_date"
+        fi
+        
+        echo "Server: $current_server"
+        echo "Tenant: $current_tenant"
+        echo "User: $current_user"
+    fi
 else
-    print_info_always "Not authenticated"
-    print_info_always "Use 'monk auth login TENANT USERNAME' or 'monk auth import TENANT USERNAME' to authenticate"
+    if [ "$json_flag" = "1" ]; then
+        # JSON output mode - not authenticated
+        jq -n \
+            --arg current_server "$current_server" \
+            --arg current_tenant "$current_tenant" \
+            --arg current_user "$current_user" \
+            '{
+                authenticated: false,
+                has_token: false,
+                token_info: null,
+                current_context: {
+                    server: ($current_server | if . == "" or . == "null" then null else . end),
+                    tenant: ($current_tenant | if . == "" or . == "null" then null else . end),
+                    user: ($current_user | if . == "" or . == "null" then null else . end)
+                },
+                message: "Not authenticated. Use monk auth login TENANT USERNAME to authenticate."
+            }'
+    else
+        # Human-readable output mode
+        print_info_always "Not authenticated"
+        print_info_always "Use 'monk auth login TENANT USERNAME' or 'monk auth import TENANT USERNAME' to authenticate"
+    fi
 fi

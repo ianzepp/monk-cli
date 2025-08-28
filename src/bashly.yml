@@ -143,12 +143,18 @@ commands:
     
   - name: status
     help: Show authentication status
+    flags:
+    - long: --json
+      help: Output in JSON format
     
   - name: token
     help: Display current JWT token
     
   - name: info
     help: Decode and display JWT token contents
+    flags:
+    - long: --json
+      help: Output in JSON format
     
   - name: ping
     help: Authenticated API health check
@@ -160,6 +166,8 @@ commands:
       short: -j
       arg: token
       help: Include JWT token in request
+    - long: --json
+      help: Output in JSON format
       
   - name: import
     help: Import JWT token from external auth flow
