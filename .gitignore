@@ -1,5 +1,7 @@
 # Bashly generated files
-# /monk - Now committed for end user convenience
+/monk
+bin/monk
+# Versioned binaries (bin/monk-X.Y.Z) are committed for end users
 
 # Ruby
 .bundle/
