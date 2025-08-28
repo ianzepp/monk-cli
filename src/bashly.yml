@@ -103,6 +103,9 @@ commands:
     flags:
     - long: --json
       help: Output in JSON format
+    - long: --server
+      arg: server
+      help: Target server (defaults to current server)
     
   - name: delete
     help: Remove tenant from registry

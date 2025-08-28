@@ -11,11 +11,26 @@ fi
 # Get arguments from bashly
 name="${args[name]}"
 
-# Check if tenant exists
+# Get current server
+current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
+if [ -z "$current_server" ] || [ "$current_server" = "null" ]; then
+    print_error "No current server selected"
+    print_info "Use 'monk server use <name>' to select a server first"
+    exit 1
+fi
+
+# Check if tenant exists and belongs to current server
 tenant_info=$(jq -r ".tenants.\"$name\"" "$TENANT_CONFIG" 2>/dev/null)
 if [ "$tenant_info" = "null" ]; then
     print_error "Tenant '$name' not found"
-    print_info "Use 'monk tenant list' to see available tenants"
+    print_info "Use 'monk tenant list' to see available tenants for current server"
+    exit 1
+fi
+
+tenant_server=$(echo "$tenant_info" | jq -r '.server')
+if [ "$tenant_server" != "$current_server" ]; then
+    print_error "Tenant '$name' belongs to server '$tenant_server', but current server is '$current_server'"
+    print_info "Use 'monk server use $tenant_server' to switch servers first"
     exit 1
 fi
 
@@ -28,15 +43,12 @@ jq --arg tenant "$name" \
 display_name=$(echo "$tenant_info" | jq -r '.display_name')
 print_success "Switched to tenant: $name ($display_name)"
 
-# Show authentication status for this tenant if available
-current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
-if [ -n "$current_server" ] && [ "$current_server" != "null" ]; then
-    session_key="${current_server}:${name}"
-    if jq -e ".sessions.\"$session_key\"" "$AUTH_CONFIG" >/dev/null 2>&1; then
-        user=$(jq -r ".sessions.\"$session_key\".user" "$AUTH_CONFIG" 2>/dev/null)
-        print_info "Authenticated as: $user"
-    else
-        print_warning "Not authenticated for this tenant"
-        print_info "Use 'monk auth login $name <username>' to authenticate"
-    fi
+# Show authentication status for this tenant on current server
+session_key="${current_server}:${name}"
+if jq -e ".sessions.\"$session_key\"" "$AUTH_CONFIG" >/dev/null 2>&1; then
+    user=$(jq -r ".sessions.\"$session_key\".user" "$AUTH_CONFIG" 2>/dev/null)
+    print_info "Authenticated as: $user on server '$current_server'"
+else
+    print_warning "Not authenticated for this tenant on server '$current_server'"
+    print_info "Use 'monk auth login $name <username>' to authenticate"
 fi
