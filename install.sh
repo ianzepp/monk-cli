@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Installation script for Monk CLI
-# Installs the monk command globally
+# Installs the prebuilt monk command globally
+# End users should NOT need to install bashly - use the prebuilt binary
 
 set -e
 
@@ -14,11 +15,24 @@ NC='\033[0m' # No Color
 
 echo -e "${BLUE}Installing Monk CLI...${NC}"
 
-# Check if we need to build first
+# Check if prebuilt monk binary exists
 if [[ ! -f "./monk" ]]; then
-    echo -e "${YELLOW}→${NC} Building CLI first..."
-    ./build.sh
+    echo -e "${RED}✗${NC} Prebuilt monk binary not found"
+    echo -e "${YELLOW}ℹ${NC} This repository should include a prebuilt monk binary"
+    echo -e "${YELLOW}ℹ${NC} If you're a developer, run ./rebuild.sh first"
+    echo -e "${YELLOW}ℹ${NC} If you're an end user, please report this issue"
+    exit 1
 fi
+
+# Verify the binary is executable and working
+if ! ./monk --version >/dev/null 2>&1; then
+    echo -e "${RED}✗${NC} Prebuilt monk binary is not working correctly"
+    echo -e "${YELLOW}ℹ${NC} Please report this issue or contact support"
+    exit 1
+fi
+
+version=$(./monk --version)
+echo -e "${YELLOW}ℹ${NC} Installing Monk CLI version: ${version}"
 
 # Determine installation directory
 if [[ "$EUID" -eq 0 ]] || [[ -w "/usr/local/bin" ]]; then
@@ -50,13 +64,16 @@ echo
 echo "Usage:"
 echo "  monk --help              # Show all commands"
 echo "  monk init                # Initialize configuration"
-echo "  monk auth login <tenant> <username>  # Authenticate"
+echo "  monk server add <name> <host:port>  # Add server"
+echo "  monk tenant add <name> <display>    # Add tenant"
+echo "  monk auth login <tenant> <user>     # Authenticate"
 echo
 echo "Installed to: ${INSTALL_DIR}/monk"
 
 # Test the installation
 if command -v monk >/dev/null 2>&1; then
     echo -e "${GREEN}✓${NC} 'monk' command is available globally"
+    echo -e "${GREEN}✓${NC} Monk CLI v${version} ready to use!"
 else
     echo -e "${YELLOW}⚠${NC}  'monk' command not found in PATH"
     echo "   You may need to restart your shell or update your PATH"
