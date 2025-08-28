@@ -9,7 +9,7 @@
 # - env.json: Current working context (server+tenant selection)
 
 # CLI configuration files  
-CLI_CONFIG_DIR="${HOME}/.config/monk/cli"
+CLI_CONFIG_DIR="${MONK_CLI_CONFIG_DIR:-${HOME}/.config/monk/cli}"
 SERVER_CONFIG="${CLI_CONFIG_DIR}/server.json"
 TENANT_CONFIG="${CLI_CONFIG_DIR}/tenant.json"
 AUTH_CONFIG="${CLI_CONFIG_DIR}/auth.json"

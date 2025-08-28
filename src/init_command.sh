@@ -15,11 +15,11 @@
 path="${args[path]}"
 force_flag="${args[--force]}"
 
-# Set configuration path
+# Set configuration path (respects MONK_CLI_CONFIG_DIR environment variable)
 if [[ -n "$path" ]]; then
     cli_config_dir="$path"
 else
-    cli_config_dir="${HOME}/.config/monk/cli"
+    cli_config_dir="${MONK_CLI_CONFIG_DIR:-${HOME}/.config/monk/cli}"
 fi
 
 # Colors for output

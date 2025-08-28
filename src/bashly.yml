@@ -5,6 +5,8 @@ version: 2.4.0
 environment_variables:
 - name: CLI_VERBOSE
   help: Enable verbose output for all commands
+- name: MONK_CLI_CONFIG_DIR
+  help: "Custom directory for CLI configuration files (default: ~/.config/monk/cli)"
 
 # Server selection is automatically handled via ~/.config/monk/servers.json
 # Use 'monk server use <name>' to select target server (persistent across commands)
