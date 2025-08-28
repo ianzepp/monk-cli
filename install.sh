@@ -1,8 +1,9 @@
 #!/bin/bash
 
 # Installation script for Monk CLI
-# Installs the prebuilt monk command globally
-# End users should NOT need to install bashly - use the prebuilt binary
+# Installs prebuilt monk command globally with version support
+# Usage: ./install.sh [version]
+# End users should NOT need to install bashly - use prebuilt binaries
 
 set -e
 
@@ -13,25 +14,42 @@ BLUE='\033[0;34m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
+# Get version argument
+requested_version="$1"
+
 echo -e "${BLUE}Installing Monk CLI...${NC}"
 
-# Check if prebuilt monk binary exists
-if [[ ! -f "./monk" ]]; then
-    echo -e "${RED}✗${NC} Prebuilt monk binary not found"
-    echo -e "${YELLOW}ℹ${NC} This repository should include a prebuilt monk binary"
-    echo -e "${YELLOW}ℹ${NC} If you're a developer, run ./rebuild.sh first"
-    echo -e "${YELLOW}ℹ${NC} If you're an end user, please report this issue"
-    exit 1
+# Determine which binary to install
+if [[ -n "$requested_version" ]]; then
+    # Install specific version
+    binary_path="bin/monk-${requested_version}"
+    if [[ ! -f "$binary_path" ]]; then
+        echo -e "${RED}✗${NC} Version $requested_version not found at $binary_path"
+        echo -e "${YELLOW}ℹ${NC} Available versions:"
+        ls bin/monk-* 2>/dev/null | sed 's|bin/monk-|  |' || echo "  No versioned binaries found"
+        exit 1
+    fi
+    echo -e "${YELLOW}ℹ${NC} Installing specific version: $requested_version"
+else
+    # Install latest version (bin/monk)
+    binary_path="bin/monk"
+    if [[ ! -f "$binary_path" ]]; then
+        echo -e "${RED}✗${NC} Latest binary not found at $binary_path"
+        echo -e "${YELLOW}ℹ${NC} Available versions:"
+        ls bin/monk-* 2>/dev/null | sed 's|bin/monk-|  |' || echo "  No versioned binaries found"
+        echo -e "${YELLOW}ℹ${NC} If you're a developer, run ./rebuild.sh first"
+        exit 1
+    fi
 fi
 
 # Verify the binary is executable and working
-if ! ./monk --version >/dev/null 2>&1; then
-    echo -e "${RED}✗${NC} Prebuilt monk binary is not working correctly"
+if ! "$binary_path" --version >/dev/null 2>&1; then
+    echo -e "${RED}✗${NC} Binary at $binary_path is not working correctly"
     echo -e "${YELLOW}ℹ${NC} Please report this issue or contact support"
     exit 1
 fi
 
-version=$(./monk --version)
+version=$("$binary_path" --version)
 echo -e "${YELLOW}ℹ${NC} Installing Monk CLI version: ${version}"
 
 # Determine installation directory
@@ -55,8 +73,8 @@ else
     fi
 fi
 
-# Copy the monk executable
-cp "./monk" "$INSTALL_DIR/monk"
+# Copy the selected monk binary
+cp "$binary_path" "$INSTALL_DIR/monk"
 chmod +x "$INSTALL_DIR/monk"
 
 echo -e "${GREEN}✓${NC} Monk CLI installed successfully!"

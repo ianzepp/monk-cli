@@ -29,20 +29,26 @@ else
     BASHLY="bashly"
 fi
 
-# Generate the CLI
+# Create bin directory if it doesn't exist
+mkdir -p bin
+
+# Generate the CLI to bin/monk
 echo -e "${YELLOW}→${NC} Generating CLI with bashly..."
 $BASHLY generate
 
-# Make executable
-chmod +x ./monk
+# Move to bin directory and make executable
+mv ./monk bin/monk
+chmod +x bin/monk
 
 # Show version
-version=$(./monk --version)
+version=$(bin/monk --version)
 echo -e "${GREEN}✓${NC} CLI rebuilt successfully! Version: ${version}"
+echo -e "${GREEN}✓${NC} Binary created at: bin/monk"
 echo
 echo "Next steps:"
-echo "  • Test locally: ./monk --help"
+echo "  • Test locally: bin/monk --help"
 echo "  • Install locally: ./install.sh" 
-echo "  • Commit binary: git add monk && git commit -m 'Update prebuilt binary to v${version}'"
+echo "  • Create release: ./release.sh ${version}"
+echo "  • Commit changes: git add bin/ && git commit -m 'Update to v${version}'"
 echo
-echo -e "${YELLOW}Note:${NC} Remember to commit the updated monk binary for end users"
+echo -e "${YELLOW}Note:${NC} Use ./release.sh to create versioned binaries for releases"
