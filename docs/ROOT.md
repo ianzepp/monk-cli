@@ -312,16 +312,22 @@ curl -X POST http://localhost:9001/api/root/tenant \
 **Request Body:**
 ```json
 {
-  "name": "my_new_app",     // Required: tenant name
-  "host": "localhost"       // Optional: defaults to localhost
+  "name": "My New App! 🚀",  // Required: tenant name (Unicode supported)
+  "host": "localhost"        // Optional: defaults to localhost
 }
 ```
+**Tenant Name Rules:**
+- Minimum 2 characters
+- Cannot be exact names: 'monk' or 'test' 
+- Unicode characters fully supported (Chinese, emoji, accented chars, etc.)
+- Spaces and special characters allowed
+- Database uses SHA256 hash for safe PostgreSQL identifiers
 **What it does:**
-1. Validates tenant name format (no `test_*` or `monk_*` prefixes)
-2. Creates PostgreSQL database with direct tenant name
+1. Validates tenant name (minimum 2 chars, not exact 'monk'/'test')
+2. Creates PostgreSQL database with hashed identifier (enables Unicode support)
 3. Initializes tenant database with schema (from `sql/init-tenant.sql`)
 4. Creates root user in tenant database
-5. Adds tenant record to `monk.tenant` table
+5. Adds tenant record to `monk.tenant` table with both display name and database hash
 
 #### **GET /api/root/tenant/:name** - Get Individual Tenant Details
 ```bash
