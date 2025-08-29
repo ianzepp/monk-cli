@@ -7,17 +7,16 @@ check_dependencies
 
 # Get arguments from bashly
 name="${args[name]}"
-json_flag="${args[--json]}"
+
+# Determine output format from global flags
+output_format=$(get_output_format "text")
 
 # Make request to get tenant details
 response=$(make_root_request "GET" "tenant/${name}" "")
 
-if [[ "$json_flag" == "1" ]]; then
-    # JSON output - pass through directly
-    echo "$response"
-else
-    # Human-readable output
-    if echo "$response" | jq -e '.success and .tenant' >/dev/null 2>&1; then
+if echo "$response" | jq -e '.success and .tenant' >/dev/null 2>&1; then
+    if [[ "$output_format" == "text" ]]; then
+        # Human-readable output
         tenant=$(echo "$response" | jq -r '.tenant')
         
         echo
@@ -46,8 +45,11 @@ else
         
         echo
     else
-        error_msg=$(echo "$response" | jq -r '.error // "Tenant not found"')
-        print_error "$error_msg"
-        exit 1
+        # JSON output - compact format
+        handle_output "$response" "$output_format" "json"
     fi
+else
+    error_msg=$(echo "$response" | jq -r '.error // "Tenant not found"')
+    print_error "$error_msg"
+    exit 1
 fi

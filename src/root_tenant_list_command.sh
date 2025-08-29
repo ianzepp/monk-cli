@@ -8,7 +8,9 @@ check_dependencies
 # Get arguments from bashly
 include_trashed="${args[--include-trashed]}"
 include_deleted="${args[--include-deleted]}"
-json_flag="${args[--json]}"
+
+# Determine output format from global flags
+output_format=$(get_output_format "text")
 
 # Build query parameters
 params=""
@@ -19,17 +21,17 @@ params=""
 endpoint="tenant${params}"
 response=$(make_root_request "GET" "$endpoint" "")
 
-if [[ "$json_flag" == "1" ]]; then
-    # JSON output - pass through directly
-    echo "$response"
-else
-    # Human-readable table output
-    if echo "$response" | jq -e '.success' >/dev/null 2>&1; then
+if echo "$response" | jq -e '.success' >/dev/null 2>&1; then
+    if [[ "$output_format" == "text" ]]; then
+        # Human-readable table output using existing function
         tenants=$(echo "$response" | jq -r '.tenants')
         format_tenant_table "$tenants" "$include_trashed" "$include_deleted"
     else
-        print_error "Failed to retrieve tenants"
-        echo "$response" >&2
-        exit 1
+        # JSON output - pass through as compact JSON
+        handle_output "$response" "$output_format" "json"
     fi
+else
+    print_error "Failed to retrieve tenants"
+    echo "$response" >&2
+    exit 1
 fi

@@ -7,17 +7,16 @@ check_dependencies
 
 # Get arguments from bashly
 name="${args[name]}"
-json_flag="${args[--json]}"
+
+# Determine output format from global flags
+output_format=$(get_output_format "text")
 
 # Make health check request
 response=$(make_root_request "GET" "tenant/${name}/health" "")
 
-if [[ "$json_flag" == "1" ]]; then
-    # JSON output - pass through directly
-    echo "$response"
-else
-    # Human-readable output
-    if echo "$response" | jq -e '.success and .health' >/dev/null 2>&1; then
+if echo "$response" | jq -e '.success and .health' >/dev/null 2>&1; then
+    if [[ "$output_format" == "text" ]]; then
+        # Human-readable output
         health=$(echo "$response" | jq -r '.health')
         
         tenant_name=$(echo "$health" | jq -r '.tenant')
@@ -58,8 +57,11 @@ else
         
         echo
     else
-        error_msg=$(echo "$response" | jq -r '.error // "Health check failed"')
-        print_error "$error_msg"
-        exit 1
+        # JSON output - compact format
+        handle_output "$response" "$output_format" "json"
     fi
+else
+    error_msg=$(echo "$response" | jq -r '.error // "Health check failed"')
+    print_error "$error_msg"
+    exit 1
 fi
