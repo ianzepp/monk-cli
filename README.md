@@ -12,16 +12,16 @@
 - **Distribution**: Compiled binary for easy installation and deployment
 
 ### Key Features
-- **Multi-Tenant Filesystem Interface**: Explore API data across tenants using familiar unix commands (ls, cat, rm, stat)
+- **Universal Output Formats**: Global `--text` and `--json` flags with format-optimized command design
+- **Multi-Tenant Filesystem Interface**: Explore API data using familiar Unix commands (ls, cat, rm, stat)
 - **Cross-Tenant Operations**: Path-based and flag-based tenant routing for multi-environment workflows
 - **Complete API Coverage**: Full command-line access to all Monk API functionality
-- **Flexible Data Operations**: Smart input detection with array/object handling and unified select command
-- **Bulk Operations**: Batch processing with immediate execution and planned async capabilities
-- **Multi-Server Management**: Clean server registry with health monitoring and environment switching
-- **Advanced Authentication**: JWT management with external token import and expiration tracking
-- **Tenant Management**: Server-scoped tenant registry with JSON support for UI integration  
+- **Smart Data Operations**: Intelligent array/object handling with compact JSON output
+- **Bulk Operations**: Batch processing with immediate execution and enterprise Filter DSL
+- **Multi-Server Management**: Clean server registry with health monitoring and context switching
+- **Advanced Authentication**: JWT session management with external token import
+- **Administrative Operations**: Root tenant management with Unicode support
 - **Schema Management**: YAML-based schema operations with automatic DDL generation
-- **Enterprise Search**: Advanced filtering with Filter DSL and intelligent query routing
 
 ### Technical Architecture
 - **CLI Framework** (50+ command implementations):
@@ -35,54 +35,50 @@
 
 ### Command Categories
 
-#### **Setup & Configuration**
-- `monk init` - Initialize CLI configuration with clean domain separation
-- `monk server add/list/use/current/ping` - Multi-server infrastructure management
-- `monk tenant add/delete/list/use` - Server-scoped tenant registry management
+#### **Infrastructure & Setup**
+- `monk init` - Initialize CLI configuration with customizable directory support
+- `monk server` - Multi-server registry, health monitoring, and context switching
+- `monk tenant` - Server-scoped tenant registry management and context selection
 
-#### **Authentication & Authorization**  
-- `monk auth login/logout` - Standard JWT authentication flows
-- `monk auth import` - Import JWT tokens from external auth systems (OAuth, SSO)
-- `monk auth token/info/status` - Token inspection and context information
-- `monk auth expires/expired` - Token expiration checking and validation
-- `monk auth ping` - Authenticated API health checks
+#### **Authentication & Security**  
+- `monk auth` - JWT authentication workflows with session management and token inspection
 
-#### **Data Operations**
-- `monk data select` - Unified selection with intelligent query routing (replaces list/get)
-- `monk data create/update/delete` - Flexible CRUD with smart input detection
-- `monk data export/import` - Directory-based JSON file operations
+#### **Data & Schema Operations**
+- `monk data` - CRUD operations with intelligent array/object handling (JSON-exclusive)
+- `monk meta` - Schema management with YAML definitions and automatic DDL generation (YAML-exclusive)
+- `monk bulk` - Batch processing operations across multiple schemas (JSON-exclusive)
+- `monk find` - Advanced search with enterprise Filter DSL (JSON-exclusive)
 
-#### **Advanced Operations**
-- `monk bulk raw` - Immediate bulk operations across multiple schemas  
-- `monk find` - Enterprise Filter DSL with complex query support
-- `monk meta select/create/update/delete` - YAML-based schema management
+#### **Administrative Operations**
+- `monk root` - Administrative tenant management with Unicode support (localhost development)
 
-#### **Multi-Tenant Filesystem Interface**
-- `monk fs ls` - Browse schemas and records like directories with cross-tenant support
-- `monk fs cat` - Display record content and individual field values across tenants
-- `monk fs rm` - Safe deletion operations with soft delete defaults
-- `monk fs stat` - Rich metadata and schema introspection with tenant context
-- **Path-based routing**: `/tenant/tenant-a/data/users/` for intuitive multi-tenant access
-- **Flag-based targeting**: `--tenant tenant-a` for explicit tenant specification
+#### **Filesystem Interface**
+- `monk fs` - Unix-like data exploration with cross-tenant path routing and metadata inspection
 
 
-### CLI Design Patterns
-- **Logical Command Flow**: init → server → tenant → auth → data workflow
-- **Multi-Tenant Operations**: Path-based (`/tenant/name/data/`) and flag-based (`--tenant name`) tenant routing
-- **Smart Input Detection**: Automatic array/object routing to appropriate API endpoints
-- **Flexible Parameters**: Optional ID parameters with JSON extraction fallbacks
-- **Clean Config Separation**: server.json (infrastructure) + tenant.json (tenant registry) + auth.json (sessions) + env.json (context)
-- **Consistent Output**: Input format preserved in output (array→array, object→object)
-- **Pipe-Safe Design**: Status messages to stderr, data to stdout for clean pipelines
-- **External Auth Support**: JWT import from OAuth, SSO, and external authentication systems
-- **Cross-Environment Access**: Operate on multiple tenants/servers without manual context switching
+### Output Format System
+- **Universal Flags**: Global `--text` and `--json` flags for consistent output control
+- **Format-Optimized Design**: Text for humans, compact JSON for machines, native YAML for schemas
+- **Command-Specific Behavior**: Administrative commands support both formats, data commands are JSON-exclusive, meta commands are YAML-exclusive
+- **Machine-Readable JSON**: Single-line compact format optimized for automation and parsing
+- **Human-Readable Text**: Tables, formatted output, and status indicators for interactive use
 
-### Development Workflow Integration
-- **Remote Management**: Complete API management from command line
-- **Automation Ready**: Scriptable commands for CI/CD integration
-- **Multi-Environment**: Seamless switching between development, staging, production
-- **Testing Support**: Built-in connectivity and functionality testing
-- **Configuration Management**: Centralized CLI configuration with environment switching
+## Documentation
+
+Comprehensive command documentation available in the `docs/` directory:
+
+- **[INIT.md](docs/INIT.md)** - Configuration initialization and setup workflows
+- **[SERVER.md](docs/SERVER.md)** - Multi-environment server management and health monitoring  
+- **[TENANT.md](docs/TENANT.md)** - Tenant registry management and context switching
+- **[AUTH.md](docs/AUTH.md)** - JWT authentication, session management, and security
+- **[DATA.md](docs/DATA.md)** - CRUD operations with JSON-exclusive design
+- **[META.md](docs/META.md)** - Schema management with YAML definitions
+- **[BULK.md](docs/BULK.md)** - Batch processing and cross-schema operations
+- **[FIND.md](docs/FIND.md)** - Advanced search with enterprise Filter DSL
+- **[FS.md](docs/FS.md)** - Unix-like filesystem operations for data exploration
+- **[ROOT.md](docs/ROOT.md)** - Administrative tenant management (localhost development)
+
+Each documentation file includes practical examples, error handling guidance, automation patterns, and integration workflows.
 
 ## Installation
 
@@ -129,19 +125,20 @@ monk fs cat /data/users/user-123.json # Read complete record
 monk fs cat /data/users/user-123/email # Read specific field
 ```
 
-### Administrative Operations (Development)
+### Output Format Examples
 
 ```bash
-# Root tenant management (localhost development only)
-monk root tenant list               # List all tenants with status
-monk root tenant create "My App"    # Create new tenant (Unicode supported)
-monk root tenant show my-app        # Show detailed tenant information
-monk root tenant health my-app      # Database connectivity health check
+# Universal format support for administrative commands
+monk server list                    # Default: human-readable table
+monk --json server list             # Compact: {"servers":[...],"current_server":"local"}
 
-# Tenant lifecycle management
-monk root tenant trash my-app       # Soft delete (recoverable)
-monk root tenant restore my-app     # Restore from trash
-monk root tenant delete my-app      # Hard delete (permanent)
+# Format-optimized command design  
+monk data select users              # Default: compact JSON for data operations
+monk meta select schema users       # Default: native YAML for schema definitions
+
+# Administrative operations with Unicode support
+monk root tenant list               # List all tenants (localhost development)
+monk --json root tenant create "测试应用 🚀"  # Create tenant with Unicode name
 ```
 
 ## Development Setup
