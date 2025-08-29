@@ -190,7 +190,11 @@ commands:
       help: Schema name
     - name: id
       required: false
-      help: Record ID to retrieve (optional - supports query parameters via stdin)
+      help: Record ID to retrieve (optional)
+    flags:
+    - long: --filter
+      arg: json
+      help: JSON filter for query parameters (limit, offset, order)
       
   - name: create
     help: Create record from stdin

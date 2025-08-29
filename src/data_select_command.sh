@@ -2,28 +2,26 @@
 
 # data_select_command.sh - Unified data selection with intelligent query routing
 #
-# This command handles all data selection scenarios with flexible input:
+# This command handles all data selection scenarios:
 # 1. Direct ID selection for single records
 # 2. Default listing when no parameters provided  
-# 3. Simple query parameters via JSON (limit, order, offset)
-# 4. Complex queries automatically redirected to 'find' command
+# 3. Simple query parameters via --filter flag (limit, order, offset)
+# 4. Complex queries should use 'monk find' command directly
 #
 # Usage Examples:
-#   monk data select users 123                    # Get specific user by ID
-#   monk data select users                        # List all users (default)
-#   echo '{"limit": 10}' | monk data select users           # Limit results
-#   echo '{"order": "name asc"}' | monk data select users   # Sort by name
-#   echo '{"limit": 5, "offset": 10}' | monk data select users  # Pagination
-#   echo '{"where": {"status": "active"}}' | monk data select users  # → Redirects to find
+#   monk data select users 123                           # Get specific user by ID
+#   monk data select users                               # List all users (default)
+#   monk data select users --filter '{"limit": 10}'     # Limit results
+#   monk data select users --filter '{"order": "name asc"}'  # Sort by name
+#   monk data select users --filter '{"limit": 5, "offset": 10}'  # Pagination
+#
+# For complex queries with 'where' clauses, use:
+#   echo '{"where": {"status": "active"}}' | monk find users
 #
 # API Endpoints:
 #   GET /api/data/:schema/:id     (direct ID)
 #   GET /api/data/:schema         (default listing)
 #   GET /api/data/:schema?params  (with query string)
-#
-# Complex Query Redirection:
-#   JSON with 'where' field automatically redirects to 'monk find :schema'
-#   for advanced filtering capabilities using the enterprise Filter DSL
 
 # Check dependencies
 check_dependencies
@@ -31,6 +29,7 @@ check_dependencies
 # Get arguments from bashly
 schema="${args[schema]}"
 id="${args[id]}"
+filter_json="${args[--filter]}"
 
 # Data commands only support JSON format
 if [[ "${args[--text]}" == "1" ]]; then
@@ -47,41 +46,32 @@ if [ -n "$id" ]; then
     response=$(make_request_json "GET" "/api/data/$schema/$id" "")
     handle_response_json "$response" "select"
     
-elif [ -t 0 ]; then
-    # Case 2: No ID and no stdin (terminal input) - default listing
-    print_info "Selecting all records for schema: $schema"
-    response=$(make_request_json "GET" "/api/data/$schema" "")
-    handle_response_json "$response" "select"
+elif [ -n "$filter_json" ]; then
+    # Case 2: Filter provided - parse and build query string
+    print_info "Processing query filter for schema: $schema"
     
-else
-    # Case 3: No ID but have stdin - parse JSON for query parameters or complex queries
-    json_data=$(read_and_validate_json_input "selecting" "$schema")
-    
-    if [ -z "$json_data" ]; then
-        print_error "No JSON data provided on stdin"
+    # Check if this is a complex query that should use find command
+    if has_complex_query "$filter_json"; then
+        print_error "Complex queries with 'where' clauses should use 'monk find' command"
+        print_info "Example: echo '$filter_json' | monk find $schema"
         exit 1
     fi
     
-    print_info "Processing query parameters for schema: $schema"
-    if [ "$CLI_VERBOSE" = "true" ]; then
-        echo "$json_data" | sed 's/^/  /'
+    # Build query string from filter parameters
+    query_string=$(build_query_string "$filter_json")
+    
+    if [ -n "$query_string" ]; then
+        print_info "Using query parameters: $query_string"
+    else
+        print_info "No valid query parameters found, using default selection"
     fi
     
-    # Check if this is a complex query that should use find command
-    if has_complex_query "$json_data"; then
-        # Case 3a: Complex query with 'where' clause - redirect to find
-        redirect_to_find "$schema" "$json_data"
-    else
-        # Case 3b: Simple query parameters - build query string
-        query_string=$(build_query_string "$json_data")
-        
-        if [ -n "$query_string" ]; then
-            print_info "Using query parameters: $query_string"
-        else
-            print_info "No valid query parameters found, using default selection"
-        fi
-        
-        response=$(make_request_json "GET" "/api/data/$schema$query_string" "")
-        handle_response_json "$response" "select"
-    fi
+    response=$(make_request_json "GET" "/api/data/$schema$query_string" "")
+    handle_response_json "$response" "select"
+    
+else
+    # Case 3: No ID, no filter - default listing
+    print_info "Selecting all records for schema: $schema"
+    response=$(make_request_json "GET" "/api/data/$schema" "")
+    handle_response_json "$response" "select"
 fi
