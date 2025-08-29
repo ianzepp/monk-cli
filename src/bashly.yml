@@ -12,9 +12,7 @@ flags:
 - long: --text
   help: Output in human-readable text format
 - long: --json
-  help: Output in JSON format  
-- long: --yaml
-  help: Output in YAML format
+  help: Output in JSON format
 
 # Server selection is automatically handled via ~/.config/monk/servers.json
 # Use 'monk server use <name>' to select target server (persistent across commands)

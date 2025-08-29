@@ -1338,15 +1338,13 @@ confirm_destructive_operation() {
 
 # Determine output format from global flags
 get_output_format() {
-    local default_format="$1"  # "text", "json", "yaml"
+    local default_format="$1"  # "text" or "json"
     
     # Check global flags
     if [[ "${args[--text]}" == "1" ]]; then
         echo "text"
     elif [[ "${args[--json]}" == "1" ]]; then
         echo "json"
-    elif [[ "${args[--yaml]}" == "1" ]]; then
-        echo "yaml"
     else
         echo "$default_format"
     fi
@@ -1355,7 +1353,7 @@ get_output_format() {
 # Validate format compatibility and show error if incompatible
 validate_output_format() {
     local requested_format="$1"
-    local supported_formats="$2"  # Space-separated list: "text json yaml"
+    local supported_formats="$2"  # Space-separated list: "text json"
     
     if [[ "$supported_formats" == *"$requested_format"* ]]; then
         return 0
@@ -1453,12 +1451,12 @@ json_to_yaml() {
     local json_data="$1"
     
     if [ "$JSON_PARSER" = "jq" ]; then
-        # Use yq if available, otherwise simple conversion
+        # Use yq if available, otherwise fallback to compact JSON with warning
         if command -v yq >/dev/null 2>&1; then
             echo "$json_data" | yq -P '.'
         else
-            # Basic JSON to YAML conversion using jq
-            echo "$json_data" | jq -r 'to_entries[] | "\(.key): \(.value)"'
+            print_warning "yq not available - outputting compact JSON instead of YAML" >&2
+            echo "$json_data" | jq -c '.'
         fi
     else
         print_error "jq required for YAML conversion"
@@ -1478,13 +1476,13 @@ yaml_to_json() {
     fi
 }
 
-# Universal output handler - handles any format conversion
+# Universal output handler - handles text and JSON formats
 handle_output() {
     local data="$1"
     local requested_format="$2"
     local default_format="$3"
     local context="${4:-default}"
-    local supported_formats="${5:-text json yaml}"
+    local supported_formats="${5:-text json}"
     
     # Validate format is supported
     validate_output_format "$requested_format" "$supported_formats"
@@ -1495,54 +1493,28 @@ handle_output() {
             # Already JSON - compress it
             echo "$data" | jq -c '.'
         else
-            # Convert other format to compressed JSON
-            case "$default_format" in
-                "yaml")
-                    yaml_to_json "$data" | jq -c '.'
-                    ;;
-                "text")
-                    print_error "Cannot convert text output to structured format"
-                    print_info "Text format is human-readable only"
-                    exit 1
-                    ;;
-                *)
-                    echo "$data" | jq -c '.'
-                    ;;
-            esac
+            print_error "Cannot convert text output to structured format"
+            print_info "Text format is human-readable only"
+            exit 1
         fi
         return
     fi
     
-    # If already in requested format, output directly (non-JSON)
-    if [[ "$requested_format" == "$default_format" ]]; then
-        echo "$data"
+    # Handle text format
+    if [[ "$requested_format" == "text" ]]; then
+        if [[ "$default_format" == "text" ]]; then
+            # Already text - output directly
+            echo "$data"
+        elif [[ "$default_format" == "json" ]]; then
+            # Convert JSON to text
+            json_to_text "$data" "$context"
+        else
+            print_error "Unsupported format conversion: $default_format to $requested_format"
+            echo "$data"
+        fi
         return
     fi
     
-    # Convert between formats
-    case "$default_format-$requested_format" in
-        "json-text")
-            json_to_text "$data" "$context"
-            ;;
-        "json-yaml")
-            json_to_yaml "$data"
-            ;;
-        "yaml-json")
-            yaml_to_json "$data"
-            ;;
-        "yaml-text")
-            # Convert YAML to JSON first, then to text
-            local json_data=$(yaml_to_json "$data")
-            json_to_text "$json_data" "$context"
-            ;;
-        "text-json"|"text-yaml")
-            print_error "Cannot convert text output to structured format"
-            print_info "Text format is human-readable only"
-            exit 1
-            ;;
-        *)
-            print_error "Unsupported format conversion: $default_format to $requested_format"
-            echo "$data"
-            ;;
-    esac
+    # Fallback: output data as-is
+    echo "$data"
 }
