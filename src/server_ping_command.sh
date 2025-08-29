@@ -54,10 +54,10 @@ if [ "$json_flag" != "1" ]; then
 fi
 
 # Test connectivity to root endpoint
-ping_start=$(date +%s%3N)
-if curl -s --max-time 10 --fail "$base_url/" >/dev/null 2>&1; then
-    ping_end=$(date +%s%3N)
-    response_time=$((ping_end - ping_start))
+# Use curl's built-in timing to avoid bash arithmetic overflow
+if response_time_raw=$(curl -s --max-time 10 --fail -w '%{time_total}' -o /dev/null "$base_url/" 2>/dev/null); then
+    # Convert seconds to milliseconds using awk (more portable than bc)
+    response_time=$(echo "$response_time_raw" | awk '{printf "%.0f", $1 * 1000}')
     
     # Update status in config
     temp_file=$(mktemp)
