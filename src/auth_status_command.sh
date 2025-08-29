@@ -1,8 +1,12 @@
+#!/bin/bash
+
+# auth_status_command.sh - Show authentication status with universal format support
+
 # Check dependencies
 check_dependencies
 
-# Get arguments from bashly
-json_flag="${args[--json]}"
+# Determine output format from global flags
+output_format=$(get_output_format "text")
 
 token=$(get_jwt_token)
 
@@ -13,13 +17,12 @@ current_user=$(jq -r '.current_user // empty' "$ENV_CONFIG" 2>/dev/null)
 
 if [ -n "$token" ]; then
     # Extract token info
-    payload=""
     tenant="unknown"
     database="unknown"
     exp="unknown"
     exp_date="unknown"
     
-    # Try to extract domain from token (basic decode)
+    # Try to extract domain from token (basic JWT decode)
     if [ "$JSON_PARSER" = "jq" ] || [ "$JSON_PARSER" = "jshon" ]; then
         # Decode JWT payload (basic base64 decode of middle part)
         payload=$(echo "$token" | cut -d'.' -f2)
@@ -51,68 +54,68 @@ if [ -n "$token" ]; then
         fi
     fi
     
-    if [ "$json_flag" = "1" ]; then
-        # JSON output mode
-        jq -n \
-            --arg authenticated "true" \
-            --arg tenant "$tenant" \
-            --arg database "$database" \
-            --arg exp "$exp" \
-            --arg exp_date "$exp_date" \
-            --arg current_server "$current_server" \
-            --arg current_tenant "$current_tenant" \
-            --arg current_user "$current_user" \
-            --arg has_token "true" \
-            '{
-                authenticated: ($authenticated == "true"),
-                has_token: ($has_token == "true"),
-                token_info: {
-                    tenant: $tenant,
-                    database: $database,
-                    exp: ($exp | if . == "unknown" then null else (. | tonumber) end),
-                    exp_date: ($exp_date | if . == "unknown" then null else . end)
-                },
-                current_context: {
-                    server: ($current_server | if . == "" or . == "null" then null else . end),
-                    tenant: ($current_tenant | if . == "" or . == "null" then null else . end),
-                    user: ($current_user | if . == "" or . == "null" then null else . end)
-                }
-            }'
-    else
-        # Human-readable output mode
-        print_success "Authenticated"
-        
+    # Build authenticated status JSON
+    auth_status=$(jq -n \
+        --arg authenticated "true" \
+        --arg tenant "$tenant" \
+        --arg database "$database" \
+        --arg exp "$exp" \
+        --arg exp_date "$exp_date" \
+        --arg current_server "$current_server" \
+        --arg current_tenant "$current_tenant" \
+        --arg current_user "$current_user" \
+        --arg has_token "true" \
+        '{
+            authenticated: ($authenticated == "true"),
+            has_token: ($has_token == "true"),
+            token_info: {
+                tenant: $tenant,
+                database: $database,
+                exp: ($exp | if . == "unknown" then null else (. | tonumber) end),
+                exp_date: ($exp_date | if . == "unknown" then null else . end)
+            },
+            current_context: {
+                server: ($current_server | if . == "" or . == "null" then null else . end),
+                tenant: ($current_tenant | if . == "" or . == "null" then null else . end),
+                user: ($current_user | if . == "" or . == "null" then null else . end)
+            }
+        }')
+    
+    if [[ "$output_format" == "text" ]]; then
         echo "Tenant: $tenant"
         echo "Database: $database"
         if [ "$exp_date" != "unknown" ]; then
             echo "Expires: $exp_date"
         fi
-        
         echo "Server: $current_server"
         echo "Tenant: $current_tenant"
         echo "User: $current_user"
+        print_success "Authenticated"
+    else
+        handle_output "$auth_status" "$output_format" "json"
     fi
 else
-    if [ "$json_flag" = "1" ]; then
-        # JSON output mode - not authenticated
-        jq -n \
-            --arg current_server "$current_server" \
-            --arg current_tenant "$current_tenant" \
-            --arg current_user "$current_user" \
-            '{
-                authenticated: false,
-                has_token: false,
-                token_info: null,
-                current_context: {
-                    server: ($current_server | if . == "" or . == "null" then null else . end),
-                    tenant: ($current_tenant | if . == "" or . == "null" then null else . end),
-                    user: ($current_user | if . == "" or . == "null" then null else . end)
-                },
-                message: "Not authenticated. Use monk auth login TENANT USERNAME to authenticate."
-            }'
+    # Build unauthenticated status JSON
+    unauth_status=$(jq -n \
+        --arg current_server "$current_server" \
+        --arg current_tenant "$current_tenant" \
+        --arg current_user "$current_user" \
+        '{
+            authenticated: false,
+            has_token: false,
+            token_info: null,
+            current_context: {
+                server: ($current_server | if . == "" or . == "null" then null else . end),
+                tenant: ($current_tenant | if . == "" or . == "null" then null else . end),
+                user: ($current_user | if . == "" or . == "null" then null else . end)
+            },
+            message: "Not authenticated. Use monk auth login TENANT USERNAME to authenticate."
+        }')
+    
+    if [[ "$output_format" == "text" ]]; then
+        print_error "Not authenticated"
+        print_info "Use 'monk auth login TENANT USERNAME' to authenticate"
     else
-        # Human-readable output mode
-        print_info_always "Not authenticated"
-        print_info_always "Use 'monk auth login TENANT USERNAME' or 'monk auth import TENANT USERNAME' to authenticate"
+        handle_output "$unauth_status" "$output_format" "json"
     fi
 fi

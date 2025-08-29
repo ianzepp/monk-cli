@@ -1,10 +1,16 @@
+#!/bin/bash
+
+# auth_ping_command.sh - Authenticated API health check with universal format support
+
 # Check dependencies
 check_dependencies
 
 # Get flags from bashly args
 verbose_flag="${args[--verbose]}"
 jwt_token_arg="${args[--jwt-token]}"
-json_flag="${args[--json]}"
+
+# Determine output format from global flags
+output_format=$(get_output_format "text")
 
 # Set CLI_VERBOSE if flag is present  
 if [ "$verbose_flag" = "1" ] || [ "$verbose_flag" = "true" ]; then
@@ -43,95 +49,103 @@ full_url="${base_url}/ping"
 response=$(curl "${curl_args[@]}" -w "\n%{http_code}" "$full_url")
 http_code=$(echo "$response" | tail -n1)
 response=$(echo "$response" | sed '$d')
+timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-# Handle response
+# Handle response based on HTTP code
 case "$http_code" in
     200)
-        if [ "$json_flag" = "1" ]; then
-            # JSON output mode - enhance the response with metadata
-            timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-            if [ "$JSON_PARSER" = "jq" ]; then
-                echo "$response" | jq --arg http_code "$http_code" \
-                    --arg timestamp "$timestamp" \
-                    --arg success "true" \
-                    '. + {
-                        http_code: ($http_code | tonumber),
-                        timestamp: $timestamp,
-                        success: ($success == "true"),
-                        reachable: true
-                    }'
-            else
-                # Fallback if jq not available
-                echo '{"success": true, "reachable": true, "http_code": '"$http_code"', "timestamp": "'"$timestamp"'", "raw_response": "'"$response"'"}'
-            fi
-        elif [ "$CLI_VERBOSE" = "true" ]; then
-            print_success "Server is reachable (HTTP $http_code)"
-            echo "Response: $response"
+        # Success - build response JSON
+        if [ "$JSON_PARSER" = "jq" ]; then
+            ping_result=$(echo "$response" | jq --arg http_code "$http_code" \
+                --arg timestamp "$timestamp" \
+                --arg success "true" \
+                '. + {
+                    http_code: ($http_code | tonumber),
+                    timestamp: $timestamp,
+                    success: ($success == "true"),
+                    reachable: true
+                }')
         else
-            # Parse response for clean output
-            if [ "$JSON_PARSER" = "jq" ]; then
-                pong=$(echo "$response" | jq -r '.pong' 2>/dev/null || echo "unknown")
-                domain=$(echo "$response" | jq -r '.domain' 2>/dev/null || echo "null")
-                database=$(echo "$response" | jq -r '.database' 2>/dev/null || echo "null")
-                
-                echo "pong: $pong"
-                if [ "$domain" != "null" ] && [ "$domain" != "" ]; then
-                    echo "domain: $domain"
-                fi
-                if [ "$database" != "null" ] && [ "$database" != "" ]; then
-                    if [ "$database" = "ok" ]; then
-                        echo "database: $database"
-                    else
-                        echo "database: ERROR - $database"
-                    fi
-                fi
-            elif [ "$JSON_PARSER" = "jshon" ]; then
-                pong=$(echo "$response" | jshon -e pong -u 2>/dev/null || echo "unknown")
-                domain=$(echo "$response" | jshon -e domain -u 2>/dev/null || echo "null")
-                database=$(echo "$response" | jshon -e database -u 2>/dev/null || echo "null")
-                
-                echo "pong: $pong"
-                if [ "$domain" != "null" ]; then
-                    echo "domain: $domain"
-                fi
-                if [ "$database" != "null" ]; then
-                    if [ "$database" = "ok" ]; then
-                        echo "database: $database"
-                    else
-                        echo "database: ERROR - $database"
-                    fi
-                fi
+            # Fallback JSON
+            ping_result='{"success": true, "reachable": true, "http_code": '"$http_code"', "timestamp": "'"$timestamp"'", "raw_response": "'"$response"'"}'
+        fi
+        
+        if [[ "$output_format" == "text" ]]; then
+            if [ "$CLI_VERBOSE" = "true" ]; then
+                print_success "Server is reachable (HTTP $http_code)"
+                echo "Response: $response"
             else
-                echo "$response"
+                # Parse response for clean output
+                if [ "$JSON_PARSER" = "jq" ]; then
+                    pong=$(echo "$response" | jq -r '.pong' 2>/dev/null || echo "unknown")
+                    domain=$(echo "$response" | jq -r '.domain' 2>/dev/null || echo "null")
+                    database=$(echo "$response" | jq -r '.database' 2>/dev/null || echo "null")
+                    
+                    echo "pong: $pong"
+                    if [ "$domain" != "null" ] && [ "$domain" != "" ]; then
+                        echo "domain: $domain"
+                    fi
+                    if [ "$database" != "null" ] && [ "$database" != "" ]; then
+                        if [ "$database" = "ok" ]; then
+                            echo "database: $database"
+                        else
+                            echo "database: ERROR - $database"
+                        fi
+                    fi
+                else
+                    echo "Response: $response"
+                fi
             fi
+        else
+            handle_output "$ping_result" "$output_format" "json"
         fi
         ;;
+    401)
+        # Unauthorized
+        error_result=$(jq -n \
+            --arg http_code "$http_code" \
+            --arg timestamp "$timestamp" \
+            --arg error "Authentication failed" \
+            '{
+                success: false,
+                reachable: true,
+                http_code: ($http_code | tonumber),
+                timestamp: $timestamp,
+                error: $error,
+                message: "JWT token is invalid or expired"
+            }')
+        
+        if [[ "$output_format" == "text" ]]; then
+            print_error "Authentication failed (HTTP $http_code)"
+            print_info "JWT token is invalid or expired"
+            print_info "Use 'monk auth login TENANT USERNAME' to re-authenticate"
+        else
+            handle_output "$error_result" "$output_format" "json"
+        fi
+        exit 1
+        ;;
     *)
-        timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-        if [ "$json_flag" = "1" ]; then
-            # JSON output mode for errors
-            if [ "$JSON_PARSER" = "jq" ]; then
-                jq -n \
-                    --arg http_code "$http_code" \
-                    --arg timestamp "$timestamp" \
-                    --arg error_message "Server unreachable" \
-                    --arg response "$response" \
-                    '{
-                        success: false,
-                        reachable: false,
-                        http_code: ($http_code | tonumber),
-                        timestamp: $timestamp,
-                        error: $error_message,
-                        response: $response
-                    }'
-            else
-                echo '{"success": false, "reachable": false, "http_code": '"$http_code"', "timestamp": "'"$timestamp"'", "error": "Server unreachable", "response": "'"$response"'"}'
+        # Other HTTP error
+        error_result=$(jq -n \
+            --arg http_code "$http_code" \
+            --arg timestamp "$timestamp" \
+            --arg response "$response" \
+            '{
+                success: false,
+                reachable: (if ($http_code | tonumber) == 0 then false else true end),
+                http_code: ($http_code | tonumber),
+                timestamp: $timestamp,
+                error: "HTTP error",
+                response: $response
+            }')
+        
+        if [[ "$output_format" == "text" ]]; then
+            print_error "HTTP error ($http_code)"
+            if [ "$CLI_VERBOSE" = "true" ]; then
+                echo "Response: $response"
             fi
         else
-            print_error "Server unreachable (HTTP $http_code)"
-            if [ "$CLI_VERBOSE" = "true" ]; then
-                echo "Response: $response" >&2
-            fi
+            handle_output "$error_result" "$output_format" "json"
         fi
         exit 1
         ;;

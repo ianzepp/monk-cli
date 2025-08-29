@@ -1,14 +1,20 @@
-# Get arguments from bashly
-json_flag="${args[--json]}"
+#!/bin/bash
+
+# auth_info_command.sh - Decode and display JWT token contents with universal format support
+
+# Determine output format from global flags
+output_format=$(get_output_format "text")
 
 token=$(get_jwt_token)
 
 if [ -z "$token" ]; then
-    if [ "$json_flag" = "1" ]; then
-        echo '{"error": "No authentication token found", "message": "Use monk auth login TENANT USERNAME to authenticate"}'
-    else
+    error_result='{"error": "No authentication token found", "message": "Use monk auth login TENANT USERNAME to authenticate"}'
+    
+    if [[ "$output_format" == "text" ]]; then
         print_error "No authentication token found"
         print_info "Use 'monk auth login TENANT USERNAME' to authenticate"
+    else
+        handle_output "$error_result" "$output_format" "json"
     fi
     exit 1
 fi
@@ -26,37 +32,38 @@ fi
 if command -v base64 >/dev/null 2>&1; then
     decoded=$(echo "$payload" | base64 -d 2>/dev/null || echo "")
 else
-    print_error "base64 command not found"
+    error_result='{"error": "base64 command not found"}'
+    
+    if [[ "$output_format" == "text" ]]; then
+        print_error "base64 command not found"
+    else
+        handle_output "$error_result" "$output_format" "json"
+    fi
     exit 1
 fi
 
 if [ -n "$decoded" ]; then
-    if [ "$json_flag" = "1" ]; then
-        # JSON output mode - return the decoded JWT payload with additional metadata
-        if command -v jq >/dev/null 2>&1; then
-            exp_timestamp=$(echo "$decoded" | jq -r '.exp' 2>/dev/null)
-            exp_date=""
-            if [ "$exp_timestamp" != "null" ] && [ -n "$exp_timestamp" ]; then
-                exp_date=$(date -r "$exp_timestamp" 2>/dev/null || echo 'unknown')
-            fi
-            
-            # Add computed fields to the token payload
-            echo "$decoded" | jq --arg exp_date "$exp_date" \
-                '. + {
-                    exp_date: (if $exp_date == "" or $exp_date == "unknown" then null else $exp_date end),
-                    token_valid: true
-                }'
-        else
-            # Fallback if jq not available
-            echo '{"error": "jq required for JSON mode", "raw_payload": "'"$decoded"'"}'
+    if command -v jq >/dev/null 2>&1; then
+        # Add computed fields to the token payload for JSON output
+        exp_timestamp=$(echo "$decoded" | jq -r '.exp' 2>/dev/null)
+        exp_date=""
+        if [ "$exp_timestamp" != "null" ] && [ -n "$exp_timestamp" ]; then
+            exp_date=$(date -r "$exp_timestamp" 2>/dev/null || echo 'unknown')
         fi
-    else
-        # Human-readable output mode
-        print_success "JWT Token Information:"
-        echo
         
-        if command -v jq >/dev/null 2>&1; then
-            # Extract key fields for human-readable display
+        # Build enhanced token info JSON
+        token_info=$(echo "$decoded" | jq --arg exp_date "$exp_date" \
+            '. + {
+                exp_date: (if $exp_date == "" or $exp_date == "unknown" then null else $exp_date end),
+                token_valid: true
+            }')
+        
+        if [[ "$output_format" == "text" ]]; then
+            # Human-readable output
+            print_success "JWT Token Information:"
+            echo
+            
+            # Extract key fields for display
             sub=$(echo "$decoded" | jq -r '.sub // "unknown"' 2>/dev/null)
             name=$(echo "$decoded" | jq -r '.name // "unknown"' 2>/dev/null)
             tenant=$(echo "$decoded" | jq -r '.tenant // "unknown"' 2>/dev/null)
@@ -77,19 +84,32 @@ if [ -n "$decoded" ]; then
             fi
             
             if [ "$exp" != "unknown" ] && [ "$exp" != "null" ]; then
-                exp_date=$(date -r "$exp" 2>/dev/null || echo 'unknown')
-                echo "Expires: $exp_date"
+                echo "Expires At: $exp_date"
             fi
+            
+            echo
         else
-            # Fallback if jq not available - show raw JSON
-            echo "$decoded"
+            handle_output "$token_info" "$output_format" "json"
+        fi
+    else
+        # Fallback without jq
+        fallback_result='{"error": "jq required for token parsing", "raw_payload": "'"$decoded"'"}'
+        
+        if [[ "$output_format" == "text" ]]; then
+            print_error "jq required for token parsing"
+            echo "Raw payload: $decoded"
+        else
+            handle_output "$fallback_result" "$output_format" "json"
         fi
     fi
 else
-    if [ "$json_flag" = "1" ]; then
-        echo '{"error": "Failed to decode JWT token", "token_valid": false}'
-    else
+    decode_error='{"error": "Failed to decode JWT token", "message": "Token may be malformed"}'
+    
+    if [[ "$output_format" == "text" ]]; then
         print_error "Failed to decode JWT token"
+        print_info "Token may be malformed"
+    else
+        handle_output "$decode_error" "$output_format" "json"
     fi
     exit 1
 fi
