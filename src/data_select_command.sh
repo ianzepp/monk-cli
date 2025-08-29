@@ -32,8 +32,12 @@ check_dependencies
 schema="${args[schema]}"
 id="${args[id]}"
 
-# Determine output format from global flags
-output_format=$(get_output_format "json")
+# Data commands only support JSON format
+if [[ "${args[--text]}" == "1" ]]; then
+    print_error "The --text option is not supported for data operations"
+    print_info "Data operations require JSON format for structured data handling"
+    exit 1
+fi
 
 validate_schema "$schema"
 
@@ -41,29 +45,13 @@ if [ -n "$id" ]; then
     # Case 1: ID provided - direct record selection
     print_info "Selecting specific record: $id"
     response=$(make_request_json "GET" "/api/data/$schema/$id" "")
-    
-    # Extract data from API response and use universal output handler
-    if echo "$response" | jq -e '.success' >/dev/null 2>&1; then
-        data=$(echo "$response" | jq '.data')
-        handle_output "$data" "$output_format" "json" "data_record"
-    else
-        echo "$response" >&2
-        exit 1
-    fi
+    handle_response_json "$response" "select"
     
 elif [ -t 0 ]; then
     # Case 2: No ID and no stdin (terminal input) - default listing
     print_info "Selecting all records for schema: $schema"
     response=$(make_request_json "GET" "/api/data/$schema" "")
-    
-    # Extract data from API response and use universal output handler
-    if echo "$response" | jq -e '.success' >/dev/null 2>&1; then
-        data=$(echo "$response" | jq '.data')
-        handle_output "$data" "$output_format" "json" "data_table"
-    else
-        echo "$response" >&2
-        exit 1
-    fi
+    handle_response_json "$response" "select"
     
 else
     # Case 3: No ID but have stdin - parse JSON for query parameters or complex queries
