@@ -24,10 +24,17 @@ check_dependencies
 # Get arguments from bashly
 schema="${args[schema]}"
 
+# Data commands only support JSON format
+if [[ "${args[--text]}" == "1" ]]; then
+    print_error "The --text option is not supported for data operations"
+    print_info "Data operations require JSON format for structured data handling"
+    exit 1
+fi
+
 validate_schema "$schema"
 
 # Read and validate JSON input
 json_data=$(read_and_validate_json_input "creating" "$schema")
 
-# Process the create operation
+# Process the create operation (uses handle_response_json which now outputs compact JSON)
 process_data_operation "create" "POST" "$schema" "" "$json_data"
