@@ -1,8 +1,12 @@
+#!/bin/bash
+
+# server_ping_all_command.sh - Health check all servers with universal format support
+
 # Check dependencies
 check_dependencies
 
-# Get arguments from bashly
-json_flag="${args[--json]}"
+# Determine output format from global flags
+output_format=$(get_output_format "text")
 
 init_cli_configs
 
@@ -14,33 +18,29 @@ fi
 server_names=$(jq -r '.servers | keys[]' "$SERVER_CONFIG" 2>/dev/null)
 
 if [ -z "$server_names" ]; then
-    if [ "$json_flag" = "1" ]; then
-        echo '{"servers": [], "summary": {"total": 0, "up": 0, "down": 0}}'
-    else
+    empty_result='{"servers": [], "summary": {"total": 0, "up": 0, "down": 0}}'
+    
+    if [[ "$output_format" == "text" ]]; then
         echo
         print_info "Pinging All Servers"
         echo
         print_info "No servers configured"
-        print_info "Use 'monk servers add <name> <hostname:port>' to add servers"
+        print_info "Use 'monk server add <name> <hostname:port>' to add servers"
+    else
+        handle_output "$empty_result" "$output_format" "json"
     fi
     exit 0
 fi
 
-if [ "$json_flag" != "1" ]; then
+if [[ "$output_format" == "text" ]]; then
     echo
     print_info "Pinging All Servers"
     echo
 fi
 
-# Prepare arrays for JSON output
-ping_results="[]"
-up_count=0
-total_count=0
-
-echo "$server_names" | while read -r name; do
+# Build results array for JSON output
+ping_results=$(echo "$server_names" | while read -r name; do
     if [ -n "$name" ]; then
-        total_count=$((total_count + 1))
-        
         server_info=$(jq -r ".servers.\"$name\"" "$SERVER_CONFIG")
         hostname=$(echo "$server_info" | jq -r '.hostname')
         port=$(echo "$server_info" | jq -r '.port')
@@ -48,111 +48,76 @@ echo "$server_names" | while read -r name; do
         base_url="$protocol://$hostname:$port"
         timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
         
-        if [ "$json_flag" != "1" ]; then
-            print_info "Pinging server: $name ($base_url)"
-        fi
-        
-        ping_start=$(date +%s%3N)
-        if ping_server_url "$base_url" 5; then
-            ping_end=$(date +%s%3N)
-            response_time=$((ping_end - ping_start))
-            up_count=$((up_count + 1))
+        # Test connectivity with timeout
+        if response_time_raw=$(curl -s --max-time 5 --fail -w '%{time_total}' -o /dev/null "$base_url/" 2>/dev/null); then
+            response_time=$(echo "$response_time_raw" | awk '{printf "%.0f", $1 * 1000}')
+            server_status="up"
+            success=true
             
-            # Update status
-            temp_file=$(mktemp)
-            jq --arg name "$name" \
-               --arg timestamp "$timestamp" \
-               '.servers[$name].last_ping = $timestamp | .servers[$name].status = "up"' \
-               "$SERVER_CONFIG" > "$temp_file" && mv "$temp_file" "$SERVER_CONFIG"
-            
-            if [ "$json_flag" = "1" ]; then
-                server_result=$(jq -n \
-                    --arg server_name "$name" \
-                    --arg hostname "$hostname" \
-                    --arg port "$port" \
-                    --arg protocol "$protocol" \
-                    --arg endpoint "$base_url" \
-                    --arg status "up" \
-                    --arg timestamp "$timestamp" \
-                    --argjson response_time_ms "$response_time" \
-                    '{
-                        server_name: $server_name,
-                        hostname: $hostname,
-                        port: ($port | tonumber),
-                        protocol: $protocol,
-                        endpoint: $endpoint,
-                        status: $status,
-                        timestamp: $timestamp,
-                        response_time_ms: $response_time_ms,
-                        success: true
-                    }')
-                echo "$server_result"
-            else
-                print_success "Server is up and responding"
+            if [[ "$output_format" == "text" ]]; then
+                printf "%-15s %-30s %-8s %s\n" "$name" "$base_url" "up" "${response_time}ms"
             fi
         else
-            # Update status
-            temp_file=$(mktemp)
-            jq --arg name "$name" \
-               --arg timestamp "$timestamp" \
-               '.servers[$name].last_ping = $timestamp | .servers[$name].status = "down"' \
-               "$SERVER_CONFIG" > "$temp_file" && mv "$temp_file" "$SERVER_CONFIG"
+            response_time=0
+            server_status="down"
+            success=false
             
-            if [ "$json_flag" = "1" ]; then
-                server_result=$(jq -n \
-                    --arg server_name "$name" \
-                    --arg hostname "$hostname" \
-                    --arg port "$port" \
-                    --arg protocol "$protocol" \
-                    --arg endpoint "$base_url" \
-                    --arg status "down" \
-                    --arg timestamp "$timestamp" \
-                    '{
-                        server_name: $server_name,
-                        hostname: $hostname,
-                        port: ($port | tonumber),
-                        protocol: $protocol,
-                        endpoint: $endpoint,
-                        status: $status,
-                        timestamp: $timestamp,
-                        success: false,
-                        error: "Server is down or not responding"
-                    }')
-                echo "$server_result"
-            else
-                print_error "Server is down or not responding"
+            if [[ "$output_format" == "text" ]]; then
+                printf "%-15s %-30s %-8s %s\n" "$name" "$base_url" "down" "timeout"
             fi
         fi
+        
+        # Update server status in config
+        temp_file=$(mktemp)
+        jq --arg name "$name" \
+           --arg timestamp "$timestamp" \
+           --arg status "$server_status" \
+           '.servers[$name].last_ping = $timestamp | .servers[$name].status = $status' \
+           "$SERVER_CONFIG" > "$temp_file" && mv "$temp_file" "$SERVER_CONFIG"
+        
+        # Generate JSON result for this server
+        jq -n \
+            --arg server_name "$name" \
+            --arg hostname "$hostname" \
+            --arg port "$port" \
+            --arg protocol "$protocol" \
+            --arg endpoint "$base_url" \
+            --arg status "$server_status" \
+            --arg timestamp "$timestamp" \
+            --argjson response_time_ms "$response_time" \
+            --argjson success "$success" \
+            '{
+                server_name: $server_name,
+                hostname: $hostname,
+                port: ($port | tonumber),
+                protocol: $protocol,
+                endpoint: $endpoint,
+                status: $status,
+                timestamp: $timestamp,
+                response_time_ms: $response_time_ms,
+                success: $success
+            }'
     fi
-done | if [ "$json_flag" = "1" ]; then
-    # Collect all results and format as JSON
-    jq -s '
-    {
+done)
+
+# Calculate summary statistics and build final result
+if [[ "$output_format" == "json" ]]; then
+    # Build complete JSON response with summary
+    final_result=$(echo "$ping_results" | jq -s '{
         servers: .,
         summary: {
             total: length,
             up: [.[] | select(.success == true)] | length,
-            down: [.[] | select(.success == false)] | length,
-            success_rate: (if length > 0 then ([.[] | select(.success == true)] | length) / length else 0 end)
+            down: [.[] | select(.success == false)] | length
         }
-    }'
-else
-    # Count results for human-readable summary
-    up_servers=0
-    total_servers=0
-    while IFS= read -r line; do
-        total_servers=$((total_servers + 1))
-        if echo "$line" | grep -q '"success": true'; then
-            up_servers=$((up_servers + 1))
-        fi
-    done
+    }')
+    handle_output "$final_result" "$output_format" "json"
+elif [[ "$output_format" == "text" ]]; then
+    # Show summary for text output
+    total_servers=$(echo "$ping_results" | jq -s 'length')
+    up_servers=$(echo "$ping_results" | jq -s '[.[] | select(.success == true)] | length')
+    down_servers=$(echo "$ping_results" | jq -s '[.[] | select(.success == false)] | length')
     
     echo
-    if [ "$up_servers" -eq "$total_servers" ] && [ "$total_servers" -gt 0 ]; then
-        print_success "All servers are up ($up_servers/$total_servers)"
-    elif [ "$up_servers" -eq 0 ] && [ "$total_servers" -gt 0 ]; then
-        print_error "All servers are down (0/$total_servers)"
-    elif [ "$total_servers" -gt 0 ]; then
-        print_info "$up_servers/$total_servers servers are up"
-    fi
+    print_info "Summary: $up_servers up, $down_servers down (total: $total_servers)"
 fi
