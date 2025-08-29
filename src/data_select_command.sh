@@ -55,7 +55,7 @@ elif [ -t 0 ]; then
     
 else
     # Case 3: No ID but have stdin - parse JSON for query parameters or complex queries
-    json_data=$(cat)
+    json_data=$(read_and_validate_json_input "selecting" "$schema")
     
     if [ -z "$json_data" ]; then
         print_error "No JSON data provided on stdin"
