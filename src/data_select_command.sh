@@ -32,19 +32,38 @@ check_dependencies
 schema="${args[schema]}"
 id="${args[id]}"
 
+# Determine output format from global flags
+output_format=$(get_output_format "json")
+
 validate_schema "$schema"
 
 if [ -n "$id" ]; then
     # Case 1: ID provided - direct record selection
     print_info "Selecting specific record: $id"
     response=$(make_request_json "GET" "/api/data/$schema/$id" "")
-    handle_response_json "$response" "select"
+    
+    # Extract data from API response and use universal output handler
+    if echo "$response" | jq -e '.success' >/dev/null 2>&1; then
+        data=$(echo "$response" | jq '.data')
+        handle_output "$data" "$output_format" "json" "data_record"
+    else
+        echo "$response" >&2
+        exit 1
+    fi
     
 elif [ -t 0 ]; then
     # Case 2: No ID and no stdin (terminal input) - default listing
     print_info "Selecting all records for schema: $schema"
     response=$(make_request_json "GET" "/api/data/$schema" "")
-    handle_response_json "$response" "select"
+    
+    # Extract data from API response and use universal output handler
+    if echo "$response" | jq -e '.success' >/dev/null 2>&1; then
+        data=$(echo "$response" | jq '.data')
+        handle_output "$data" "$output_format" "json" "data_table"
+    else
+        echo "$response" >&2
+        exit 1
+    fi
     
 else
     # Case 3: No ID but have stdin - parse JSON for query parameters or complex queries

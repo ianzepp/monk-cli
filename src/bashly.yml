@@ -8,6 +8,14 @@ environment_variables:
 - name: MONK_CLI_CONFIG_DIR
   help: "Custom directory for CLI configuration files (default: ~/.config/monk/cli)"
 
+flags:
+- long: --text
+  help: Output in human-readable text format
+- long: --json
+  help: Output in JSON format  
+- long: --yaml
+  help: Output in YAML format
+
 # Server selection is automatically handled via ~/.config/monk/servers.json
 # Use 'monk server use <name>' to select target server (persistent across commands)
 
@@ -44,15 +52,9 @@ commands:
       
   - name: list
     help: List all servers with health status
-    flags:
-    - long: --json
-      help: Output in JSON format
     
   - name: current
     help: Show currently selected server
-    flags:
-    - long: --json
-      help: Output in JSON format
     
   - name: use
     help: "Switch to server (persistent selection) or show current server"
@@ -74,15 +76,9 @@ commands:
     - name: name
       required: false
       help: Server name to ping (optional, defaults to current server)
-    flags:
-    - long: --json
-      help: Output in JSON format
       
   - name: ping-all
     help: Health check all registered servers
-    flags:
-    - long: --json
-      help: Output in JSON format
 
 # Tenant registry management
 - name: tenant
@@ -106,8 +102,6 @@ commands:
   - name: list
     help: List all registered tenants
     flags:
-    - long: --json
-      help: Output in JSON format
     - long: --server
       arg: server
       help: Target server (defaults to current server)
@@ -146,18 +140,12 @@ commands:
     
   - name: status
     help: Show authentication status
-    flags:
-    - long: --json
-      help: Output in JSON format
     
   - name: token
     help: Display current JWT token
     
   - name: info
     help: Decode and display JWT token contents
-    flags:
-    - long: --json
-      help: Output in JSON format
     
   - name: ping
     help: Authenticated API health check
@@ -169,8 +157,6 @@ commands:
       short: -j
       arg: token
       help: Include JWT token in request
-    - long: --json
-      help: Output in JSON format
       
   - name: import
     help: Import JWT token from external auth flow
@@ -420,8 +406,6 @@ commands:
         help: Include soft-deleted tenants
       - long: --include-deleted
         help: Include hard-deleted tenants
-      - long: --json
-        help: Output in JSON format
         
     - name: create
       help: Create new tenant
@@ -444,9 +428,6 @@ commands:
       - name: name
         required: true
         help: Tenant name
-      flags:
-      - long: --json
-        help: Output in JSON format
         
     - name: trash
       help: Soft delete tenant (set trashed_at)
@@ -479,9 +460,6 @@ commands:
       - name: name
         required: true
         help: Tenant name
-      flags:
-      - long: --json
-        help: Output in JSON format
 
 
 

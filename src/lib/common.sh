@@ -449,20 +449,20 @@ handle_response_json() {
         return
     fi
     
-    # Default: auto-extract 'data' property for cleaner output
+    # Default: auto-extract 'data' property and output as compact JSON
     if [ "$JSON_PARSER" = "jq" ]; then
         # Check if response has success:true and extract data
         if echo "$response" | jq -e '.success' >/dev/null 2>&1; then
             if echo "$response" | jq -e '.success == true' >/dev/null 2>&1; then
-                # Success response - extract data
-                echo "$response" | jq '.data'
+                # Success response - extract data as compact JSON
+                echo "$response" | jq -c '.data'
             else
-                # Error response - show full response for debugging
-                echo "$response"
+                # Error response - show full response for debugging as compact JSON
+                echo "$response" | jq -c '.'
             fi
         else
-            # Not a standard API response - show raw
-            echo "$response"
+            # Not a standard API response - show raw as compact JSON
+            echo "$response" | jq -c '.'
         fi
     elif [ "$JSON_PARSER" = "jshon" ]; then
         # Check if response has success:true and extract data
@@ -1334,4 +1334,215 @@ confirm_destructive_operation() {
             exit 0
         fi
     fi
+}
+
+# Determine output format from global flags
+get_output_format() {
+    local default_format="$1"  # "text", "json", "yaml"
+    
+    # Check global flags
+    if [[ "${args[--text]}" == "1" ]]; then
+        echo "text"
+    elif [[ "${args[--json]}" == "1" ]]; then
+        echo "json"
+    elif [[ "${args[--yaml]}" == "1" ]]; then
+        echo "yaml"
+    else
+        echo "$default_format"
+    fi
+}
+
+# Validate format compatibility and show error if incompatible
+validate_output_format() {
+    local requested_format="$1"
+    local supported_formats="$2"  # Space-separated list: "text json yaml"
+    
+    if [[ "$supported_formats" == *"$requested_format"* ]]; then
+        return 0
+    else
+        print_error "Output format '$requested_format' not supported for this command"
+        print_info "Supported formats: $(echo "$supported_formats" | tr ' ' ', ')"
+        exit 1
+    fi
+}
+
+# Convert JSON to human-readable text format
+json_to_text() {
+    local json_data="$1"
+    local context="$2"  # Context hint for formatting (e.g., "server_list", "tenant_status")
+    
+    if [ "$JSON_PARSER" != "jq" ]; then
+        print_error "jq required for text formatting"
+        echo "$json_data"
+        return
+    fi
+    
+    case "$context" in
+        "server_list")
+            echo
+            printf "%-15s %-30s %-8s %-8s %-12s %-20s %s\n" "Name" "Endpoint" "Status" "Auth" "Last Ping" "Added" "Description"
+            echo "--------------------------------------------------------------------------------------------"
+            echo "$json_data" | jq -r '.servers[]? | [.name, .endpoint, .status, (if .auth_sessions > 0 then "yes (\(.auth_sessions))" else "no" end), (.last_ping | split("T")[0]), (.added_at | split("T")[0]), .description] | @tsv' | \
+            while IFS=$'\t' read -r name endpoint status auth last_ping added desc; do
+                current_marker=""
+                if echo "$json_data" | jq -e ".current_server == \"$name\"" >/dev/null 2>&1; then
+                    current_marker=" *"
+                fi
+                printf "%-15s %-30s %-8s %-8s %-12s %-20s %s%s\n" "$name" "$endpoint" "$status" "$auth" "$last_ping" "$added" "$desc" "$current_marker"
+            done
+            echo
+            ;;
+        "tenant_list")
+            echo
+            printf "%-20s %-30s %-8s %-20s %s\n" "Name" "Display Name" "Auth" "Added" "Description"
+            echo "-------------------------------------------------------------------------------------"
+            echo "$json_data" | jq -r '.tenants[]? | [.name, .display_name, (if .authenticated then "yes" else "no" end), (.added_at | split("T")[0]), .description] | @tsv' | \
+            while IFS=$'\t' read -r name display_name auth added desc; do
+                current_marker=""
+                if echo "$json_data" | jq -e ".current_tenant == \"$name\"" >/dev/null 2>&1; then
+                    current_marker=" *"
+                fi
+                printf "%-20s %-30s %-8s %-20s %s%s\n" "$name" "$display_name" "$auth" "$added" "$desc" "$current_marker"
+            done
+            echo
+            ;;
+        "auth_status")
+            if echo "$json_data" | jq -e '.authenticated' >/dev/null 2>&1; then
+                local tenant=$(echo "$json_data" | jq -r '.current_context.tenant')
+                local server=$(echo "$json_data" | jq -r '.current_context.server')
+                local user=$(echo "$json_data" | jq -r '.current_context.user')
+                local database=$(echo "$json_data" | jq -r '.token_info.database')
+                local exp_date=$(echo "$json_data" | jq -r '.token_info.exp_date')
+                
+                echo "Tenant: $tenant"
+                echo "Database: $database"
+                echo "Expires: $exp_date"
+                echo "Server: $server"
+                echo "Tenant: $tenant"
+                echo "User: $user"
+                print_success "Authenticated"
+            else
+                print_error "Not authenticated"
+            fi
+            ;;
+        "data_table")
+            # Generic data table - try to format as table if array
+            if echo "$json_data" | jq -e 'type == "array"' >/dev/null 2>&1; then
+                if echo "$json_data" | jq -e 'length > 0' >/dev/null 2>&1; then
+                    # Get column headers from first object
+                    local headers=$(echo "$json_data" | jq -r '.[0] | keys_unsorted | @tsv')
+                    echo "$headers" | tr '\t' '\n' | nl -w3 -s') ' -v0
+                    echo "---"
+                    echo "$json_data" | jq -r '.[] | [.[] | tostring] | @tsv'
+                else
+                    echo "No data found"
+                fi
+            else
+                echo "$json_data" | jq '.'
+            fi
+            ;;
+        *)
+            # Default: output compact JSON for machine readability
+            echo "$json_data" | jq -c '.'
+            ;;
+    esac
+}
+
+# Convert JSON to YAML format
+json_to_yaml() {
+    local json_data="$1"
+    
+    if [ "$JSON_PARSER" = "jq" ]; then
+        # Use yq if available, otherwise simple conversion
+        if command -v yq >/dev/null 2>&1; then
+            echo "$json_data" | yq -P '.'
+        else
+            # Basic JSON to YAML conversion using jq
+            echo "$json_data" | jq -r 'to_entries[] | "\(.key): \(.value)"'
+        fi
+    else
+        print_error "jq required for YAML conversion"
+        echo "$json_data"
+    fi
+}
+
+# Convert YAML to JSON format
+yaml_to_json() {
+    local yaml_data="$1"
+    
+    if command -v yq >/dev/null 2>&1; then
+        echo "$yaml_data" | yq -o=json '.'
+    else
+        print_error "yq required for YAML to JSON conversion"
+        echo "$yaml_data"
+    fi
+}
+
+# Universal output handler - handles any format conversion
+handle_output() {
+    local data="$1"
+    local requested_format="$2"
+    local default_format="$3"
+    local context="${4:-default}"
+    local supported_formats="${5:-text json yaml}"
+    
+    # Validate format is supported
+    validate_output_format "$requested_format" "$supported_formats"
+    
+    # Handle JSON format - always compress to single line for machine readability
+    if [[ "$requested_format" == "json" ]]; then
+        if [[ "$default_format" == "json" ]]; then
+            # Already JSON - compress it
+            echo "$data" | jq -c '.'
+        else
+            # Convert other format to compressed JSON
+            case "$default_format" in
+                "yaml")
+                    yaml_to_json "$data" | jq -c '.'
+                    ;;
+                "text")
+                    print_error "Cannot convert text output to structured format"
+                    print_info "Text format is human-readable only"
+                    exit 1
+                    ;;
+                *)
+                    echo "$data" | jq -c '.'
+                    ;;
+            esac
+        fi
+        return
+    fi
+    
+    # If already in requested format, output directly (non-JSON)
+    if [[ "$requested_format" == "$default_format" ]]; then
+        echo "$data"
+        return
+    fi
+    
+    # Convert between formats
+    case "$default_format-$requested_format" in
+        "json-text")
+            json_to_text "$data" "$context"
+            ;;
+        "json-yaml")
+            json_to_yaml "$data"
+            ;;
+        "yaml-json")
+            yaml_to_json "$data"
+            ;;
+        "yaml-text")
+            # Convert YAML to JSON first, then to text
+            local json_data=$(yaml_to_json "$data")
+            json_to_text "$json_data" "$context"
+            ;;
+        "text-json"|"text-yaml")
+            print_error "Cannot convert text output to structured format"
+            print_info "Text format is human-readable only"
+            exit 1
+            ;;
+        *)
+            print_error "Unsupported format conversion: $default_format to $requested_format"
+            echo "$data"
+            ;;
+    esac
 }
