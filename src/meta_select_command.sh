@@ -24,6 +24,19 @@ check_dependencies
 type="${args[type]}"
 name="${args[name]}"
 
+# Meta commands only support YAML format
+if [[ "${args[--text]}" == "1" ]]; then
+    print_error "The --text option is not supported for meta operations"
+    print_info "Meta operations work with YAML schema definitions"
+    exit 1
+fi
+
+if [[ "${args[--json]}" == "1" ]]; then
+    print_error "The --json option is not supported for meta operations"
+    print_info "Meta operations work with YAML schema definitions"
+    exit 1
+fi
+
 # Validate metadata type (currently only schema supported)
 case "$type" in
     schema)
