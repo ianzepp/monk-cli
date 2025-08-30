@@ -71,4 +71,18 @@ if [ "$CLI_VERBOSE" = "true" ]; then
 fi
 
 response=$(make_request_yaml "DELETE" "/api/meta/$type/$name" "")
-handle_response_yaml "$response" "delete"
+
+# Check if response is JSON (delete operations may return JSON success messages)
+if echo "$response" | jq -e '.success' >/dev/null 2>&1; then
+    # API returned JSON success message - handle appropriately
+    if echo "$response" | jq -e '.success == true' >/dev/null 2>&1; then
+        print_success "Schema '$name' deleted successfully"
+    else
+        error_msg=$(echo "$response" | jq -r '.error // "Delete operation failed"')
+        print_error "$error_msg"
+        exit 1
+    fi
+else
+    # API returned YAML or other format - output directly
+    handle_response_yaml "$response" "delete"
+fi

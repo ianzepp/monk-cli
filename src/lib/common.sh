@@ -1476,6 +1476,126 @@ yaml_to_json() {
     fi
 }
 
+# Detect input format based on first non-whitespace character
+detect_input_format() {
+    local input_data="$1"
+    
+    # Get first non-whitespace character
+    local first_char=$(echo "$input_data" | sed 's/^[[:space:]]*//' | cut -c1)
+    
+    if [[ "$first_char" == "{" || "$first_char" == "[" ]]; then
+        echo "json"
+    else
+        echo "yaml"
+    fi
+}
+
+# Convert JSON to YAML with graceful fallback
+convert_json_to_yaml() {
+    local json_data="$1"
+    
+    # Try yq first (best option)
+    if command -v yq >/dev/null 2>&1; then
+        echo "$json_data" | yq -P '.'
+        return $?
+    fi
+    
+    # Try python fallback
+    if command -v python3 >/dev/null 2>&1; then
+        if echo "$json_data" | python3 -c "import yaml,json,sys; print(yaml.dump(json.load(sys.stdin), default_flow_style=False).rstrip())" 2>/dev/null; then
+            return 0
+        fi
+    fi
+    
+    # Try ruby fallback  
+    if command -v ruby >/dev/null 2>&1; then
+        if echo "$json_data" | ruby -e "require 'yaml','json'; puts YAML.dump(JSON.parse(STDIN.read))" 2>/dev/null; then
+            return 0
+        fi
+    fi
+    
+    return 1
+}
+
+# Convert YAML to JSON with graceful fallback
+convert_yaml_to_json() {
+    local yaml_data="$1"
+    
+    # Try yq first (best option)
+    if command -v yq >/dev/null 2>&1; then
+        echo "$yaml_data" | yq -o=json '.'
+        return $?
+    fi
+    
+    # Try python fallback
+    if command -v python3 >/dev/null 2>&1; then
+        if echo "$yaml_data" | python3 -c "import yaml,json,sys; print(json.dumps(yaml.safe_load(sys.stdin), separators=(',', ':')))" 2>/dev/null; then
+            return 0
+        fi
+    fi
+    
+    # Try ruby fallback
+    if command -v ruby >/dev/null 2>&1; then
+        if echo "$yaml_data" | ruby -e "require 'yaml','json'; puts JSON.generate(YAML.load(STDIN.read))" 2>/dev/null; then
+            return 0
+        fi
+    fi
+    
+    return 1
+}
+
+# Make HTTP request with YAML content-type and JSON/YAML autodetect
+make_request_yaml_autodetect() {
+    local method="$1"
+    local url="$2"
+    local input_data="$3"
+    local input_format="$4"
+    
+    local yaml_data="$input_data"
+    
+    # Convert JSON to YAML if needed
+    if [[ "$input_format" == "json" ]]; then
+        print_info "Converting JSON input to YAML for API"
+        
+        yaml_data=$(convert_json_to_yaml "$input_data")
+        if [[ $? -ne 0 ]]; then
+            print_error "Failed to convert JSON input to YAML"
+            print_info "JSON input detected but no suitable conversion tool available"
+            print_info "Please install 'yq' or provide input in YAML format instead"
+            print_info "Example: cat schema.yaml | monk meta create schema"
+            exit 1
+        fi
+    fi
+    
+    # Make standard YAML request
+    make_request_yaml "$method" "$url" "$yaml_data"
+}
+
+# Handle YAML response with JSON/YAML autodetect conversion
+handle_response_yaml_autodetect() {
+    local response="$1"
+    local operation_type="$2"
+    local original_input_format="$3"
+    
+    # Convert YAML response to JSON if original input was JSON
+    if [[ "$original_input_format" == "json" && -n "$response" ]]; then
+        print_info "Converting YAML response to JSON for format consistency"
+        
+        local json_response
+        json_response=$(convert_yaml_to_json "$response")
+        if [[ $? -eq 0 ]]; then
+            # Output the JSON response (compact format)
+            echo "$json_response" | jq -c '.' 2>/dev/null || echo "$json_response"
+            return
+        else
+            print_warning "Failed to convert YAML response to JSON, outputting original YAML"
+        fi
+    fi
+    
+    # Default: handle as standard YAML response
+    handle_response_yaml "$response" "$operation_type"
+}
+
 # Universal output handler - handles text and JSON formats
 handle_output() {
     local data="$1"

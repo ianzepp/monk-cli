@@ -55,19 +55,23 @@ case "$type" in
         ;;
 esac
 
-# Read YAML data from stdin
+# Read input data from stdin
 data=$(cat)
 
 if [ -z "$data" ]; then
-    print_error "No YAML data provided on stdin"
+    print_error "No schema data provided on stdin"
     print_info "Usage: cat schema.yaml | monk meta create schema"
+    print_info "       cat schema.json | monk meta create schema  # Auto-converts to YAML"
     exit 1
 fi
 
-print_info "Creating $type with YAML data:"
+# Detect input format and handle autoconversion
+input_format=$(detect_input_format "$data")
+
+print_info "Creating $type with ${input_format^^} data:"
 if [ "$CLI_VERBOSE" = "true" ]; then
     echo "$data" | sed 's/^/  /'
 fi
 
-response=$(make_request_yaml "POST" "/api/meta/$type" "$data")
-handle_response_yaml "$response" "create"
+response=$(make_request_yaml_autodetect "POST" "/api/meta/$type" "$data" "$input_format")
+handle_response_yaml_autodetect "$response" "create" "$input_format"
