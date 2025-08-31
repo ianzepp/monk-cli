@@ -398,6 +398,17 @@ commands:
     short: -T
     help: Return only last record from results
 
+# API Documentation viewer
+- name: docs
+  help: View API documentation from remote server
+  
+  commands:
+  - name: auth
+    help: Display authentication API documentation
+    
+  - name: data
+    help: Display data API documentation
+
 # Administrative operations (development only)
 - name: root
   help: Administrative operations for tenant management (localhost development only)

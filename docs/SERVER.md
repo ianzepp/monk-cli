@@ -181,11 +181,19 @@ monk server info local
 
 # Available Endpoints:
 #   auth: /auth/*
-#   data: /api/data/:schema[/:id] (protected)
+#   docs: /docs[/*.md]
+#   root: /root/* (localhost development only)
+#   data: /api/data/:schema[/:record] (protected)
 #   meta: /api/meta/:schema (protected)
 #   find: /api/find/:schema (protected)
 #   bulk: /api/bulk (protected)
-#   root: /api/root/* (localhost development only)
+
+# Documentation:
+#   Overview: /README.md
+#   auth: /docs/auth
+#   data: /docs/data
+#   meta: /docs/meta
+#   Errors: /docs/errors
 ```
 
 **JSON Format:**
@@ -193,7 +201,7 @@ monk server info local
 monk --json server info local
 ```
 ```json
-{"server_name":"local","hostname":"localhost","port":9001,"protocol":"http","endpoint":"http://localhost:9001","api":{"name":"Monk API (Hono)","version":"2.0.0-rc2","description":"Lightweight PaaS backend API built with Hono","endpoints":{"auth":"/auth/*","data":"/api/data/:schema[/:id] (protected)","meta":"/api/meta/:schema (protected)","find":"/api/find/:schema (protected)","bulk":"/api/bulk (protected)","root":"/api/root/* (localhost development only)"}},"status":"up","success":true}
+{"server_name":"local","hostname":"localhost","port":9001,"protocol":"http","endpoint":"http://localhost:9001","api":{"name":"Monk API (Hono)","version":"2.0.0-rc2","description":"Lightweight PaaS backend API built with Hono","endpoints":{"auth":"/auth/*","docs":"/docs[/*.md]","root":"/root/* (localhost development only)","data":"/api/data/:schema[/:record] (protected)","meta":"/api/meta/:schema (protected)","find":"/api/find/:schema (protected)","bulk":"/api/bulk (protected)"},"documentation":{"overview":"/README.md","apis":{"auth":"/docs/auth","data":"/docs/data","meta":"/docs/meta"},"errors":"/docs/errors"}},"status":"up","success":true}
 ```
 
 **Default Server:**

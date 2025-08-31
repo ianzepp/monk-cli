@@ -90,6 +90,7 @@ if api_response=$(curl -s --max-time 10 --fail "$base_url/" 2>/dev/null); then
         --arg api_version "$api_version" \
         --arg api_description "$api_description" \
         --argjson endpoints "$(echo "$api_data" | jq '.endpoints // {}')" \
+        --argjson documentation "$(echo "$api_data" | jq '.documentation // null')" \
         '{
             server_name: $server_name,
             hostname: $hostname,
@@ -100,7 +101,8 @@ if api_response=$(curl -s --max-time 10 --fail "$base_url/" 2>/dev/null); then
                 name: $api_name,
                 version: $api_version,
                 description: $api_description,
-                endpoints: $endpoints
+                endpoints: $endpoints,
+                documentation: $documentation
             },
             status: "up",
             success: true
@@ -125,6 +127,31 @@ if api_response=$(curl -s --max-time 10 --fail "$base_url/" 2>/dev/null); then
         echo
         print_info "Available Endpoints:"
         echo "$api_data" | jq -r '.endpoints | to_entries[] | "  \(.key): \(.value)"'
+        
+        # Display documentation if available
+        documentation=$(echo "$api_data" | jq -r '.documentation // empty')
+        if [ -n "$documentation" ] && [ "$documentation" != "null" ] && [ "$documentation" != "" ]; then
+            echo
+            print_info "Documentation:"
+            
+            # Show overview if available
+            overview=$(echo "$api_data" | jq -r '.documentation.overview // empty')
+            if [ -n "$overview" ] && [ "$overview" != "null" ] && [ "$overview" != "" ]; then
+                echo "  Overview: $overview"
+            fi
+            
+            # Show API documentation if available
+            apis=$(echo "$api_data" | jq -r '.documentation.apis // empty')
+            if [ -n "$apis" ] && [ "$apis" != "null" ] && [ "$apis" != "" ]; then
+                echo "$api_data" | jq -r '.documentation.apis | to_entries[] | "  \(.key): \(.value)"'
+            fi
+            
+            # Show errors documentation if available
+            errors=$(echo "$api_data" | jq -r '.documentation.errors // empty')
+            if [ -n "$errors" ] && [ "$errors" != "null" ] && [ "$errors" != "" ]; then
+                echo "  Errors: $errors"
+            fi
+        fi
     else
         handle_output "$info_result" "$output_format" "json"
     fi
