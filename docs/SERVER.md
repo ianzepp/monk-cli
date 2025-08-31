@@ -154,6 +154,54 @@ monk server ping        # Uses current server
 monk server ping local  # Specific server
 ```
 
+#### **Server Information**
+```bash
+monk server info [name]
+```
+
+**Examples:**
+
+**Text Format (Default):**
+```bash
+monk server info local
+# Using current server: local
+
+# Server Information: local
+
+# Connection:
+#   Endpoint: http://localhost:9001
+#   Hostname: localhost
+#   Port: 9001
+#   Protocol: http
+
+# API Details:
+#   Name: Monk API (Hono)
+#   Version: 2.0.0-rc2
+#   Description: Lightweight PaaS backend API built with Hono
+
+# Available Endpoints:
+#   auth: /auth/*
+#   data: /api/data/:schema[/:id] (protected)
+#   meta: /api/meta/:schema (protected)
+#   find: /api/find/:schema (protected)
+#   bulk: /api/bulk (protected)
+#   root: /api/root/* (localhost development only)
+```
+
+**JSON Format:**
+```bash
+monk --json server info local
+```
+```json
+{"server_name":"local","hostname":"localhost","port":9001,"protocol":"http","endpoint":"http://localhost:9001","api":{"name":"Monk API (Hono)","version":"2.0.0-rc2","description":"Lightweight PaaS backend API built with Hono","endpoints":{"auth":"/auth/*","data":"/api/data/:schema[/:id] (protected)","meta":"/api/meta/:schema (protected)","find":"/api/find/:schema (protected)","bulk":"/api/bulk (protected)","root":"/api/root/* (localhost development only)"}},"status":"up","success":true}
+```
+
+**Default Server:**
+```bash
+monk server info        # Uses current server
+monk server info local  # Specific server
+```
+
 #### **Ping All Servers**
 ```bash
 monk server ping-all

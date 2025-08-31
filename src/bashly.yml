@@ -77,6 +77,13 @@ commands:
       
   - name: ping-all
     help: Health check all registered servers
+    
+  - name: info
+    help: Show server information from API root endpoint
+    args:
+    - name: name
+      required: false
+      help: Server name to query (optional, defaults to current server)
 
 # Tenant registry management
 - name: tenant
