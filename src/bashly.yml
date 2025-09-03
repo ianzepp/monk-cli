@@ -401,13 +401,10 @@ commands:
 # API Documentation viewer
 - name: docs
   help: View API documentation from remote server
-  
-  commands:
-  - name: auth
-    help: Display authentication API documentation
-    
-  - name: data
-    help: Display data API documentation
+  args:
+  - name: area
+    required: true
+    help: Documentation area to view (e.g., auth, data, meta, find, bulk, file, acls, root)
 
 # Administrative operations (development only)
 - name: root
