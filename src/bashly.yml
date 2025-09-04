@@ -258,37 +258,28 @@ commands:
   - name: select
     help: Select specific schema
     args:
-    - name: type
-      help: Type to select
-      required: true
-    - name: name
+    - name: schema
       required: true
       help: Schema name to retrieve
       
   - name: create
     help: "Create schema from stdin (YAML/JSON)"
     args:
-    - name: type
-      help: Type to create
+    - name: schema
       required: true
+      help: Schema name to create
       
   - name: update
     help: Update schema from stdin
     args:
-    - name: type
-      help: Type to update  
-      required: true
-    - name: name
+    - name: schema
       required: true
       help: Schema name to update
       
   - name: delete
     help: Delete schema
     args:
-    - name: type
-      help: Type to delete
-      required: true
-    - name: name
+    - name: schema
       required: true
       help: Schema name to delete
 

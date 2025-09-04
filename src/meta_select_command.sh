@@ -21,35 +21,30 @@
 check_dependencies
 
 # Get arguments from bashly
-type="${args[type]}"
-name="${args[name]}"
+schema="${args[schema]}"
 
-# Meta commands only support YAML format
-if [[ "${args[--text]}" == "1" ]]; then
-    print_error "The --text option is not supported for meta operations"
-    print_info "Meta operations work with YAML schema definitions"
+# Determine output format from global flags
+output_format=$(get_output_format "text")
+
+# Validate schema name
+if [ -z "$schema" ]; then
+    print_error "Schema name is required"
     exit 1
 fi
 
-if [[ "${args[--json]}" == "1" ]]; then
-    print_error "The --json option is not supported for meta operations"
-    print_info "Meta operations work with YAML schema definitions"
-    exit 1
+print_info "Selecting schema: $schema"
+
+response=$(make_request_json "GET" "/api/meta/$schema" "")
+
+# Handle response based on output format
+if [[ "$output_format" == "json" ]]; then
+    # JSON format - use standard handler (compact output)
+    handle_response_json "$response" "select"
+else
+    # Text format - pretty-print the schema for readability
+    if echo "$response" | jq -e '.success == true' >/dev/null 2>&1; then
+        echo "$response" | jq -r '.data' | jq .
+    else
+        handle_response_json "$response" "select"
+    fi
 fi
-
-# Validate metadata type (currently only schema supported)
-case "$type" in
-    schema)
-        # Valid type
-        ;;
-    *)
-        print_error "Unsupported metadata type: $type"
-        print_info "Currently supported types: schema"
-        exit 1
-        ;;
-esac
-
-print_info "Selecting $type object: $name"
-
-response=$(make_request_yaml "GET" "/api/meta/$type/$name" "")
-handle_response_yaml "$response" "select"

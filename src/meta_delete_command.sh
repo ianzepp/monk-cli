@@ -32,36 +32,19 @@
 check_dependencies
 
 # Get arguments from bashly
-type="${args[type]}"
-name="${args[name]}"
+schema="${args[schema]}"
 
-# Meta commands only support YAML format
-if [[ "${args[--text]}" == "1" ]]; then
-    print_error "The --text option is not supported for meta operations"
-    print_info "Meta operations work with YAML schema definitions"
+# Meta commands now support JSON format
+# Format flags are handled by the standard response handlers
+
+# Validate schema name
+if [ -z "$schema" ]; then
+    print_error "Schema name is required"
     exit 1
 fi
-
-if [[ "${args[--json]}" == "1" ]]; then
-    print_error "The --json option is not supported for meta operations"
-    print_info "Meta operations work with YAML schema definitions"
-    exit 1
-fi
-
-# Validate metadata type (currently only schema supported)
-case "$type" in
-    schema)
-        # Valid type
-        ;;
-    *)
-        print_error "Unsupported metadata type: $type"
-        print_info "Currently supported types: schema"
-        exit 1
-        ;;
-esac
 
 if [ "$CLI_VERBOSE" = "true" ]; then
-    print_warning "Are you sure you want to delete $type '$name'? (y/N)"
+    print_warning "Are you sure you want to delete schema '$schema'? (y/N)"
     read -r confirmation
     
     if ! echo "$confirmation" | grep -E "^[Yy]$" >/dev/null 2>&1; then
@@ -70,19 +53,5 @@ if [ "$CLI_VERBOSE" = "true" ]; then
     fi
 fi
 
-response=$(make_request_yaml "DELETE" "/api/meta/$type/$name" "")
-
-# Check if response is JSON (delete operations may return JSON success messages)
-if echo "$response" | jq -e '.success' >/dev/null 2>&1; then
-    # API returned JSON success message - handle appropriately
-    if echo "$response" | jq -e '.success == true' >/dev/null 2>&1; then
-        print_success "Schema '$name' deleted successfully"
-    else
-        error_msg=$(echo "$response" | jq -r '.error // "Delete operation failed"')
-        print_error "$error_msg"
-        exit 1
-    fi
-else
-    # API returned YAML or other format - output directly
-    handle_response_yaml "$response" "delete"
-fi
+response=$(make_request_json "DELETE" "/api/meta/$schema" "")
+handle_response_json "$response" "delete"

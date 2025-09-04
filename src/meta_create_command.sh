@@ -28,50 +28,38 @@
 check_dependencies
 
 # Get arguments from bashly
-type="${args[type]}"
+schema="${args[schema]}"
 
-# Meta commands only support YAML format
-if [[ "${args[--text]}" == "1" ]]; then
-    print_error "The --text option is not supported for meta operations"
-    print_info "Meta operations work with YAML schema definitions"
+# Determine output format from global flags
+output_format=$(get_output_format "text")
+
+# Validate schema name
+if [ -z "$schema" ]; then
+    print_error "Schema name is required"
     exit 1
 fi
-
-if [[ "${args[--json]}" == "1" ]]; then
-    print_error "The --json option is not supported for meta operations"
-    print_info "Meta operations work with YAML schema definitions"
-    exit 1
-fi
-
-# Validate metadata type (currently only schema supported)
-case "$type" in
-    schema)
-        # Valid type
-        ;;
-    *)
-        print_error "Unsupported metadata type: $type"
-        print_info "Currently supported types: schema"
-        exit 1
-        ;;
-esac
 
 # Read input data from stdin
 data=$(cat)
 
 if [ -z "$data" ]; then
     print_error "No schema data provided on stdin"
-    print_info "Usage: cat schema.yaml | monk meta create schema"
-    print_info "       cat schema.json | monk meta create schema  # Auto-converts to YAML"
+    print_info "Usage: cat schema.json | monk meta create <schema-name>"
+    print_info "       echo '{...}' | monk meta create <schema-name>"
     exit 1
 fi
 
-# Detect input format and handle autoconversion
-input_format=$(detect_input_format "$data")
-
-print_info "Creating $type with ${input_format^^} data:"
-if [ "$CLI_VERBOSE" = "true" ]; then
-    echo "$data" | sed 's/^/  /'
+# Validate JSON input
+if ! echo "$data" | jq . >/dev/null 2>&1; then
+    print_error "Invalid JSON input"
+    print_info "Meta commands require valid JSON schema definitions"
+    exit 1
 fi
 
-response=$(make_request_yaml_autodetect "POST" "/api/meta/$type" "$data" "$input_format")
-handle_response_yaml_autodetect "$response" "create" "$input_format"
+print_info "Creating schema '$schema' with JSON data:"
+if [ "$CLI_VERBOSE" = "true" ]; then
+    echo "$data" | jq . | sed 's/^/  /'
+fi
+
+response=$(make_request_json "POST" "/api/meta/$schema" "$data")
+handle_response_json "$response" "create"
