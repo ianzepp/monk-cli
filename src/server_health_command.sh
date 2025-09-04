@@ -39,9 +39,9 @@ if [ -z "$name" ]; then
     fi
 fi
 
-# Get server info
-server_info=$(jq -r ".servers.\"$name\"" "$SERVER_CONFIG" 2>/dev/null)
-if [ "$server_info" = "null" ]; then
+# Get server info (as JSON, not raw text)
+server_info=$(jq ".servers.\"$name\"" "$SERVER_CONFIG" 2>/dev/null)
+if [ "$server_info" = "null" ] || [ -z "$server_info" ]; then
     error_result=$(jq -n --arg server_name "$name" '{"server_name": $server_name, "error": "Server not found"}')
     
     if [[ "$output_format" == "text" ]]; then
@@ -53,18 +53,21 @@ if [ "$server_info" = "null" ]; then
     exit 1
 fi
 
-hostname=$(echo "$server_info" | jq -r '.hostname')
-port=$(echo "$server_info" | jq -r '.port')
-protocol=$(echo "$server_info" | jq -r '.protocol')
+hostname=$(echo "$server_info" | jq -r '.hostname' 2>/dev/null)
+port=$(echo "$server_info" | jq -r '.port' 2>/dev/null) 
+protocol=$(echo "$server_info" | jq -r '.protocol' 2>/dev/null)
 base_url="$protocol://$hostname:$port"
 
 # Fetch server health from API /health endpoint
 if api_response=$(curl -s --max-time 10 --fail "$base_url/health" 2>/dev/null); then
-    # Parse the API response
-    api_data=$(echo "$api_response" | jq -r '.data // empty' 2>/dev/null)
+    # Parse the API response - check if there's a .data wrapper
+    has_data_wrapper=$(echo "$api_response" | jq 'has("data")' 2>/dev/null)
     
-    if [ -z "$api_data" ] || [ "$api_data" = "null" ]; then
-        # Try parsing the response directly if no .data wrapper
+    if [ "$has_data_wrapper" = "true" ]; then
+        # Extract data from wrapper
+        api_data=$(echo "$api_response" | jq '.data' 2>/dev/null)
+    else
+        # Use response directly if no wrapper
         api_data="$api_response"
     fi
     
@@ -76,8 +79,8 @@ if api_response=$(curl -s --max-time 10 --fail "$base_url/health" 2>/dev/null); 
     timestamp=$(echo "$api_data" | jq -r '.timestamp // null')
     
     # Extract database health if available
-    database_status=$(echo "$api_data" | jq -r '.database.status // null')
-    database_connected=$(echo "$api_data" | jq -r '.database.connected // null')
+    database_status=$(echo "$api_data" | jq -r '.database // null')
+    database_connected="null"
     
     # Extract any additional checks
     checks=$(echo "$api_data" | jq -r '.checks // {}')
