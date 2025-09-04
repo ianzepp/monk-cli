@@ -85,6 +85,13 @@ commands:
       required: false
       help: Server name to query (optional, defaults to current server)
 
+  - name: health
+    help: Check server health status from API /health endpoint
+    args:
+    - name: name
+      required: false
+      help: Server name to check (optional, defaults to current server)
+
 # Tenant registry management
 - name: tenant
   help: Tenant registry management
