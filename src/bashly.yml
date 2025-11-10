@@ -257,38 +257,24 @@ commands:
       required: true
       help: Directory to import from
 
-# Schema and metadata management
-- name: meta
-  help: Schema and metadata management
+# Schema description and metadata management
+- name: describe
+  help: Schema description and metadata management
   
   commands:
   - name: select
-    help: Select specific schema
+    help: Select specific schema definition
     args:
     - name: schema
       required: true
       help: Schema name to retrieve
       
   - name: create
-    help: "Create schema from stdin (YAML/JSON)"
+    help: Create new schema from JSON definition
     args:
     - name: schema
       required: true
       help: Schema name to create
-      
-  - name: update
-    help: Update schema from stdin
-    args:
-    - name: schema
-      required: true
-      help: Schema name to update
-      
-  - name: delete
-    help: Delete schema
-    args:
-    - name: schema
-      required: true
-      help: Schema name to delete
 
 # Bulk operations for batch processing
 - name: bulk

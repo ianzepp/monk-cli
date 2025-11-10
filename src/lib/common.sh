@@ -1208,7 +1208,7 @@ url_encode() {
     fi
 }
 
-# Make HTTP request to root API (no authentication required for localhost development)
+# Make HTTP request to root API (requires authentication and root privileges)
 make_root_request() {
     local method="$1"
     local endpoint="$2"  # e.g., "tenant", "tenant/my_app"
@@ -1235,6 +1235,14 @@ make_root_request() {
     print_info "Making $method request to: $full_url"
     
     local curl_args=(-s -X "$method")
+    
+    # Add JWT token if available
+    local jwt_token
+    jwt_token=$(get_jwt_token)
+    if [ -n "$jwt_token" ]; then
+        curl_args+=(-H "Authorization: Bearer $jwt_token")
+        print_info "Using stored JWT token"
+    fi
     
     # Add content-type header if data provided
     if [ -n "$data" ]; then
@@ -1562,7 +1570,7 @@ make_request_yaml_autodetect() {
             print_error "Failed to convert JSON input to YAML"
             print_info "JSON input detected but no suitable conversion tool available"
             print_info "Please install 'yq' or provide input in YAML format instead"
-            print_info "Example: cat schema.yaml | monk meta create schema"
+            print_info "Example: cat schema.yaml | monk describe select"
             exit 1
         fi
     fi
