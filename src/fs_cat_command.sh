@@ -11,11 +11,11 @@ tenant_flag="${args[--tenant]}"
 
 print_info "Reading file content: $path"
 
-# Make request with tenant routing
-response=$(make_ftp_request_with_routing "retrieve" "$path" "" "$tenant_flag")
+# Make request with tenant routing - UPDATED to use /api/file/retrieve
+response=$(make_file_request_with_routing "retrieve" "$path" "" "$tenant_flag")
 
 # Extract and display content
-content=$(process_ftp_response "$response" "content")
+content=$(process_file_response "$response" "content")
 
 if [ -n "$content" ] && [ "$content" != "null" ]; then
     # Pretty print JSON objects, show raw for simple values

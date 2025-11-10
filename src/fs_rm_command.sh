@@ -12,7 +12,7 @@ tenant_flag="${args[--tenant]}"
 
 print_info "Removing: $path"
 
-# Build FTP options based on flags
+# Build file options based on flags - UPDATED for /api/file/store endpoint
 permanent="false"
 if [ "$force_flag" = "true" ]; then
     permanent="true"
@@ -21,12 +21,13 @@ else
     print_info "Using soft delete (recoverable)"
 fi
 
-ftp_options=$(jq -n \
+# For deletion, we use the store endpoint with empty content and overwrite=true
+# The path determines what gets deleted (record or field)
+file_options=$(jq -n \
     --argjson permanent "$permanent" \
     '{
-        "permanent": $permanent,
-        "atomic": true,
-        "force": false
+        "overwrite": true,
+        "atomic": true
     }')
 
 # Confirmation prompt for destructive operations
@@ -40,8 +41,14 @@ if [ "$force_flag" = "true" ] && [ "$CLI_VERBOSE" = "true" ]; then
     fi
 fi
 
-# Make request with tenant routing
-response=$(make_ftp_request_with_routing "delete" "$path" "$ftp_options" "$tenant_flag")
+# Make request with tenant routing - UPDATED to use /api/file/store for deletion
+# For deletion operations, we send empty content to effectively "delete" the record/field
+deletion_payload=$(jq -n \
+    --arg path "$path" \
+    --argjson options "$file_options" \
+    '{"path": $path, "content": null, "file_options": $options}')
+
+response=$(make_request_json "POST" "/api/file/store" "$deletion_payload")
 
 # Process deletion result
 if [ "$permanent" = "true" ]; then

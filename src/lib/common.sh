@@ -918,54 +918,64 @@ redirect_to_find() {
     echo "$json_data" | "${BASH_SOURCE[0]%/*}/find_command.sh" "$schema"
 }
 
-# Build FTP request payload with path and options
-build_ftp_payload() {
+# Build file API request payload with path and options
+build_file_payload() {
     local path="$1"
     local options="$2"
     
     if [ -n "$options" ]; then
         jq -n --arg path "$path" --argjson options "$options" \
-           '{"path": $path, "ftp_options": $options}'
+           '{"path": $path, "file_options": $options}'
     else
         jq -n --arg path "$path" '{"path": $path}'
     fi
 }
 
-# Process FTP response and extract specific field
-process_ftp_response() {
+# Process file API response and extract specific field - UPDATED for new API format
+process_file_response() {
     local response="$1"
-    local extract_field="$2"  # "content", "data", etc. (optional)
+    local extract_field="$2"  # "content", "data", "entries", etc. (optional)
     
     if [ "$JSON_PARSER" = "jq" ]; then
         if [ -n "$extract_field" ]; then
-            echo "$response" | jq ".$extract_field" 2>/dev/null
+            # Handle nested data structure in new API format
+            echo "$response" | jq ".data.$extract_field" 2>/dev/null
         else
             echo "$response"
         fi
     else
-        print_error "jq required for FTP operations"
+        print_error "jq required for file operations"
         exit 1
     fi
 }
 
-# Make FTP request with standard error handling
-make_ftp_request() {
-    local endpoint="$1"    # list, stat, retrieve, delete
+# Make file API request with standard error handling - UPDATED to use /api/file endpoints
+make_file_request() {
+    local endpoint="$1"    # list, retrieve, store, stat
     local payload="$2"
     
     local response
-    response=$(make_request_json "POST" "/ftp/$endpoint" "$payload")
+    response=$(make_request_json "POST" "/api/file/$endpoint" "$payload")
     
-    # Check for FTP-specific error handling if needed
+    # Check for file-specific error handling if needed
     echo "$response"
 }
 
-# Format ls-style output from FTP list entries
+# Format ls-style output from FTP list entries - UPDATED for new API format
 format_ls_output() {
     local entries="$1"
     local long_format="${2:-false}"
     
-    echo "$entries" | jq -r '.[] | .name'
+    if [ "$long_format" = "true" ]; then
+        # Long format shows detailed information - use printf for formatting
+        echo "$entries" | jq -r '.[] | "\(.file_permissions) \(.file_size | tostring) \(.file_modified) \(.name)"' | \
+        while IFS=' ' read -r permissions size modified name; do
+            printf "%-10s %8s %s %s\n" "$permissions" "$size" "$modified" "$name"
+        done
+    else
+        # Simple format shows just names
+        echo "$entries" | jq -r '.[] | .name'
+    fi
 }
 
 # Parse tenant path and extract routing information
@@ -1090,9 +1100,9 @@ with_tenant_context() {
     return $exit_code
 }
 
-# Enhanced FTP request with tenant routing support
-make_ftp_request_with_routing() {
-    local endpoint="$1"    # list, stat, retrieve, delete
+# Enhanced file API request with tenant routing support
+make_file_request_with_routing() {
+    local endpoint="$1"    # list, stat, retrieve, store
     local path="$2"
     local options="$3"
     local tenant_flag="$4" # Optional --tenant flag value
@@ -1133,7 +1143,7 @@ make_ftp_request_with_routing() {
     
     # Build payload
     local payload
-    payload=$(build_ftp_payload "$api_path" "$options")
+    payload=$(build_file_payload "$api_path" "$options")
     
     # Execute request with appropriate context
     local current_key
@@ -1141,10 +1151,10 @@ make_ftp_request_with_routing() {
     
     if [ "$target_session_key" = "$current_key" ]; then
         # Same as current context - direct execution
-        make_ftp_request "$endpoint" "$payload"
+        make_file_request "$endpoint" "$payload"
     else
         # Different context - use temporary switching
-        with_tenant_context "$target_session_key" make_ftp_request "$endpoint" "$payload"
+        with_tenant_context "$target_session_key" make_file_request "$endpoint" "$payload"
     fi
 }
 

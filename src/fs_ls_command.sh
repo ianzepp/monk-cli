@@ -12,13 +12,13 @@ tenant_flag="${args[--tenant]}"
 
 print_info "Listing directory: $path"
 
-# Build FTP options
+# Build file options
 long_format="false"
-if [ "$long_flag" = "true" ]; then
+if [ "$long_flag" = "1" ]; then
     long_format="true"
 fi
 
-ftp_options=$(jq -n \
+file_options=$(jq -n \
     --argjson long_format "$long_format" \
     '{
         "show_hidden": false,
@@ -26,9 +26,9 @@ ftp_options=$(jq -n \
         "long_format": $long_format
     }')
 
-# Make request with tenant routing
-response=$(make_ftp_request_with_routing "list" "$path" "$ftp_options" "$tenant_flag")
+# Make request with tenant routing - UPDATED to use /api/file/list
+response=$(make_file_request_with_routing "list" "$path" "$file_options" "$tenant_flag")
 
 # Extract and format entries
-entries=$(process_ftp_response "$response" "data")
-format_ls_output "$entries"
+entries=$(process_file_response "$response" "entries")
+format_ls_output "$entries" "$long_format"

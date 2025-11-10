@@ -11,14 +11,14 @@ tenant_flag="${args[--tenant]}"
 
 print_info "Getting status for: $path"
 
-# Make request with tenant routing
-response=$(make_ftp_request_with_routing "stat" "$path" "" "$tenant_flag")
+# Make request with tenant routing - UPDATED to use /api/file/stat
+response=$(make_file_request_with_routing "stat" "$path" "" "$tenant_flag")
 
 # Extract basic information
-file_type=$(process_ftp_response "$response" "type")
-permissions=$(process_ftp_response "$response" "permissions")
-size=$(process_ftp_response "$response" "size")
-modified_time=$(process_ftp_response "$response" "modified_time")
+file_type=$(process_file_response "$response" "type")
+permissions=$(process_file_response "$response" "permissions")
+size=$(process_file_response "$response" "size")
+modified_time=$(process_file_response "$response" "modified_time")
 
 # Display basic stat information
 echo "  File: '$path'"
@@ -33,7 +33,7 @@ if [ -n "$modified_time" ] && [ "$modified_time" != "null" ] && [ ${#modified_ti
 fi
 
 # Show record information if available
-record_info=$(process_ftp_response "$response" "record_info")
+record_info=$(process_file_response "$response" "record_info")
 if [ -n "$record_info" ] && [ "$record_info" != "null" ]; then
     echo
     echo "Record Information:"
@@ -52,7 +52,7 @@ if [ -n "$record_info" ] && [ "$record_info" != "null" ]; then
 fi
 
 # Show children count for directories
-children_count=$(process_ftp_response "$response" "children_count")
+children_count=$(process_file_response "$response" "children_count")
 if [ -n "$children_count" ] && [ "$children_count" != "null" ]; then
     echo
     echo "Directory contains: $children_count entries"
