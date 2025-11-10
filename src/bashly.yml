@@ -275,6 +275,13 @@ commands:
     - name: schema
       required: true
       help: Schema name to create
+      
+  - name: delete
+    help: Delete schema definition (soft delete)
+    args:
+    - name: schema
+      required: true
+      help: Schema name to delete
 
 # Bulk operations for batch processing
 - name: bulk
