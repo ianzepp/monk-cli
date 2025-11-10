@@ -72,7 +72,7 @@ Comprehensive command documentation available in the `docs/` directory:
 - **[TENANT.md](docs/TENANT.md)** - Tenant registry management and context switching
 - **[AUTH.md](docs/AUTH.md)** - JWT authentication, session management, and security
 - **[DATA.md](docs/DATA.md)** - CRUD operations with JSON-exclusive design
-- **[META.md](docs/META.md)** - Schema management with YAML definitions
+- **[DESCRIBE.md](docs/DESCRIBE.md)** - Schema management with YAML definitions
 - **[BULK.md](docs/BULK.md)** - Batch processing and cross-schema operations
 - **[FIND.md](docs/FIND.md)** - Advanced search with enterprise Filter DSL
 - **[FS.md](docs/FS.md)** - Unix-like filesystem operations for data exploration
