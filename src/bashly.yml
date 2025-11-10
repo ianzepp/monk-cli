@@ -29,6 +29,18 @@ commands:
   - long: --force
     help: Force reinitialization by overwriting existing config files (preserves env.json)
 
+# Usage examples and getting started guide (recommended for new users)
+- name: examples
+  help: Browse interactive examples and complete workflows (start here!)
+  args:
+  - name: name
+    required: false
+    help: Example name to display (omit to list all examples)
+
+# Current CLI status and environment overview
+- name: status
+  help: Show current server, tenant, user, and available schemas
+
 # Remote server management
 - name: server
   help: Remote server management
