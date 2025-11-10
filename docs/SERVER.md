@@ -184,7 +184,7 @@ monk server info local
 #   docs: /docs[/*.md]
 #   root: /root/* (localhost development only)
 #   data: /api/data/:schema[/:record] (protected)
-#   meta: /api/meta/:schema (protected)
+#   meta: /api/describe/:schema (protected)
 #   find: /api/find/:schema (protected)
 #   bulk: /api/bulk (protected)
 
@@ -192,7 +192,7 @@ monk server info local
 #   Overview: /README.md
 #   auth: /docs/auth
 #   data: /docs/data
-#   meta: /docs/meta
+#   meta: /docs/describe
 #   Errors: /docs/errors
 ```
 
@@ -201,7 +201,7 @@ monk server info local
 monk --json server info local
 ```
 ```json
-{"server_name":"local","hostname":"localhost","port":9001,"protocol":"http","endpoint":"http://localhost:9001","api":{"name":"Monk API (Hono)","version":"2.0.0-rc2","description":"Lightweight PaaS backend API built with Hono","endpoints":{"auth":"/auth/*","docs":"/docs[/*.md]","root":"/root/* (localhost development only)","data":"/api/data/:schema[/:record] (protected)","meta":"/api/meta/:schema (protected)","find":"/api/find/:schema (protected)","bulk":"/api/bulk (protected)"},"documentation":{"overview":"/README.md","apis":{"auth":"/docs/auth","data":"/docs/data","meta":"/docs/meta"},"errors":"/docs/errors"}},"status":"up","success":true}
+{"server_name":"local","hostname":"localhost","port":9001,"protocol":"http","endpoint":"http://localhost:9001","api":{"name":"Monk API (Hono)","version":"2.0.0-rc2","description":"Lightweight PaaS backend API built with Hono","endpoints":{"auth":"/auth/*","docs":"/docs[/*.md]","root":"/root/* (localhost development only)","data":"/api/data/:schema[/:record] (protected)","meta":"/api/describe/:schema (protected)","find":"/api/find/:schema (protected)","bulk":"/api/bulk (protected)"},"documentation":{"overview":"/README.md","apis":{"auth":"/docs/auth","data":"/docs/data","meta":"/docs/describe"},"errors":"/docs/errors"}},"status":"up","success":true}
 ```
 
 **Default Server:**
@@ -429,7 +429,7 @@ monk server use production
 monk tenant list                # Lists tenants for production server
 monk auth login my-app admin    # Authenticates to production
 monk data select users          # Accesses production database
-monk meta select schema         # Retrieves production schemas
+monk describe select         # Retrieves production schemas
 ```
 
 Server commands provide the **foundation layer** for all monk-cli multi-environment operations.

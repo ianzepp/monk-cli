@@ -21,7 +21,7 @@
 - **Multi-Server Management**: Clean server registry with health monitoring and context switching
 - **Advanced Authentication**: JWT session management with external token import
 - **Administrative Operations**: Root tenant management with Unicode support
-- **Schema Management**: YAML-based schema operations with automatic DDL generation
+- **Schema Management**: JSON-based schema operations with automatic DDL generation
 
 ### Technical Architecture
 - **CLI Framework** (50+ command implementations):
@@ -45,7 +45,7 @@
 
 #### **Data & Schema Operations**
 - `monk data` - CRUD operations with intelligent array/object handling (JSON-exclusive)
-- `monk meta` - Schema management with YAML definitions and automatic DDL generation (YAML-exclusive)
+- `monk describe` - Schema management with JSON definitions and automatic DDL generation (JSON-exclusive)
 - `monk bulk` - Batch processing operations across multiple schemas (JSON-exclusive)
 - `monk find` - Advanced search with enterprise Filter DSL (JSON-exclusive)
 
@@ -59,7 +59,7 @@
 ### Output Format System
 - **Universal Flags**: Global `--text` and `--json` flags for consistent output control
 - **Format-Optimized Design**: Text for humans, compact JSON for machines, native YAML for schemas
-- **Command-Specific Behavior**: Administrative commands support both formats, data commands are JSON-exclusive, meta commands are YAML-exclusive
+- **Command-Specific Behavior**: Administrative commands support both formats, data commands are JSON-exclusive, describe commands are JSON-exclusive
 - **Machine-Readable JSON**: Single-line compact format optimized for automation and parsing
 - **Human-Readable Text**: Tables, formatted output, and status indicators for interactive use
 
@@ -134,7 +134,7 @@ monk --json server list             # Compact: {"servers":[...],"current_server"
 
 # Format-optimized command design  
 monk data select users              # Default: compact JSON for data operations
-monk meta select schema users       # Default: native YAML for schema definitions
+monk describe select users          # Default: native JSON for schema definitions
 
 # Administrative operations with Unicode support
 monk root tenant list               # List all tenants (localhost development)

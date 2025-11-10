@@ -275,7 +275,7 @@ monk auth login my-app admin
 
 # 5. Start working with data
 monk data select users
-monk meta select schema users
+monk describe select users
 monk fs ls /data/
 ```
 

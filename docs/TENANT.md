@@ -293,7 +293,7 @@ monk tenant use my-app
 # Affects these commands:
 monk auth login my-app admin    # Authenticates to selected tenant
 monk data select users          # Operates on tenant database  
-monk meta select schema         # Accesses tenant schemas
+monk describe select         # Accesses tenant schemas
 monk fs ls /data/              # Browses tenant data
 ```
 

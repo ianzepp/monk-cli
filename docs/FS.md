@@ -20,15 +20,15 @@ monk fs <operation> <path> [--tenant <tenant>] [flags]
 /data/users/             # Browse records in users schema
 /data/users/123.json     # Access specific record
 /data/users/123/email    # Access specific field
-/meta/                   # Browse metadata
-/meta/schema/            # Browse schema definitions
+/describe/                   # Browse metadata
+/describe/schema/            # Browse schema definitions
 ```
 
 ### **Cross-Tenant Paths**
 ```bash
 /tenant/my-app/data/users/           # Browse users in my-app tenant
 /tenant/staging:my-app/data/         # Browse data in my-app on staging server
-/tenant/prod:my-app/meta/schema/     # Browse schemas in production
+/tenant/prod:my-app/describe/schema/     # Browse schemas in production
 ```
 
 ## Available Commands
@@ -117,7 +117,7 @@ monk fs cat /tenant/prod:my-app/data/users/123/email
 
 **Schema Definitions:**
 ```bash
-monk fs cat /meta/schema/users.yaml
+monk fs cat /describe/schema/users.json
 ```
 ```yaml
 name: users
@@ -354,16 +354,16 @@ monk data select users 123
 ### **Schema Development Workflow**
 ```bash
 # 1. Check existing schemas
-monk fs ls /meta/schema/
+monk fs ls /describe/schema/
 
 # 2. Examine schema definition
-monk fs cat /meta/schema/users.yaml
+monk fs cat /describe/schema/users.json
 
-# 3. Modify schema via meta commands
-cat modified-schema.yaml | monk meta update schema users
+# 3. Modify schema via describe commands
+cat modified-schema.json | monk describe update users
 
 # 4. Verify changes
-monk fs cat /meta/schema/users.yaml
+monk fs cat /describe/schema/users.json
 ```
 
 ## Security and Access Control
@@ -401,7 +401,7 @@ monk fs ls /tenant/other-app/data/
 ### **Invalid Paths**
 ```bash
 monk fs cat /invalid/path
-# Error: Invalid path format. Use /data/schema/record or /meta/schema/name
+# Error: Invalid path format. Use /data/schema/record or /describe/schema/name
 ```
 
 ## Performance Considerations
@@ -458,7 +458,7 @@ Filesystem commands use **specialized formatting**:
 | `monk fs ls /data/users/` | `monk data select users` | Data exploration vs retrieval |
 | `monk fs cat /data/users/123.json` | `monk data select users 123` | File-like access vs API operation |
 | `monk fs rm /data/users/123` | `echo '{"id":"123"}' \| monk data delete users` | Unix-style vs API-style |
-| `monk fs stat /data/users/` | `monk meta select schema users` | Directory info vs schema definition |
+| `monk fs stat /data/users/` | `monk describe select users` | Directory info vs schema definition |
 
 **Choose Filesystem Style When:**
 - Exploring unknown data structures

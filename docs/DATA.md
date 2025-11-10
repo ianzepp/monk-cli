@@ -236,7 +236,7 @@ monk tenant use my-app
 monk auth login my-app admin
 
 # 2. Define schema (if not exists)
-cat user-schema.yaml | monk meta create schema
+cat user-schema.yaml | monk describe create
 
 # 3. Work with data
 echo '{"name": "Alice", "email": "alice@example.com"}' | monk data create users

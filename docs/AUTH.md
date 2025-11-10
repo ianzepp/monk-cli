@@ -379,7 +379,7 @@ monk auth login my-app admin
 
 # Then access tenant resources
 monk data select users          # Accesses authenticated tenant database
-monk meta select schema         # Retrieves schemas for authenticated tenant
+monk describe select         # Retrieves schemas for authenticated tenant
 monk fs ls /data/              # Browses authenticated tenant filesystem
 ```
 
