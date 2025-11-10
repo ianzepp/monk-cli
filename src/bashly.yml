@@ -276,6 +276,13 @@ commands:
       required: true
       help: Schema name to create
       
+  - name: update
+    help: Update existing schema from JSON definition
+    args:
+    - name: schema
+      required: true
+      help: Schema name to update
+      
   - name: delete
     help: Delete schema definition (soft delete)
     args:
