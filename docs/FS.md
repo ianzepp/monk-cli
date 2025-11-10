@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `monk fs` commands provide **filesystem-like operations** for exploring API data using familiar Unix commands. These commands use FTP middleware to browse schemas and records with path-based navigation and cross-tenant access.
+The `monk fs` commands provide **filesystem-like operations** for exploring API data using familiar Unix commands. These commands use the File API to browse schemas and records with path-based navigation and cross-tenant access.
 
 **Format Note**: Filesystem commands use **context-dependent output** optimized for file-like operations. They provide specialized formatting appropriate for directory listings, file content, and metadata display.
 
@@ -62,9 +62,9 @@ monk fs ls /data/users/
 
 # Detailed listing
 monk fs ls -l /data/users/
-# -rw-r--r-- 245 bytes 2025-08-29 10:30 123.json
-# -rw-r--r-- 198 bytes 2025-08-29 11:15 456.json
-# -rw-r--r-- 267 bytes 2025-08-29 12:00 789.json
+# rwx               0 2025-08-29 10:30 123.json
+# rwx               0 2025-08-29 11:15 456.json
+# rwx               0 2025-08-29 12:00 789.json
 ```
 
 **Cross-Tenant Access:**
