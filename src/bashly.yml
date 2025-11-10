@@ -324,7 +324,7 @@ commands:
 
 # Filesystem-like operations for API data exploration
 - name: fs
-  help: Filesystem-like operations for API data exploration via FTP middleware
+  help: Filesystem-like operations for API data exploration via File API
   
   commands:
   - name: ls
@@ -332,7 +332,7 @@ commands:
     args:
     - name: path
       required: true
-      help: FTP path (e.g., /data/users/, /tenant/tenant-a/data/users/)
+      help: File path (e.g., /data/users/, /tenant/tenant-a/data/users/)
     flags:
     - long: --long
       short: -l
@@ -347,7 +347,7 @@ commands:
     args:
     - name: path
       required: true
-      help: FTP path to file or record (e.g., /data/users/user-123.json, /tenant/tenant-a/data/users/user-123.json)
+      help: File path to file or record (e.g., /data/users/user-123.json, /tenant/tenant-a/data/users/user-123.json)
     flags:
     - long: --tenant
       short: -t
@@ -359,7 +359,7 @@ commands:
     args:
     - name: path
       required: true
-      help: FTP path to delete (e.g., /data/users/user-123, /tenant/tenant-a/data/users/user-123)
+      help: File path to delete (e.g., /data/users/user-123, /tenant/tenant-a/data/users/user-123)
     flags:
     - long: --force
       short: -f
@@ -374,8 +374,29 @@ commands:
     args:
     - name: path
       required: true
-      help: FTP path for status information (e.g., /data/users/, /tenant/tenant-a/meta/schema/)
+      help: File path for status information (e.g., /data/users/, /tenant/tenant-a/meta/schema/)
     flags:
+    - long: --tenant
+      short: -t
+      arg: tenant
+      help: Target tenant (tenant-name or server:tenant-name)
+      
+  - name: cp
+    help: Copy records between schemas or duplicate records
+    args:
+    - name: source
+      required: true
+      help: Source path (e.g., /data/users/123.json, /data/users/)
+    - name: destination
+      required: true
+      help: Destination path (e.g., /data/users/456.json, /data/backup/users/)
+    flags:
+    - long: --recursive
+      short: -r
+      help: Copy directory contents recursively
+    - long: --force
+      short: -f
+      help: Force overwrite and allow cross-tenant operations
     - long: --tenant
       short: -t
       arg: tenant
