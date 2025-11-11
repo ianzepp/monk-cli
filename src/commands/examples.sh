@@ -66,30 +66,43 @@ list_examples() {
 show_example() {
     local example_name="$1"
     local version=$(get_current_version)
+    local content=""
 
     # First try local file
     local local_file="examples/${example_name}.md"
     if [[ -f "$local_file" ]]; then
-        cat "$local_file"
-        return
+        content=$(cat "$local_file")
+    else
+        # Fall back to GitHub
+        local tag="v${version}"
+        local repo="ianzepp/monk-cli"  # Discovered via git remote
+
+        # Direct raw URL for the file
+        local raw_url="https://raw.githubusercontent.com/${repo}/${tag}/examples/${example_name}.md"
+
+        content=$(curl -s "$raw_url")
+
+        if [[ -z "$content" ]] || echo "$content" | grep -q "404: Not Found"; then
+            print_error "Example '${example_name}' not found for version ${version}"
+            print_info "Try 'monk examples list' to see available examples"
+            return 1
+        fi
     fi
 
-    # Fall back to GitHub
-    local tag="v${version}"
-    local repo="ianzepp/monk-cli"  # Discovered via git remote
+    # Determine output format
+    local output_format=$(get_output_format "glow")
 
-    # Direct raw URL for the file
-    local raw_url="https://raw.githubusercontent.com/${repo}/${tag}/examples/${example_name}.md"
-
-    local content=$(curl -s "$raw_url")
-
-    if [[ -z "$content" ]] || echo "$content" | grep -q "404: Not Found"; then
-        print_error "Example '${example_name}' not found for version ${version}"
-        print_info "Try 'monk examples list' to see available examples"
-        return 1
+    # Display content based on format and TTY
+    if [[ "$output_format" == "text" ]]; then
+        # Raw markdown output when --text flag is used
+        echo "$content"
+    elif [ -t 1 ] && command -v glow >/dev/null 2>&1; then
+        # Use glow for enhanced formatting when outputting to terminal
+        echo "$content" | glow --width=0 --pager -
+    else
+        # Fallback to raw markdown if not a TTY or glow not installed
+        echo "$content"
     fi
-
-    echo "$content"
 }
 
 # Main command logic
