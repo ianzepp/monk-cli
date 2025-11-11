@@ -94,7 +94,7 @@ monk tenant use test-env
 
 **Context Change:**
 - Sets current tenant for all subsequent commands
-- Affects `auth`, `data`, `meta`, and `fs` operations
+- Affects `auth`, `data`, `describe`, and `fs` operations
 - Persists across CLI sessions
 
 #### **Remove Tenant from Registry**
