@@ -25,23 +25,13 @@ Replace `localhost:3000` with your actual server endpoint.
 monk server use dev
 ```
 
-### 4. Create a Tenant
+### 4. Register Tenant and User
 ```bash
-monk tenant add myproject "My Project"
+monk auth register myproject admin
 ```
+This creates both the tenant and user account, and automatically logs you in.
 
-### 5. Switch to Your Tenant
-```bash
-monk tenant use myproject
-```
-
-### 6. Authenticate
-```bash
-monk auth login myproject admin
-```
-Enter your admin password when prompted.
-
-### 7. Verify Connection
+### 5. Verify Connection
 ```bash
 monk server ping
 monk auth status
@@ -52,8 +42,8 @@ monk auth status
 After running these commands, you'll have:
 - ✅ CLI configuration initialized
 - ✅ Server connection configured
-- ✅ Tenant created and selected
-- ✅ Authentication established
+- ✅ Tenant and user account created
+- ✅ Authentication established and tenant selected
 - ✅ Ready to work with data and schemas
 
 ## Expected Output
@@ -68,15 +58,15 @@ $ monk server add dev localhost:3000 --description "Development server"
 $ monk server use dev
 ✓ Switched to server 'dev'
 
-$ monk tenant add myproject "My Project"
-✓ Tenant 'myproject' added successfully
-
-$ monk tenant use myproject
-✓ Switched to tenant 'myproject'
-
-$ monk auth login myproject admin
-Password: ********
-✓ Authentication successful
+$ monk auth register myproject admin
+✓ Success (200)
+✓ Registration successful
+ℹ Tenant: myproject
+ℹ Database: tenant_abc123
+ℹ Username: admin
+ℹ Token expires in: 86400 seconds
+ℹ JWT token stored for server+tenant context
+✓ Tenant added to local registry for server: dev
 
 $ monk server ping
 ✓ Server 'dev' is healthy
