@@ -221,8 +221,8 @@ commands:
   help: Data operations on dynamic schemas
   
   commands:      
-  - name: select
-    help: Select record(s) with flexible query support
+  - name: list
+    help: List record(s) with flexible query support
     args:
     - name: schema
       required: true
