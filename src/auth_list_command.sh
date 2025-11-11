@@ -153,8 +153,8 @@ if [[ "$output_format" == "text" ]]; then
     
     # Check if stdout is a TTY (interactive terminal) and glow is available
     if [ -t 1 ] && command -v glow >/dev/null 2>&1; then
-        # Render with glow for interactive terminals
-        echo -e "$markdown_output" | glow -
+        # Render with glow for interactive terminals (width=0 auto-detects terminal width)
+        echo -e "$markdown_output" | glow --width=0 -
     else
         # Output raw markdown for pipes and non-interactive use
         echo -e "$markdown_output"
