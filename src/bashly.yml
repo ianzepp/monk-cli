@@ -287,6 +287,9 @@ commands:
   help: Schema description and metadata management
   
   commands:
+  - name: list
+    help: List all available schema names in the current tenant
+    
   - name: select
     help: Select specific schema definition
     args:

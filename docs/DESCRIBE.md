@@ -16,6 +16,45 @@ monk describe <operation> <schema-name> [flags]
 
 ### **Schema Management**
 
+#### **List All Schemas**
+```bash
+monk describe list
+```
+
+**Examples:**
+```bash
+# List all schemas in text format
+monk describe list
+
+# List all schemas in JSON format
+monk --json describe list
+
+# Count total schemas
+monk describe list | wc -l
+```
+
+**Sample Output (Text):**
+```
+✓ Success (200)
+schemas
+users
+products
+orders
+test_schema
+```
+
+**Sample Output (JSON):**
+```json
+✓ Success (200)
+["schemas","users","products","orders","test_schema"]
+```
+
+**Use Cases:**
+- Discover available schemas in a tenant
+- Verify schema creation
+- Build automation scripts
+- Generate schema documentation
+
 #### **Retrieve Schema Definition**
 ```bash
 monk describe select <name>
