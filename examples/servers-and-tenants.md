@@ -1,0 +1,358 @@
+# Servers and Tenants
+
+Learn how to manage server connections and tenants in monk CLI. Servers are remote API endpoints, and tenants are isolated workspaces within those servers.
+
+## Prerequisites
+- Monk CLI installed
+- Access to one or more Monk API servers
+
+## Understanding the Hierarchy
+
+```
+Monk CLI
+└── Servers (API endpoints)
+    └── Tenants (isolated workspaces)
+        └── Schemas and Data
+```
+
+- **Server**: A Monk API instance (e.g., localhost:9001, api.example.com)
+- **Tenant**: An isolated workspace within a server (e.g., myproject, production)
+- **Context**: Your current server + tenant selection
+
+## Server Management
+
+### List All Servers
+```bash
+monk server list
+```
+
+Shows all registered servers with health status.
+
+### Add a Server
+```bash
+monk server add dev localhost:9001 --description "Development server"
+monk server add staging api.staging.example.com:443 --description "Staging"
+monk server add prod api.example.com:443 --description "Production"
+```
+
+### Switch Servers
+```bash
+monk server use dev
+monk server use prod
+```
+
+Your server selection persists across CLI sessions.
+
+### Check Server Status
+```bash
+# Check current server
+monk server current
+
+# Ping a specific server
+monk server ping dev
+
+# Check server health
+monk server health dev
+
+# Ping all registered servers
+monk server ping-all
+
+# Get detailed server info
+monk server info dev
+```
+
+### Remove a Server
+```bash
+monk server delete staging
+```
+
+## Tenant Management
+
+Tenants are isolated workspaces within a server. Each tenant has:
+- Its own schemas and data
+- Separate authentication
+- Independent access controls
+- Complete isolation from other tenants
+
+### List Tenants
+```bash
+monk tenant list
+```
+
+Shows tenants on the current server.
+
+### Create a Tenant
+```bash
+# Note: Use 'monk auth register' instead for automatic setup
+monk auth register myproject admin
+```
+
+This creates the tenant, user account, and authenticates you automatically.
+
+Alternatively, for manual tenant creation:
+```bash
+monk tenant add myproject "My Project"
+```
+
+### Switch Tenants
+```bash
+monk tenant use myproject
+```
+
+### Remove a Tenant
+```bash
+monk tenant delete old-project
+```
+
+## Complete Workflow
+
+### Setting Up Multiple Environments
+
+```bash
+# Add all your servers
+monk server add dev localhost:9001
+monk server add staging api-staging.company.com:443
+monk server add prod api.company.com:443
+
+# Switch to development
+monk server use dev
+
+# Create and use a tenant
+monk auth register myapp admin
+
+# Verify setup
+monk status
+```
+
+### Working Across Environments
+
+```bash
+# Development work
+monk server use dev
+monk tenant use myapp
+monk describe list
+monk data list users
+
+# Switch to staging
+monk server use staging
+monk tenant use myapp
+monk data list users  # Same tenant, different server
+
+# Switch to production
+monk server use prod
+monk tenant use myapp
+monk data list users  # Production data
+```
+
+### Project-Based Organization
+
+```bash
+# Create separate tenants for different projects
+monk server use dev
+
+monk auth register fitness-app admin
+monk describe create users  # Fitness user schema
+
+monk auth register inventory-sys admin
+monk describe create products  # Inventory schema
+
+# Switch between projects easily
+monk tenant use fitness-app
+monk data list users  # Fitness users
+
+monk tenant use inventory-sys
+monk data list products  # Inventory products
+```
+
+## Multi-Environment Patterns
+
+### Pattern 1: Server per Environment
+```
+dev server
+├── myapp tenant
+├── testing tenant
+
+prod server
+├── myapp tenant
+```
+
+### Pattern 2: Tenant per Environment
+```
+company server
+├── dev-myapp tenant
+├── staging-myapp tenant
+├── prod-myapp tenant
+```
+
+### Pattern 3: Project Tenants
+```
+dev server
+├── fitness-app tenant
+├── inventory-sys tenant
+├── crm tenant
+```
+
+## Checking Your Context
+
+### Quick Status Check
+```bash
+monk status
+```
+
+Shows:
+- Current server and health
+- Current tenant
+- Authentication status
+- Available schemas
+
+### Detailed Information
+```bash
+# Current server
+monk server current
+
+# Server info
+monk server info
+
+# Authentication details
+monk auth status
+
+# List schemas in current tenant
+monk describe list
+```
+
+## Best Practices
+
+### Naming Conventions
+
+**Servers:**
+```bash
+monk server add dev ...       # Local development
+monk server add staging ...   # Staging environment
+monk server add prod ...      # Production
+```
+
+**Tenants:**
+```bash
+# Project-based
+monk auth register fitness-tracker admin
+monk auth register expense-manager admin
+
+# Environment-based
+monk auth register dev-api admin
+monk auth register prod-api admin
+```
+
+### Connection Management
+
+```bash
+# Always verify connection after switching
+monk server use prod
+monk server ping
+
+# Check status before operations
+monk status
+```
+
+### Environment Separation
+
+Keep development and production completely separate:
+
+```bash
+# Development
+monk server use dev
+monk tenant use myapp-dev
+
+# Production (different server entirely)
+monk server use prod
+monk tenant use myapp
+```
+
+## Data Migration Between Environments
+
+```bash
+# Export from staging
+monk server use staging
+monk tenant use myapp
+monk data list users > users-export.json
+
+# Import to production
+monk server use prod
+monk tenant use myapp
+cat users-export.json | monk data create users
+```
+
+## Troubleshooting
+
+### Can't Connect to Server
+```bash
+# Check server status
+monk server ping dev
+
+# Get server info
+monk server info dev
+
+# Try re-adding server
+monk server delete dev
+monk server add dev localhost:9001
+```
+
+### Authentication Issues
+```bash
+# Check current auth
+monk auth status
+
+# Re-authenticate
+monk auth login myproject admin
+
+# Or register new
+monk auth register newproject admin
+```
+
+### Wrong Context
+```bash
+# Always verify your context
+monk status
+
+# Switch if needed
+monk server use correct-server
+monk tenant use correct-tenant
+```
+
+### Tenant Not Found
+```bash
+# List available tenants
+monk tenant list
+
+# Check you're on the right server
+monk server current
+```
+
+## Common Commands Reference
+
+```bash
+# Server operations
+monk server list                    # List all servers
+monk server add <name> <host:port> # Add server
+monk server use <name>             # Switch server
+monk server delete <name>          # Remove server
+monk server ping <name>            # Check health
+
+# Tenant operations
+monk tenant list                   # List tenants
+monk auth register <tenant> <user> # Create tenant + user
+monk tenant use <name>             # Switch tenant
+monk tenant delete <name>          # Remove tenant
+
+# Status and info
+monk status                        # Complete status
+monk server current                # Current server
+monk auth status                   # Auth details
+```
+
+## Next Steps
+
+- `monk examples getting-started` - Complete setup walkthrough
+- `monk examples describe-and-data` - Work with schemas and data
+- `monk examples reading-api-docs` - Learn about API capabilities
+
+Servers and tenants provide the organizational structure for all your work with monk CLI!
