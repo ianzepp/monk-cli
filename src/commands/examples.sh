@@ -59,7 +59,7 @@ list_examples() {
     done
 
     echo
-    echo "Use 'monk examples show <name>' to view an example"
+    echo "Use 'monk examples <name>' to view an example"
 }
 
 # Show specific example
