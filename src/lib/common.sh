@@ -382,8 +382,32 @@ make_request_json() {
             return 0
             ;;
         400|404|500)
-            print_error "HTTP Error ($http_code)"
-            echo "$response" >&2
+            # Format error output based on output mode
+            output_format=$(get_output_format "text")
+            
+            if [[ "$output_format" == "json" ]]; then
+                # JSON mode: output compact error without stack trace
+                print_error "HTTP Error ($http_code)"
+                if command -v jq >/dev/null 2>&1; then
+                    echo "$response" | jq -c 'del(.data.stack)' >&2
+                else
+                    echo "$response" >&2
+                fi
+            else
+                # Text mode: extract human-readable error
+                print_error "HTTP Error ($http_code)"
+                if command -v jq >/dev/null 2>&1; then
+                    error_msg=$(echo "$response" | jq -r '.error // "Unknown error"' 2>/dev/null)
+                    error_code=$(echo "$response" | jq -r '.error_code // ""' 2>/dev/null)
+                    if [ -n "$error_code" ] && [ "$error_code" != "null" ]; then
+                        echo "Error: $error_msg (code: $error_code)" >&2
+                    else
+                        echo "Error: $error_msg" >&2
+                    fi
+                else
+                    echo "$response" >&2
+                fi
+            fi
             exit 1
             ;;
         *)
