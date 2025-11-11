@@ -8,7 +8,7 @@
 # Usage Examples:
 #   monk docs auth              # Display authentication API documentation
 #   monk docs data              # Display data API documentation  
-#   monk docs meta              # Display metadata API documentation
+#   monk docs describe          # Display schema description API documentation
 #   monk docs badarea           # Show available areas if no exact match
 #
 # Output Format:

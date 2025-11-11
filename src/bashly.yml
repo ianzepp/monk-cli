@@ -1,5 +1,17 @@
 name: monk
-help: Monk CLI - Command-line interface for PaaS Backend API
+help: |
+  Monk CLI - Command-line interface for PaaS Backend API
+
+  Getting started:
+    monk examples getting-started    # Browse interactive examples
+    monk docs data                   # View API documentation for the Data API
+
+  Usage examples:
+    monk status                      # Show current server/tenant/user
+    monk data list users             # List all users
+    monk examples                    # List all available examples
+
+  For detailed help on a command, run: monk <command> --help
 version: 2.17.0
 
 environment_variables:
@@ -44,7 +56,7 @@ commands:
 # Remote server management
 - name: server
   help: Remote server management
-  
+
   commands:
   - name: add
     help: Register remote server
@@ -59,37 +71,37 @@ commands:
     - long: --description
       arg: description
       help: Optional server description
-      
+
   - name: list
     help: List all servers with health status
-    
+
   - name: current
     help: Show currently selected server
-    
+
   - name: use
     help: "Switch to server (persistent selection) or show current server"
     args:
     - name: name
       required: false
       help: Server name to switch to (omit to show current server)
-      
+
   - name: delete
     help: Remove server from registry
     args:
     - name: name
       required: true
       help: Server name to delete
-      
+
   - name: ping
     help: Health check specific server (defaults to current server)
     args:
     - name: name
       required: false
       help: Server name to ping (optional, defaults to current server)
-      
+
   - name: ping-all
     help: Health check all registered servers
-    
+
   - name: info
     help: Show server information from API root endpoint
     args:
@@ -107,7 +119,7 @@ commands:
 # Tenant registry management
 - name: tenant
   help: Tenant registry management
-  
+
   commands:
   - name: add
     help: Register new tenant
@@ -122,21 +134,21 @@ commands:
     - long: --description
       arg: description
       help: Optional tenant description
-      
+
   - name: list
     help: List all registered tenants
     flags:
     - long: --server
       arg: server
       help: Target server (defaults to current server)
-    
+
   - name: delete
     help: Remove tenant from registry
     args:
     - name: name
       required: true
       help: Tenant name to delete
-      
+
   - name: use
     help: Switch to tenant (persistent selection)
     args:
@@ -147,11 +159,11 @@ commands:
 # Authentication and token management
 - name: auth
   help: Authentication and token management
-  
+
   commands:
   - name: list
     help: List all stored JWT tokens and sessions
-    
+
   - name: register
     help: Register new tenant and user (creates both and stores JWT)
     args:
@@ -161,7 +173,7 @@ commands:
     - name: username
       required: true
       help: Username to register
-      
+
   - name: login
     help: Authenticate with tenant and username
     args:
@@ -171,19 +183,19 @@ commands:
     - name: username
       required: true
       help: Username for authentication
-      
+
   - name: logout
     help: Clear stored JWT token
-    
+
   - name: status
     help: Show authentication status
-    
+
   - name: token
     help: Display current JWT token
-    
+
   - name: info
     help: Decode and display JWT token contents
-    
+
   - name: ping
     help: Authenticated API health check
     flags:
@@ -194,7 +206,7 @@ commands:
       short: -j
       arg: token
       help: Include JWT token in request
-      
+
   - name: import
     help: Import JWT token from external auth flow
     args:
@@ -209,18 +221,18 @@ commands:
       short: -t
       arg: token
       help: JWT token to import (or provide via stdin)
-      
+
   - name: expires
     help: Show JWT token expiration time
-    
+
   - name: expired
     help: Check if JWT token is expired (exit code 0=valid, 1=expired)
 
 # Data operations on dynamic schemas
 - name: data
   help: Data operations on dynamic schemas
-  
-  commands:      
+
+  commands:
   - name: list
     help: List record(s) with flexible query support
     args:
@@ -234,14 +246,14 @@ commands:
     - long: --filter
       arg: json
       help: JSON filter for query parameters (limit, offset, order)
-      
+
   - name: create
     help: Create record from stdin
     args:
     - name: schema
       required: true
       help: Schema name to create record in
-      
+
   - name: update
     help: Update record(s) from stdin
     args:
@@ -251,7 +263,7 @@ commands:
     - name: id
       required: false
       help: Record ID to update (optional if ID in JSON)
-      
+
   - name: delete
     help: Delete record(s)
     args:
@@ -261,7 +273,7 @@ commands:
     - name: id
       required: false
       help: Record ID to delete (optional if ID in JSON or using stdin)
-      
+
   - name: export
     help: Export records to JSON files
     args:
@@ -271,7 +283,7 @@ commands:
     - name: dir
       required: true
       help: Directory to export to
-      
+
   - name: import
     help: Import JSON files as records
     args:
@@ -285,32 +297,32 @@ commands:
 # Schema description and metadata management
 - name: describe
   help: Schema description and metadata management
-  
+
   commands:
   - name: list
     help: List all available schema names in the current tenant
-    
+
   - name: select
     help: Select specific schema definition
     args:
     - name: schema
       required: true
       help: Schema name to retrieve
-      
+
   - name: create
     help: Create new schema from JSON definition
     args:
     - name: schema
       required: true
       help: Schema name to create
-      
+
   - name: update
     help: Update existing schema from JSON definition
     args:
     - name: schema
       required: true
       help: Schema name to update
-      
+
   - name: delete
     help: Delete schema definition (soft delete)
     args:
@@ -321,28 +333,28 @@ commands:
 # Bulk operations for batch processing
 - name: bulk
   help: Bulk operations for batch processing across multiple schemas
-  
+
   commands:
   - name: raw
     help: Execute bulk operations immediately (synchronous)
-    
+
   - name: submit
     help: Submit bulk operations for async processing (future feature)
-    
+
   - name: status
     help: Check status of async bulk operation (future feature)
     args:
     - name: operation_id
       required: true
       help: Bulk operation ID from submit command
-      
+
   - name: result
     help: Download results of completed bulk operation (future feature)
     args:
     - name: operation_id
       required: true
       help: Bulk operation ID from submit command
-      
+
   - name: cancel
     help: Cancel pending bulk operation (future feature)
     args:
@@ -353,7 +365,7 @@ commands:
 # Filesystem-like operations for API data exploration
 - name: fs
   help: Filesystem-like operations for API data exploration via File API
-  
+
   commands:
   - name: ls
     help: List directory contents with wildcard support
@@ -369,7 +381,7 @@ commands:
       short: -t
       arg: tenant
       help: Target tenant (tenant-name or server:tenant-name)
-      
+
   - name: cat
     help: Display file content or record data
     args:
@@ -381,7 +393,7 @@ commands:
       short: -t
       arg: tenant
       help: Target tenant (tenant-name or server:tenant-name)
-      
+
   - name: rm
     help: Remove files, records, or fields
     args:
@@ -396,7 +408,7 @@ commands:
       short: -t
       arg: tenant
       help: Target tenant (tenant-name or server:tenant-name)
-      
+
   - name: stat
     help: Display detailed file/directory status and schema information
     args:
@@ -408,7 +420,7 @@ commands:
       short: -t
       arg: tenant
       help: Target tenant (tenant-name or server:tenant-name)
-      
+
   - name: cp
     help: Copy records between schemas or duplicate records
     args:
@@ -445,67 +457,7 @@ commands:
     short: -T
     help: Return only last record from results
 
-# Project management for simplified tenant creation and management
-- name: project
-  help: Project management for simplified tenant creation and workflow
-  
-  commands:
-  - name: init
-    help: Initialize new project with automatic tenant creation
-    args:
-    - name: name
-      required: true
-      help: Project name (will be used as tenant name)
-    flags:
-    - long: --description
-      arg: description
-      help: Optional project description
-    - long: --tags
-      arg: tags
-      help: Comma-separated project tags
-    - long: --create-user
-      arg: username
-      help: Create initial user with specified username
-    - long: --auto-login
-      help: Automatically login as created user
-    - long: --host
-      arg: hostname
-      help: "Database host (default: localhost)"
-      
-  - name: list
-    help: List all projects (tenants)
-    flags:
-    - long: --include-trashed
-      help: Include soft-deleted projects
-    - long: --include-deleted
-      help: Include hard-deleted projects
-      
-  - name: show
-    help: Show project details
-    alias: info
-    args:
-    - name: name
-      required: true
-      help: Project name
-      
-  - name: use
-    help: Switch to project context
-    args:
-    - name: name
-      required: true
-      help: Project name to switch to
-      
-  - name: delete
-    help: Delete project (soft delete by default)
-    args:
-    - name: name
-      required: true
-      help: Project name to delete
-    flags:
-    - long: --force
-      help: Skip confirmation
-    - long: --permanent
-      help: Permanent deletion (hard delete)
+
 
 # API Documentation viewer
 - name: docs
@@ -513,16 +465,16 @@ commands:
   args:
   - name: area
     required: true
-    help: Documentation area to view (e.g., auth, data, meta, find, bulk, file, acls, root)
+    help: Documentation area to view (e.g., auth, data, describe, find, bulk, file, acls, root)
 
 # Administrative operations (development only)
 - name: root
   help: Administrative operations for tenant management (localhost development only)
-  
+
   commands:
   - name: tenant
     help: Tenant management operations
-    
+
     commands:
     - name: list
       help: List all tenants
@@ -532,7 +484,7 @@ commands:
         help: Include soft-deleted tenants
       - long: --include-deleted
         help: Include hard-deleted tenants
-        
+
     - name: create
       help: Create new tenant
       alias: add
@@ -546,7 +498,7 @@ commands:
         help: "Database host (default: localhost)"
       - long: --force
         help: Force creation even if exists
-        
+
     - name: show
       help: Show tenant details
       alias: info
@@ -554,21 +506,21 @@ commands:
       - name: name
         required: true
         help: Tenant name
-        
+
     - name: trash
       help: Soft delete tenant (set trashed_at)
       args:
       - name: name
         required: true
         help: Tenant name
-        
+
     - name: restore
       help: Restore soft deleted tenant
       args:
       - name: name
         required: true
         help: Tenant name
-        
+
     - name: delete
       help: Hard delete tenant (permanent)
       alias: purge
@@ -579,13 +531,10 @@ commands:
       flags:
       - long: --force
         help: Skip confirmation
-        
+
     - name: health
       help: Check tenant database health
       args:
       - name: name
         required: true
         help: Tenant name
-
-
-

@@ -23,6 +23,14 @@ fi
 # Generate the CLI
 $BASHLY generate
 
+# Fix exit code for root command fallback (show help with exit 0 instead of 1)
+# This changes the exit code from 1 to 0 when no command is provided (shows help)
+awk '
+/# :command\.command_fallback/ { in_fallback = 1 }
+in_fallback && /exit 1/ { sub(/exit 1/, "exit 0"); in_fallback = 0 }
+{ print }
+' monk > monk.tmp && mv monk.tmp monk
+
 # Make executable
 chmod +x ./monk
 
