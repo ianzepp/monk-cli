@@ -129,9 +129,9 @@ if [[ "$output_format" == "text" ]]; then
     print_info "Stored JWT Tokens"
     echo
     
-    # Generate markdown table
-    markdown="| SESSION | SERVER | TENANT | USER | CREATED | EXPIRED | CURRENT |\n"
-    markdown="${markdown}|---|---|---|---|---|---|---|\n"
+    # Output raw markdown table header
+    echo "| SESSION | SERVER | TENANT | USER | CREATED | EXPIRED | CURRENT |"
+    echo "|---------|--------|--------|------|---------|---------|---------|"
     
     # Add data rows using process substitution to avoid subshell issues
     while IFS= read -r row; do
@@ -146,13 +146,11 @@ if [[ "$output_format" == "text" ]]; then
             expired=$(echo "$decoded" | jq -r 'if .is_expired then "yes" else "no" end')
             current=$(echo "$decoded" | jq -r 'if .is_current then "*" else "" end')
             
-            markdown="${markdown}| ${session_key} | ${server} | ${tenant} | ${user} | ${created} | ${expired} | ${current} |\n"
+            echo "| ${session_key} | ${server} | ${tenant} | ${user} | ${created} | ${expired} | ${current} |"
         fi
     done < <(echo "$final_json" | jq -r '.sessions[] | @base64')
     
-    # Render markdown through glow
-    echo -e "$markdown" | glow --pager -
-    
+    echo
     if [ -n "$current_session_key" ]; then
         print_info "Current session: $current_session_key (marked with *)"
     else
