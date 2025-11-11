@@ -149,6 +149,19 @@ commands:
   help: Authentication and token management
   
   commands:
+  - name: list
+    help: List all stored JWT tokens and sessions
+    
+  - name: register
+    help: Register new tenant and user (creates both and stores JWT)
+    args:
+    - name: tenant
+      required: true
+      help: Tenant name to register
+    - name: username
+      required: true
+      help: Username to register
+      
   - name: login
     help: Authenticate with tenant and username
     args:

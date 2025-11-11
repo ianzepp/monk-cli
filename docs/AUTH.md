@@ -14,7 +14,87 @@ monk [--text|--json] auth <operation> [arguments] [flags]
 
 ## Available Commands
 
+### **Session Management**
+
+#### **List All Sessions**
+```bash
+monk auth list
+```
+
+**Text Format (Default):**
+```
+Stored JWT Tokens
+
+| SESSION | SERVER | TENANT | USER | CREATED | EXPIRED | CURRENT |
+|---|---|---|---|---|---|---|
+| local:my-app | local | my-app | admin | 2025-08-29 | no | * |
+| local:test-env | local | test-env | user1 | 2025-08-28 | no |   |
+| staging:my-app | staging | my-app | admin | 2025-08-27 | yes |   |
+
+Current session: local:my-app (marked with *)
+Current session expires: Fri Aug 30 14:30:45 EDT 2025
+```
+
+**JSON Format:**
+```bash
+monk --json auth list
+```
+```json
+{"sessions":[{"session_key":"local:my-app","server":"local","tenant":"my-app","user":"admin","created_at":"2025-08-29T10:30:00Z","expires_at":1756550645,"expires_date":"Fri Aug 30 14:30:45 EDT 2025","is_expired":false,"is_current":true},{"session_key":"local:test-env","server":"local","tenant":"test-env","user":"user1","created_at":"2025-08-28T15:20:00Z","expires_at":1756460000,"expires_date":"Thu Aug 29 12:00:00 EDT 2025","is_expired":false,"is_current":false}],"current_session":"local:my-app"}
+```
+
+**Use Cases:**
+- View all stored authentication sessions across servers and tenants
+- Check which tokens are expired
+- Identify current active session
+- Audit authentication status before operations
+
 ### **Authentication Workflow**
+
+#### **Register New Tenant and User**
+```bash
+monk auth register <tenant> <username>
+```
+
+**Examples:**
+```bash
+# Register new tenant and user in one step
+monk auth register my-new-app admin
+
+# Register with Unicode tenant name
+monk auth register "测试应用" admin
+```
+
+**What Happens:**
+1. Sends registration request to current server's `/auth/register` endpoint
+2. Server creates new tenant and database
+3. Server creates initial user account
+4. Receives JWT token for new tenant+user
+5. Stores token in session registry (`~/.config/monk/cli/auth.json`)
+6. Adds tenant to local tenant registry
+7. Updates current tenant context
+8. Enables immediate authenticated operations
+
+**Output:**
+```
+Registering new tenant: my-new-app, username: admin
+Sending registration request to: http://localhost:9001/auth/register
+✓ Registration successful
+Tenant: my-new-app
+Database: tenant_abc123
+Username: admin
+Token expires in: 86400 seconds
+JWT token stored for server+tenant context
+Tenant added to local registry for server: local
+```
+
+**Use Cases:**
+- Quick project setup without manual tenant creation
+- Automated tenant provisioning in scripts
+- Development and testing workflows
+- Self-service tenant creation
+
+**Note**: This is a convenience command that combines `monk root tenant create` + `monk tenant add` + `monk auth login` into a single operation.
 
 #### **Login to Tenant**
 ```bash
