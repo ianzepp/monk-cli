@@ -139,7 +139,7 @@ monk server info
 monk docs data
 
 # Use the API with understanding from docs
-monk data select users
+monk data list users
 ```
 
 The documentation commands provide **live, server-specific** API documentation directly in your terminal workflow.

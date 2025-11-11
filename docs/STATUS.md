@@ -204,7 +204,7 @@ echo "Proceeding with operations..."
 # Standard workflow before data operations
 monk status                    # Verify context
 monk auth login my-app admin   # Authenticate if needed
-monk data select users         # Proceed with operations
+monk data list users         # Proceed with operations
 ```
 
 ### **Multi-Environment Management**
@@ -282,7 +282,7 @@ echo "Current context: $server/$tenant as $auth_user"
 1. monk status              # Check overall state
 2. monk server ping         # Verify server connectivity
 3. monk auth status         # Check authentication
-4. monk data select         # Test data access
+4. monk data list         # Test data access
 ```
 
 ## Output Format Details

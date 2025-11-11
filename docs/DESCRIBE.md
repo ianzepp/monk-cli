@@ -266,7 +266,7 @@ echo '[{"name": "Laptop", "price": 999.99}]' | monk data create products
 echo '{"title": "products", "properties": {"name": {...}, "sku": {...}}}' | monk describe update products
 
 # 4. Query data with new structure
-monk data select products
+monk data list products
 ```
 
 ### Schema Evolution Best Practices

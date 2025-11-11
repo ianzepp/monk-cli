@@ -46,7 +46,7 @@ Next steps:
   3. Select server: monk server use <name>
   4. Select tenant: monk tenant use <name>
   5. Authenticate: monk auth login <tenant> <username>
-  6. Start working: monk data select <schema>
+  6. Start working: monk data list <schema>
 ```
 
 ### **Custom Configuration Directory**
@@ -203,7 +203,7 @@ monk tenant use "$TENANT_NAME"
 echo "$JWT_TOKEN" | monk auth import "$TENANT_NAME" "$CI_USER"
 
 # Run tests
-monk data select users
+monk data list users
 ```
 
 ### **Multi-Environment Setup**
@@ -274,7 +274,7 @@ monk tenant use my-app
 monk auth login my-app admin
 
 # 5. Start working with data
-monk data select users
+monk data list users
 monk describe select users
 monk fs ls /data/
 ```

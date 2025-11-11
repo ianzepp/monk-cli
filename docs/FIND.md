@@ -244,7 +244,7 @@ Data select automatically redirects complex queries to find:
 
 ```bash
 # This data command...
-echo '{"where": {"status": "active"}, "limit": 10}' | monk data select users
+echo '{"where": {"status": "active"}, "limit": 10}' | monk data list users
 
 # ...automatically becomes:
 echo '{"where": {"status": "active"}, "limit": 10}' | monk find users
@@ -253,10 +253,10 @@ echo '{"where": {"status": "active"}, "limit": 10}' | monk find users
 ### **Query Building Workflow**
 ```bash
 # 1. Start with simple data selection
-monk data select users
+monk data list users
 
 # 2. Add filtering for specific needs
-echo '{"limit": 10}' | monk data select users
+echo '{"limit": 10}' | monk data list users
 
 # 3. Use find for complex queries
 echo '{"where": {"$and": [...]}}' | monk find users

@@ -141,7 +141,7 @@ monk tenant use my-new-app
 
 # 4. Authenticate and work
 monk auth login my-new-app admin
-monk data select users
+monk data list users
 ```
 
 ## Authentication Integration
@@ -292,7 +292,7 @@ monk tenant use my-app
 
 # Affects these commands:
 monk auth login my-app admin    # Authenticates to selected tenant
-monk data select users          # Operates on tenant database  
+monk data list users          # Operates on tenant database  
 monk describe select         # Accesses tenant schemas
 monk fs ls /data/              # Browses tenant data
 ```

@@ -72,7 +72,7 @@ monk project init "Property Search" \
 
 Next steps:
   monk status                    # Show current context
-  monk data select users         # Start working with data
+  monk data list users         # Start working with data
   monk describe create schema    # Create your first schema
 ```
 
@@ -137,7 +137,7 @@ Tags: fitness,health,personal
 ✓ This is your current project (server: local)
 
 Quick actions:
-  monk data select          # List available schemas
+  monk data list          # List available schemas
   monk describe select      # Show schema definitions
   monk fs ls /data/         # Browse data
 ```
@@ -164,7 +164,7 @@ Server: local (localhost)
 Next steps:
   monk status              # Show current context
   monk auth login <user>   # Authenticate to the project
-  monk data select         # List available schemas
+  monk data list         # List available schemas
   monk fs ls /data/        # Browse project data
 ```
 
@@ -208,7 +208,7 @@ monk server use local
 monk project init "My App" --create-user admin --auto-login
 
 # 4. Start working immediately
-monk data select
+monk data list
 ```
 
 ### **Multi-Project Workflow**
@@ -265,7 +265,7 @@ monk auth login admin         # Manual login if not auto-logged in
 
 ### **Data Operations**
 ```bash
-monk data select              # List schemas in current project
+monk data list              # List schemas in current project
 monk data create users        # Create records in project database
 monk fs ls /data/            # Browse project data
 ```

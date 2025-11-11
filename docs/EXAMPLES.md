@@ -125,7 +125,7 @@ cat << 'EOF' | monk data create users
 EOF
 
 # List all users
-monk data select users
+monk data list users
 ```
 
 ## Step 6: Explore Your Data

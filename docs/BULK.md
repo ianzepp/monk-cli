@@ -310,7 +310,7 @@ python transform-data.py ./migration/ > bulk-operations.json
 cat bulk-operations.json | monk bulk raw
 
 # 4. Verify migration
-monk data select new_schema | jq 'length'
+monk data list new_schema | jq 'length'
 ```
 
 ### **Batch Processing Pipeline**
@@ -338,7 +338,7 @@ echo "✅ All $(echo "$result" | jq '.summary.successful') operations completed"
 ### **Data Synchronization**
 ```bash
 # Sync users between environments
-source_users=$(monk data select users)
+source_users=$(monk data list users)
 cat << EOF | monk bulk raw
 [
 $(echo "$source_users" | jq -r '.[] | {

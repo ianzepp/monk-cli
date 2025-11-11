@@ -348,7 +348,7 @@ monk fs ls /data/users/ | head -5
 monk fs cat /data/users/123.json
 
 # 5. Work with data via data commands
-monk data select users 123
+monk data list users 123
 ```
 
 ### **Schema Development Workflow**
@@ -455,8 +455,8 @@ Filesystem commands use **specialized formatting**:
 
 | Filesystem Style | Regular Command | Use Case |
 |------------------|-----------------|----------|
-| `monk fs ls /data/users/` | `monk data select users` | Data exploration vs retrieval |
-| `monk fs cat /data/users/123.json` | `monk data select users 123` | File-like access vs API operation |
+| `monk fs ls /data/users/` | `monk data list users` | Data exploration vs retrieval |
+| `monk fs cat /data/users/123.json` | `monk data list users 123` | File-like access vs API operation |
 | `monk fs rm /data/users/123` | `echo '{"id":"123"}' \| monk data delete users` | Unix-style vs API-style |
 | `monk fs stat /data/users/` | `monk describe select users` | Directory info vs schema definition |
 

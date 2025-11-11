@@ -324,13 +324,13 @@ monk server add prod api.company.com:443 --description "Production API"
 monk server use dev
 monk tenant use my-app
 monk auth login my-app admin
-monk data select users
+monk data list users
 
 # Switch to staging
 monk server use staging  
 monk tenant use my-app      # Same tenant, different server
 monk auth login my-app admin # Re-authenticate for staging
-monk data select users      # Now working with staging data
+monk data list users      # Now working with staging data
 ```
 
 ### **Health Monitoring Across Environments**
@@ -481,7 +481,7 @@ monk server use production
 # Affects these operations:
 monk tenant list                # Lists tenants for production server
 monk auth login my-app admin    # Authenticates to production
-monk data select users          # Accesses production database
+monk data list users          # Accesses production database
 monk describe select         # Retrieves production schemas
 ```
 

@@ -421,7 +421,7 @@ if monk auth expired; then
 fi
 
 # Proceed with authenticated operations
-monk data select users
+monk data list users
 ```
 
 ### **Token Export for CI/CD**
@@ -458,7 +458,7 @@ Authentication enables all tenant-scoped operations:
 monk auth login my-app admin
 
 # Then access tenant resources
-monk data select users          # Accesses authenticated tenant database
+monk data list users          # Accesses authenticated tenant database
 monk describe select         # Retrieves schemas for authenticated tenant
 monk fs ls /data/              # Browses authenticated tenant filesystem
 ```

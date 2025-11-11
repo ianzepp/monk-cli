@@ -18,14 +18,14 @@ monk data <operation> <schema> [id] [flags]
 
 #### **Select Records**
 ```bash
-monk data select <schema> [id]
+monk data list <schema> [id]
 ```
 
 **Usage Patterns:**
 
 **1. List All Records:**
 ```bash
-monk data select users
+monk data list users
 ```
 ```json
 [{"id":"123","name":"Alice","email":"alice@example.com"},{"id":"456","name":"Bob","email":"bob@example.com"}]
@@ -33,7 +33,7 @@ monk data select users
 
 **2. Get Specific Record:**
 ```bash
-monk data select users 123
+monk data list users 123
 ```
 ```json
 {"id":"123","name":"Alice","email":"alice@example.com","created_at":"2025-08-29T10:30:00.000Z"}
@@ -41,13 +41,13 @@ monk data select users 123
 
 **3. Query with Parameters:**
 ```bash
-echo '{"limit": 10, "order": "name asc"}' | monk data select users
-echo '{"limit": 5, "offset": 20}' | monk data select users
+echo '{"limit": 10, "order": "name asc"}' | monk data list users
+echo '{"limit": 5, "offset": 20}' | monk data list users
 ```
 
 **4. Complex Queries (Redirects to Find):**
 ```bash
-echo '{"where": {"status": "active"}, "limit": 10}' | monk data select users
+echo '{"where": {"status": "active"}, "limit": 10}' | monk data list users
 # Automatically redirects to: monk find users
 ```
 
@@ -172,11 +172,11 @@ Data commands **only support JSON format**:
 
 ```bash
 # ✅ Correct usage (default JSON)
-monk data select users
+monk data list users
 echo '{"name": "Alice"}' | monk data create users
 
 # ❌ Invalid format flags
-monk --text data select users
+monk --text data list users
 # Error: The --text option is not supported for data operations
 # Data operations require JSON format for structured data handling
 
@@ -192,21 +192,21 @@ monk --text data create users
 ### **Query Parameters**
 ```bash
 # Pagination
-echo '{"limit": 50, "offset": 100}' | monk data select users
+echo '{"limit": 50, "offset": 100}' | monk data list users
 
 # Sorting  
-echo '{"order": "created_at desc"}' | monk data select users
-echo '{"order": "name asc, email desc"}' | monk data select users
+echo '{"order": "created_at desc"}' | monk data list users
+echo '{"order": "name asc, email desc"}' | monk data list users
 
 # Combined
-echo '{"limit": 20, "order": "name asc", "offset": 40}' | monk data select users
+echo '{"limit": 20, "order": "name asc", "offset": 40}' | monk data list users
 ```
 
 ### **Complex Queries (Auto-Redirect)**
-When JSON input contains a `where` clause, data select automatically redirects to the `find` command:
+When JSON input contains a `where` clause, data list automatically redirects to the `find` command:
 
 ```bash
-echo '{"where": {"status": "active"}, "limit": 10}' | monk data select users
+echo '{"where": {"status": "active"}, "limit": 10}' | monk data list users
 # → Automatically becomes: echo '{"where": {...}}' | monk find users
 ```
 
@@ -240,7 +240,7 @@ cat user-schema.yaml | monk describe create
 
 # 3. Work with data
 echo '{"name": "Alice", "email": "alice@example.com"}' | monk data create users
-monk data select users
+monk data list users
 echo '{"id": "123", "status": "verified"}' | monk data update users
 
 # 4. Export for backup
