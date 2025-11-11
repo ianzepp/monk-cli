@@ -45,7 +45,7 @@ if [ -n "$token_to_use" ]; then
 fi
 
 # Make request
-full_url="${base_url}/ping"
+full_url="${base_url}/api/auth/whoami"
 response=$(curl "${curl_args[@]}" -w "\n%{http_code}" "$full_url")
 http_code=$(echo "$response" | tail -n1)
 response=$(echo "$response" | sed '$d')
@@ -72,25 +72,28 @@ case "$http_code" in
         
         if [[ "$output_format" == "text" ]]; then
             if [ "$CLI_VERBOSE" = "true" ]; then
-                print_success "Server is reachable (HTTP $http_code)"
+                print_success "Authentication successful (HTTP $http_code)"
                 echo "Response: $response"
             else
                 # Parse response for clean output
                 if [ "$JSON_PARSER" = "jq" ]; then
-                    pong=$(echo "$response" | jq -r '.pong' 2>/dev/null || echo "unknown")
-                    domain=$(echo "$response" | jq -r '.domain' 2>/dev/null || echo "null")
-                    database=$(echo "$response" | jq -r '.database' 2>/dev/null || echo "null")
+                    user_id=$(echo "$response" | jq -r '.data.id' 2>/dev/null || echo "unknown")
+                    user_name=$(echo "$response" | jq -r '.data.name' 2>/dev/null || echo "unknown")
+                    tenant=$(echo "$response" | jq -r '.data.tenant' 2>/dev/null || echo "null")
+                    database=$(echo "$response" | jq -r '.data.database' 2>/dev/null || echo "null")
+                    access=$(echo "$response" | jq -r '.data.access' 2>/dev/null || echo "null")
                     
-                    echo "pong: $pong"
-                    if [ "$domain" != "null" ] && [ "$domain" != "" ]; then
-                        echo "domain: $domain"
+                    print_success "Authentication successful"
+                    echo "User: $user_name"
+                    echo "ID: $user_id"
+                    if [ "$tenant" != "null" ] && [ "$tenant" != "" ]; then
+                        echo "Tenant: $tenant"
                     fi
                     if [ "$database" != "null" ] && [ "$database" != "" ]; then
-                        if [ "$database" = "ok" ]; then
-                            echo "database: $database"
-                        else
-                            echo "database: ERROR - $database"
-                        fi
+                        echo "Database: $database"
+                    fi
+                    if [ "$access" != "null" ] && [ "$access" != "" ]; then
+                        echo "Access: $access"
                     fi
                 else
                     echo "Response: $response"

@@ -40,7 +40,9 @@ if [ -z "$sessions" ]; then
 fi
 
 # Build JSON data for all sessions
-sessions_json=$(echo "$sessions" | while read -r session_key; do
+# Use array to avoid subshell issues with while loop
+sessions_array=()
+for session_key in $sessions; do
     if [ -n "$session_key" ]; then
         session_info=$(jq -r ".sessions.\"$session_key\"" "$AUTH_CONFIG")
         
@@ -85,12 +87,13 @@ sessions_json=$(echo "$sessions" | while read -r session_key; do
         fi
         
         # Check if this is the current session
+        # Session key format is "server:tenant", so only check server and tenant match
         is_current="false"
-        if [ "$server" = "$current_server" ] && [ "$tenant" = "$current_tenant" ] && [ "$user" = "$current_user" ]; then
+        if [ "$server" = "$current_server" ] && [ "$tenant" = "$current_tenant" ]; then
             is_current="true"
         fi
         
-        jq -n \
+        session_json=$(jq -n \
             --arg session_key "$session_key" \
             --arg server "$server" \
             --arg tenant "$tenant" \
@@ -98,8 +101,8 @@ sessions_json=$(echo "$sessions" | while read -r session_key; do
             --arg created_at "$created_at" \
             --arg exp "$exp" \
             --arg exp_date "$exp_date" \
-            --argjson is_expired "$is_expired" \
-            --argjson is_current "$is_current" \
+            --arg is_expired "$is_expired" \
+            --arg is_current "$is_current" \
             '{
                 session_key: $session_key,
                 server: $server,
@@ -110,9 +113,13 @@ sessions_json=$(echo "$sessions" | while read -r session_key; do
                 expires_date: ($exp_date | if . == "unknown" then null else . end),
                 is_expired: ($is_expired == "true"),
                 is_current: ($is_current == "true")
-            }'
+            }')
+        sessions_array+=("$session_json")
     fi
-done | jq -s '{sessions: .}')
+done
+
+# Combine all sessions into final JSON
+sessions_json=$(jq -n --argjson sessions "$(printf '%s\n' "${sessions_array[@]}" | jq -s .)" '{sessions: $sessions}')
 
 # Find current session key
 current_session_key=""
