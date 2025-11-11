@@ -55,6 +55,9 @@
 #### **Filesystem Interface**
 - `monk fs` - Unix-like data exploration with cross-tenant path routing and metadata inspection
 
+#### **Project Management**
+- `monk project` - Simplified project creation and management with automatic tenant setup
+
 
 ### Output Format System
 - **Universal Flags**: Global `--text` and `--json` flags for consistent output control
@@ -65,6 +68,7 @@
 
 ## Documentation
 
+### **📚 Command Reference**
 Comprehensive command documentation available in the `docs/` directory:
 
 - **[INIT.md](docs/INIT.md)** - Configuration initialization and setup workflows
@@ -77,6 +81,18 @@ Comprehensive command documentation available in the `docs/` directory:
 - **[FIND.md](docs/FIND.md)** - Advanced search with enterprise Filter DSL
 - **[FS.md](docs/FS.md)** - Unix-like filesystem operations for data exploration
 - **[ROOT.md](docs/ROOT.md)** - Administrative tenant management (localhost development)
+- **[PROJECT.md](docs/PROJECT.md)** - Simplified project management and workflow
+
+### **🚀 Practical Examples**
+Complete, ready-to-run examples in the `examples/` directory:
+
+- **[Exercise Tracker Project](examples/exercise-tracker-project.md)** - Complete project example with schema design, data operations, and realistic workflows
+- **[Basic Setup](examples/basic-setup.md)** - Initial configuration and first connection
+- **[Server Management](examples/server-management.md)** - Multi-server setup and management
+- **[Tenant Management](examples/tenant-management.md)** - Traditional tenant administration
+- **[Data CRUD Operations](examples/data-crud.md)** - Basic data manipulation examples
+
+**🎯 Start Here**: The [Exercise Tracker Project](examples/exercise-tracker-project.md) provides the most comprehensive learning experience, demonstrating the complete workflow from project creation to data operations.
 
 Each documentation file includes practical examples, error handling guidance, automation patterns, and integration workflows.
 
@@ -109,6 +125,21 @@ monk --version
 
 ### Quick Start Workflow
 
+#### **Simplified Project Setup (Recommended)**
+```bash
+monk init                           # Initialize CLI configuration
+monk server add local localhost:9001 # Add server endpoint  
+monk server use local               # Select server
+monk project init "My App" --create-user admin --auto-login  # Create project!
+monk data select users              # Start working with data immediately
+
+# Multi-tenant filesystem exploration
+monk fs ls /data/                   # Browse current project
+monk fs cat /data/users/user-123.json # Read complete record
+monk fs cat /data/users/user-123/email # Read specific field
+```
+
+#### **Traditional Tenant Setup**
 ```bash
 monk init                           # Initialize CLI configuration
 monk server add local localhost:9001 # Add server endpoint  
@@ -117,12 +148,6 @@ monk server use local               # Select server
 monk tenant use my-tenant           # Select tenant
 monk auth login my-tenant admin     # Authenticate to server+tenant
 monk data select users              # Start working with data
-
-# Multi-tenant filesystem exploration
-monk fs ls /data/                   # Browse current tenant
-monk fs ls /tenant/other-tenant/data/ # Browse different tenant
-monk fs cat /data/users/user-123.json # Read complete record
-monk fs cat /data/users/user-123/email # Read specific field
 ```
 
 ### Output Format Examples
@@ -213,6 +238,7 @@ git tag v2.2.0 && git push --tags
 - **Automation Scripts**: Scriptable API operations for CI/CD pipelines
 - **Multi-Environment Management**: Development, staging, and production environment coordination
 - **Tenant Administration**: Multi-tenant SaaS application management
+- **Rapid Prototyping**: Single-command project setup for quick idea validation
 
 ### Archive Value
 Excellent reference for:

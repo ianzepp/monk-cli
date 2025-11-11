@@ -429,6 +429,68 @@ commands:
     short: -T
     help: Return only last record from results
 
+# Project management for simplified tenant creation and management
+- name: project
+  help: Project management for simplified tenant creation and workflow
+  
+  commands:
+  - name: init
+    help: Initialize new project with automatic tenant creation
+    args:
+    - name: name
+      required: true
+      help: Project name (will be used as tenant name)
+    flags:
+    - long: --description
+      arg: description
+      help: Optional project description
+    - long: --tags
+      arg: tags
+      help: Comma-separated project tags
+    - long: --create-user
+      arg: username
+      help: Create initial user with specified username
+    - long: --auto-login
+      help: Automatically login as created user
+    - long: --host
+      arg: hostname
+      help: "Database host (default: localhost)"
+      
+  - name: list
+    help: List all projects (tenants)
+    flags:
+    - long: --include-trashed
+      help: Include soft-deleted projects
+    - long: --include-deleted
+      help: Include hard-deleted projects
+      
+  - name: show
+    help: Show project details
+    alias: info
+    args:
+    - name: name
+      required: true
+      help: Project name
+      
+  - name: use
+    help: Switch to project context
+    args:
+    - name: name
+      required: true
+      help: Project name to switch to
+      
+  - name: delete
+    help: Delete project (soft delete by default)
+    args:
+    - name: name
+      required: true
+      help: Project name to delete
+    flags:
+    - long: --force
+      help: Skip confirmation
+    - long: --permanent
+      help: Permanent deletion (hard delete)
+
 # API Documentation viewer
 - name: docs
   help: View API documentation from remote server
