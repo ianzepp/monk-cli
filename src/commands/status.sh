@@ -110,12 +110,15 @@ schemas=""
 schema_count=0
 
 if [[ "$server_status" == "Up" && "$auth_status" == "Authenticated" ]]; then
-    # Try to get schemas from the API
-    api_response=$(make_request_json "GET" "/api/data/schemas" "")
+    # Try to get schemas from the API using GET /api/describe
+    api_response=$(make_request_json "GET" "/api/describe" "")
     if [[ $? -eq 0 ]]; then
-        schemas=$(echo "$api_response" | jq -r '.schemas[]?.name' 2>/dev/null | sort)
-        schema_count=$(echo "$schemas" | wc -l | tr -d ' ')
-        if [[ "$schema_count" -eq 0 ]]; then
+        # Extract the data array which contains schema names
+        schemas=$(echo "$api_response" | jq -r '.data[]' 2>/dev/null | sort)
+        if [[ -n "$schemas" ]]; then
+            schema_count=$(echo "$schemas" | grep -c '^' | tr -d ' ')
+        else
+            schema_count=0
             schemas="No schemas found"
         fi
     else
