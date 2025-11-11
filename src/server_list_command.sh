@@ -83,5 +83,49 @@ servers_json=$(echo "$server_names" | while read -r name; do
 done | jq -s --arg current_server "$current_server" \
     '{servers: ., current_server: ($current_server | if . == "" then null else . end)}')
 
-# Output in requested format using universal handler
-handle_output "$servers_json" "$output_format" "json" "server_list"
+# Output in requested format
+if [[ "$output_format" == "text" ]]; then
+    echo
+    print_info "Registered Servers"
+    echo
+    
+    # Build markdown table
+    markdown_output=""
+    markdown_output+="| NAME | ENDPOINT | STATUS | AUTH SESSIONS | ADDED | CURRENT |\n"
+    markdown_output+="|------|----------|--------|---------------|-------|---------|"
+    
+    # Add data rows using process substitution to avoid subshell issues
+    while IFS= read -r row; do
+        if [ -n "$row" ]; then
+            # Decode the row and extract fields
+            decoded=$(echo "$row" | base64 -d)
+            name=$(echo "$decoded" | jq -r '.name')
+            endpoint=$(echo "$decoded" | jq -r '.endpoint')
+            status=$(echo "$decoded" | jq -r '.status')
+            auth_sessions=$(echo "$decoded" | jq -r '.auth_sessions')
+            added=$(echo "$decoded" | jq -r '.added_at' | cut -d'T' -f1)
+            current=$(echo "$decoded" | jq -r 'if .is_current then "*" else "" end')
+            
+            markdown_output+="\n| ${name} | ${endpoint} | ${status} | ${auth_sessions} | ${added} | ${current} |"
+        fi
+    done < <(echo "$servers_json" | jq -r '.servers[] | @base64')
+    
+    # Check if stdout is a TTY (interactive terminal) and glow is available
+    if [ -t 1 ] && command -v glow >/dev/null 2>&1; then
+        # Render with glow for interactive terminals (width=0 auto-detects terminal width)
+        echo -e "$markdown_output" | glow --width=0 -
+    else
+        # Output raw markdown for pipes and non-interactive use
+        echo -e "$markdown_output"
+    fi
+    
+    echo
+    if [ -n "$current_server" ]; then
+        print_info "Current server: $current_server (marked with *)"
+    else
+        print_info "No current server selected"
+        print_info "Use 'monk server use <name>' to select a server"
+    fi
+else
+    handle_output "$servers_json" "$output_format" "json" "server_list"
+fi

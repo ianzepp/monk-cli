@@ -210,6 +210,59 @@ monk server info        # Uses current server
 monk server info local  # Specific server
 ```
 
+#### **Server Health Check**
+```bash
+monk server health [name]
+```
+
+**Examples:**
+
+**Text Format (Default):**
+```bash
+monk server health local
+# Using current server: local
+
+# Server Health: local
+
+# Connection:
+#   Endpoint: http://localhost:9001/health
+#   Hostname: localhost
+#   Port: 9001
+#   Protocol: http
+
+# Health Status:
+#   Status: healthy
+#   Version: 2.0.0-rc2
+#   API Name: Monk API (Hono)
+#   Uptime: 3h 24m
+#   Timestamp: 2025-08-29T11:30:00Z
+
+# Database Health:
+#   Status: connected
+#   Connected: true
+
+# Server is healthy and operational
+```
+
+**JSON Format:**
+```bash
+monk --json server health local
+```
+```json
+{"server_name":"local","hostname":"localhost","port":9001,"protocol":"http","endpoint":"http://localhost:9001","health":{"status":"healthy","version":"2.0.0-rc2","name":"Monk API (Hono)","uptime":"3h 24m","timestamp":"2025-08-29T11:30:00Z","database":{"status":"connected","connected":true},"checks":null},"success":true}
+```
+
+**Default Server:**
+```bash
+monk server health        # Uses current server
+monk server health local  # Specific server
+```
+
+**Difference from `ping`:**
+- `ping`: Simple connectivity check (faster, basic up/down status)
+- `health`: Detailed health information from `/health` endpoint (slower, includes version, uptime, database status)
+- `info`: API metadata and available endpoints from root endpoint
+
 #### **Ping All Servers**
 ```bash
 monk server ping-all

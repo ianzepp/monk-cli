@@ -129,7 +129,7 @@ if api_response=$(curl -s --max-time 30 --fail "$base_url/" 2>/dev/null); then
             echo "$docs_content"
         elif command -v glow >/dev/null 2>&1; then
             # Use glow for enhanced formatting when available
-            echo "$docs_content" | glow --pager -
+            echo "$docs_content" | glow --width=0 --pager -
         else
             # Fallback to raw markdown if glow not installed
             echo "$docs_content"

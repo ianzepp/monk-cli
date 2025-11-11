@@ -96,23 +96,40 @@ done | jq -s --arg current_tenant "$current_tenant" \
 
 # Output in requested format
 if [[ "$output_format" == "text" ]]; then
-    # Custom text formatting for tenant list
     echo
     print_info "Registered Tenants for Server: $target_server"
     echo
-
-    printf "%-20s %-30s %-8s %-20s %s\n" "Name" "Display Name" "Auth" "Added" "Description"
-    echo "-------------------------------------------------------------------------------------"
-
-    echo "$tenants_json" | jq -r '.tenants[] | [.name, .display_name, (if .authenticated then "yes" else "no" end), (.added_at | split("T")[0]), .description] | @tsv' | \
-    while IFS=$'\t' read -r name display_name auth added desc; do
-        current_marker=""
-        if echo "$tenants_json" | jq -e ".current_tenant == \"$name\"" >/dev/null 2>&1; then
-            current_marker=" *"
+    
+    # Build markdown table
+    markdown_output=""
+    markdown_output+="| NAME | DISPLAY NAME | AUTH | ADDED | DESCRIPTION | CURRENT |\n"
+    markdown_output+="|------|--------------|------|-------|-------------|---------|"
+    
+    # Add data rows using process substitution to avoid subshell issues
+    while IFS= read -r row; do
+        if [ -n "$row" ]; then
+            # Decode the row and extract fields
+            decoded=$(echo "$row" | base64 -d)
+            name=$(echo "$decoded" | jq -r '.name')
+            display_name=$(echo "$decoded" | jq -r '.display_name')
+            auth=$(echo "$decoded" | jq -r 'if .authenticated then "yes" else "no" end')
+            added=$(echo "$decoded" | jq -r '.added_at' | cut -d'T' -f1)
+            description=$(echo "$decoded" | jq -r '.description')
+            current=$(echo "$decoded" | jq -r 'if .is_current then "*" else "" end')
+            
+            markdown_output+="\n| ${name} | ${display_name} | ${auth} | ${added} | ${description} | ${current} |"
         fi
-        printf "%-20s %-30s %-8s %-20s %s%s\n" "$name" "$display_name" "$auth" "$added" "$desc" "$current_marker"
-    done
-
+    done < <(echo "$tenants_json" | jq -r '.tenants[] | @base64')
+    
+    # Check if stdout is a TTY (interactive terminal) and glow is available
+    if [ -t 1 ] && command -v glow >/dev/null 2>&1; then
+        # Render with glow for interactive terminals (width=0 auto-detects terminal width)
+        echo -e "$markdown_output" | glow --width=0 -
+    else
+        # Output raw markdown for pipes and non-interactive use
+        echo -e "$markdown_output"
+    fi
+    
     echo
     if [ -n "$current_tenant" ] && [ "$target_server" = "$current_server" ]; then
         print_info "Current tenant: $current_tenant (marked with *)"
