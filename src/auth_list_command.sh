@@ -129,9 +129,10 @@ if [[ "$output_format" == "text" ]]; then
     print_info "Stored JWT Tokens"
     echo
     
-    # Output raw markdown table header
-    echo "| SESSION | SERVER | TENANT | USER | CREATED | EXPIRED | CURRENT |"
-    echo "|---------|--------|--------|------|---------|---------|---------|"
+    # Build markdown table
+    markdown_output=""
+    markdown_output+="| SESSION | SERVER | TENANT | USER | CREATED | EXPIRED | CURRENT |\n"
+    markdown_output+="|---------|--------|--------|------|---------|---------|---------|"
     
     # Add data rows using process substitution to avoid subshell issues
     while IFS= read -r row; do
@@ -146,9 +147,18 @@ if [[ "$output_format" == "text" ]]; then
             expired=$(echo "$decoded" | jq -r 'if .is_expired then "yes" else "no" end')
             current=$(echo "$decoded" | jq -r 'if .is_current then "*" else "" end')
             
-            echo "| ${session_key} | ${server} | ${tenant} | ${user} | ${created} | ${expired} | ${current} |"
+            markdown_output+="\n| ${session_key} | ${server} | ${tenant} | ${user} | ${created} | ${expired} | ${current} |"
         fi
     done < <(echo "$final_json" | jq -r '.sessions[] | @base64')
+    
+    # Check if stdout is a TTY (interactive terminal) and glow is available
+    if [ -t 1 ] && command -v glow >/dev/null 2>&1; then
+        # Render with glow for interactive terminals
+        echo -e "$markdown_output" | glow -
+    else
+        # Output raw markdown for pipes and non-interactive use
+        echo -e "$markdown_output"
+    fi
     
     echo
     if [ -n "$current_session_key" ]; then
