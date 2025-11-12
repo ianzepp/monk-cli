@@ -511,6 +511,37 @@ commands:
       arg: tenant
       help: Target tenant (tenant-name or server:tenant-name)
 
+  - name: find
+    help: Find files/directories with content filtering (Unix find-like)
+    args:
+    - name: path
+      required: true
+      help: Starting path for search (e.g., /data/users/, /data/)
+    flags:
+    - long: --where
+      short: -w
+      arg: condition
+      repeatable: true
+      help: Filter by content (key=value or JSON WHERE clause)
+    - long: --type
+      short: -T
+      arg: type
+      allowed: [f, d, l]
+      help: "Filter by type (f=file, d=directory, l=link)"
+    - long: --name
+      short: -n
+      arg: pattern
+      help: "Filter by name pattern (wildcards: * ?)"
+    - long: --maxdepth
+      arg: depth
+      help: Maximum directory depth to search
+    - long: --print0
+      help: Null-separated output (for xargs -0)
+    - long: --tenant
+      short: -t
+      arg: tenant
+      help: Target tenant (tenant-name or server:tenant-name)
+
 # Advanced search with filter DSL
 - name: find
   help: Advanced search with enterprise Filter DSL via JSON input
