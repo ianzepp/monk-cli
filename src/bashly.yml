@@ -393,6 +393,20 @@ commands:
       short: -t
       arg: tenant
       help: Target tenant (tenant-name or server:tenant-name)
+    - long: --format
+      short: -f
+      arg: format
+      allowed: [json, raw]
+      default: json
+      help: "Output format: json (structured) or raw (string content)"
+    - long: --offset
+      short: -o
+      arg: bytes
+      help: Byte offset to start reading from (for partial reads)
+    - long: --max-bytes
+      short: -m
+      arg: bytes
+      help: Maximum bytes to read (for limiting large outputs)
 
   - name: rm
     help: Remove files, records, or fields
@@ -437,6 +451,30 @@ commands:
     - long: --force
       short: -f
       help: Force overwrite and allow cross-tenant operations
+    - long: --tenant
+      short: -t
+      arg: tenant
+      help: Target tenant (tenant-name or server:tenant-name)
+
+  - name: size
+    help: Calculate storage footprint for files or directories
+    args:
+    - name: path
+      required: true
+      help: File path to calculate size (e.g., /data/users/user-123.json)
+    flags:
+    - long: --tenant
+      short: -t
+      arg: tenant
+      help: Target tenant (tenant-name or server:tenant-name)
+
+  - name: mtime
+    help: Retrieve modified timestamps for files or directories
+    args:
+    - name: path
+      required: true
+      help: File path to check modified time (e.g., /data/users/user-123.json)
+    flags:
     - long: --tenant
       short: -t
       arg: tenant
