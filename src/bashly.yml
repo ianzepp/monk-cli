@@ -53,6 +53,25 @@ commands:
 - name: status
   help: Show current server, tenant, user, and available schemas
 
+# Direct API testing with curl wrapper
+- name: curl
+  help: Make authenticated API requests using current server and credentials
+  args:
+  - name: method
+    required: true
+    help: HTTP method (GET, POST, PUT, DELETE, etc.)
+  - name: path
+    required: true
+    help: API endpoint path (e.g., /api/file/list, /api/auth/ping)
+  flags:
+  - long: --data
+    short: -d
+    arg: json
+    help: JSON data to send (alternative to stdin)
+  - long: --raw
+    short: -r
+    help: Output raw response without pretty-printing
+
 # Remote server management
 - name: server
   help: Remote server management
@@ -377,6 +396,18 @@ commands:
     - long: --long
       short: -l
       help: Use long listing format with detailed information
+    - long: --all
+      short: -a
+      help: Show hidden entries (system fields like access_*, created_at, etc.)
+    - long: --sort
+      short: -S
+      arg: field
+      allowed: [name, size, time, type]
+      default: name
+      help: "Sort entries by field (name, size, time, or type)"
+    - long: --reverse
+      short: -r
+      help: Reverse sort order (descending instead of ascending)
     - long: --tenant
       short: -t
       arg: tenant
