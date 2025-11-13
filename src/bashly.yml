@@ -664,6 +664,53 @@ commands:
     required: true
     help: Documentation area to view (e.g., auth, data, describe, find, bulk, file, acls, root)
 
+# Package management operations
+- name: package
+  help: Package management operations for schema and data distribution
+
+  commands:
+  - name: init
+    help: Initialize a new package definition
+    args:
+    - name: name
+      required: false
+      help: Package name (defaults to current directory name)
+    flags:
+    - long: --description
+      arg: description
+      help: Package description
+
+  - name: verify
+    help: Verify package integrity and dependencies
+    args:
+    - name: package_file
+      required: false
+      help: Package file to verify (defaults to package.json in current directory)
+
+  - name: install
+    help: Install a package to the current tenant
+    args:
+    - name: package_file
+      required: true
+      help: Package file or URL to install
+    flags:
+    - long: --force
+      help: Force installation even if package already exists
+    - long: --dry-run
+      help: Show what would be installed without making changes
+
+  - name: uninstall
+    help: Uninstall a package from the current tenant
+    args:
+    - name: package_name
+      required: true
+      help: Package name to uninstall
+    flags:
+    - long: --force
+      help: Force uninstall without confirmation
+    - long: --keep-data
+      help: Keep data when uninstalling (remove schema only)
+
 # Administrative operations requiring sudo token
 - name: sudo
   help: User management operations requiring sudo token (requires root access)
