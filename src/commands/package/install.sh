@@ -111,6 +111,10 @@ for describe_file in "${describe_files[@]}"; do
   schema_path="$package_dir/$describe_file"
   schema_name=$(basename "$describe_file" .json)
 
+  if [[ "$CLI_VERBOSE" == "true" ]]; then
+    echo "DEBUG: Processing schema: $schema_name from $schema_path" >&2
+  fi
+
   if [[ ! -f "$schema_path" ]]; then
     echo "  ✗ Schema file not found: $schema_path" >&2
     ((failed_count++))
@@ -124,16 +128,31 @@ for describe_file in "${describe_files[@]}"; do
     echo -n "  Installing $schema_name... "
   fi
 
+  if [[ "$CLI_VERBOSE" == "true" ]]; then
+    echo "DEBUG: Checking if schema exists..." >&2
+  fi
+
   # Check if schema already exists
   existing_check=$(make_request_json "GET" "/api/describe/$schema_name" "" 2>/dev/null)
   schema_exists=$(echo "$existing_check" | jq -r '.success // false')
+
+  if [[ "$CLI_VERBOSE" == "true" ]]; then
+    echo "DEBUG: Schema exists: $schema_exists" >&2
+  fi
 
   if [[ "$schema_exists" == "true" && "$force_install" != "1" ]]; then
     if [[ "$output_format" != "json" ]]; then
       echo "skipped (already exists, use --force to overwrite)"
     fi
     ((skipped_count++))
+    if [[ "$CLI_VERBOSE" == "true" ]]; then
+      echo "DEBUG: Continuing to next schema..." >&2
+    fi
     continue
+  fi
+
+  if [[ "$CLI_VERBOSE" == "true" ]]; then
+    echo "DEBUG: Installing schema $schema_name..." >&2
   fi
 
   # Install or update schema
