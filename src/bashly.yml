@@ -711,6 +711,20 @@ commands:
     - long: --keep-data
       help: Keep data when uninstalling (remove schema only)
 
+  - name: describe
+    help: Manage schema definitions in the package
+
+    commands:
+    - name: add
+      help: Add a schema definition from current tenant to package
+      args:
+      - name: schema
+        required: true
+        help: Schema name to add from current tenant
+      flags:
+      - long: --force
+        help: Overwrite if schema file already exists
+
 # Administrative operations requiring sudo token
 - name: sudo
   help: User management operations requiring sudo token (requires root access)
