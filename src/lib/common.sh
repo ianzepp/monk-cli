@@ -339,6 +339,157 @@ remove_stored_token() {
        "$ENV_CONFIG" > "$temp_file" && mv "$temp_file" "$ENV_CONFIG"
 }
 
+# Get sudo token for current server+tenant context
+get_sudo_token() {
+    init_cli_configs
+    
+    if ! command -v jq >/dev/null 2>&1; then
+        echo "Error: jq is required for sudo token management" >&2
+        return 1
+    fi
+    
+    # Get current context
+    local current_server current_tenant
+    current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
+    current_tenant=$(jq -r '.current_tenant // empty' "$ENV_CONFIG" 2>/dev/null)
+    
+    if [ -z "$current_server" ] || [ "$current_server" = "null" ]; then
+        return 1
+    fi
+    
+    if [ -z "$current_tenant" ] || [ "$current_tenant" = "null" ]; then
+        return 1
+    fi
+    
+    # Get session-specific sudo token using server:tenant key
+    local session_key="${current_server}:${current_tenant}"
+    local sudo_token expires_at
+    sudo_token=$(jq -r ".sessions.\"$session_key\".sudo_token // empty" "$AUTH_CONFIG" 2>/dev/null)
+    expires_at=$(jq -r ".sessions.\"$session_key\".sudo_expires_at // empty" "$AUTH_CONFIG" 2>/dev/null)
+    
+    if [ -z "$sudo_token" ] || [ "$sudo_token" = "null" ]; then
+        return 1
+    fi
+    
+    # Check if token is expired
+    if [ -n "$expires_at" ] && [ "$expires_at" != "null" ]; then
+        local current_time=$(date +%s)
+        if [ "$current_time" -ge "$expires_at" ]; then
+            # Token expired, clear it
+            clear_sudo_token
+            return 1
+        fi
+    fi
+    
+    echo "$sudo_token"
+}
+
+# Store sudo token for current server+tenant context
+store_sudo_token() {
+    local sudo_token="$1"
+    local reason="${2:-}"
+    
+    init_cli_configs
+    
+    if ! command -v jq >/dev/null 2>&1; then
+        echo "Error: jq is required for sudo token management" >&2
+        return 1
+    fi
+    
+    # Get current context
+    local current_server current_tenant
+    current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
+    current_tenant=$(jq -r '.current_tenant // empty' "$ENV_CONFIG" 2>/dev/null)
+    
+    if [ -z "$current_server" ] || [ "$current_server" = "null" ]; then
+        echo "Error: No current server selected" >&2
+        return 1
+    fi
+    
+    if [ -z "$current_tenant" ] || [ "$current_tenant" = "null" ]; then
+        echo "Error: No current tenant selected" >&2
+        return 1
+    fi
+    
+    # Calculate expiration time (15 minutes from now)
+    local expires_at=$(($(date +%s) + 900))
+    local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    
+    # Store sudo token in auth config
+    local session_key="${current_server}:${current_tenant}"
+    local temp_file=$(mktemp)
+    
+    if [ -n "$reason" ]; then
+        jq --arg session_key "$session_key" \
+           --arg sudo_token "$sudo_token" \
+           --arg expires_at "$expires_at" \
+           --arg timestamp "$timestamp" \
+           --arg reason "$reason" \
+           '.sessions[$session_key].sudo_token = $sudo_token |
+            .sessions[$session_key].sudo_expires_at = ($expires_at | tonumber) |
+            .sessions[$session_key].sudo_created_at = $timestamp |
+            .sessions[$session_key].sudo_reason = $reason' \
+           "$AUTH_CONFIG" > "$temp_file" && mv "$temp_file" "$AUTH_CONFIG"
+    else
+        jq --arg session_key "$session_key" \
+           --arg sudo_token "$sudo_token" \
+           --arg expires_at "$expires_at" \
+           --arg timestamp "$timestamp" \
+           '.sessions[$session_key].sudo_token = $sudo_token |
+            .sessions[$session_key].sudo_expires_at = ($expires_at | tonumber) |
+            .sessions[$session_key].sudo_created_at = $timestamp' \
+           "$AUTH_CONFIG" > "$temp_file" && mv "$temp_file" "$AUTH_CONFIG"
+    fi
+    
+    # Set secure permissions on auth file
+    chmod 600 "$AUTH_CONFIG"
+}
+
+# Clear sudo token for current server+tenant context
+clear_sudo_token() {
+    init_cli_configs
+    
+    if ! command -v jq >/dev/null 2>&1; then
+        echo "Error: jq is required for sudo token management" >&2
+        return 1
+    fi
+    
+    # Get current context
+    local current_server current_tenant
+    current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
+    current_tenant=$(jq -r '.current_tenant // empty' "$ENV_CONFIG" 2>/dev/null)
+    
+    if [ -z "$current_server" ] || [ "$current_server" = "null" ]; then
+        return 1
+    fi
+    
+    if [ -z "$current_tenant" ] || [ "$current_tenant" = "null" ]; then
+        return 1
+    fi
+    
+    # Remove sudo token fields from session
+    local session_key="${current_server}:${current_tenant}"
+    local temp_file=$(mktemp)
+    jq --arg session_key "$session_key" \
+       'del(.sessions[$session_key].sudo_token) |
+        del(.sessions[$session_key].sudo_expires_at) |
+        del(.sessions[$session_key].sudo_created_at) |
+        del(.sessions[$session_key].sudo_reason)' \
+       "$AUTH_CONFIG" > "$temp_file" && mv "$temp_file" "$AUTH_CONFIG"
+}
+
+# Check if sudo token is expired
+is_sudo_token_expired() {
+    local sudo_token
+    sudo_token=$(get_sudo_token 2>/dev/null)
+    
+    if [ -z "$sudo_token" ]; then
+        return 1  # No token or expired
+    fi
+    
+    return 0  # Token exists and is valid
+}
+
 # Make HTTP request with JSON content-type - programmatic by default
 make_request_json() {
     local method="$1"
@@ -1242,41 +1393,32 @@ url_encode() {
     fi
 }
 
-# Make HTTP request to root API (requires authentication and root privileges)
-make_root_request() {
+# Make HTTP request to sudo API (requires sudo token from /api/auth/sudo)
+make_sudo_request() {
     local method="$1"
-    local endpoint="$2"  # e.g., "tenant", "tenant/my_app"
+    local endpoint="$2"  # e.g., "users", "users/:id"
     local data="$3"
     local base_url=$(get_base_url)
     
-    # URL encode tenant names in endpoints for proper HTTP handling
-    if [[ "$endpoint" == tenant/* ]]; then
-        local tenant_path="${endpoint#tenant/}"
-        # Split on additional path segments (e.g., tenant/name/health)
-        if [[ "$tenant_path" == */* ]]; then
-            local tenant_name="${tenant_path%%/*}"
-            local remaining_path="${tenant_path#*/}"
-            local encoded_name=$(url_encode "$tenant_name")
-            endpoint="tenant/${encoded_name}/${remaining_path}"
-        else
-            local encoded_name=$(url_encode "$tenant_path")
-            endpoint="tenant/${encoded_name}"
-        fi
+    # Get sudo token
+    local sudo_token
+    sudo_token=$(get_sudo_token)
+    
+    if [ -z "$sudo_token" ]; then
+        print_error "No sudo token found or token expired"
+        print_info "Use 'monk auth sudo' to acquire a sudo token first"
+        exit 1
     fi
     
-    local full_url="${base_url}/api/root/${endpoint}"
+    local full_url="${base_url}/api/sudo/${endpoint}"
     
     print_info "Making $method request to: $full_url"
     
     local curl_args=(-s -X "$method")
     
-    # Add JWT token if available
-    local jwt_token
-    jwt_token=$(get_jwt_token)
-    if [ -n "$jwt_token" ]; then
-        curl_args+=(-H "Authorization: Bearer $jwt_token")
-        print_info "Using stored JWT token"
-    fi
+    # Add sudo token
+    curl_args+=(-H "Authorization: Bearer $sudo_token")
+    print_info "Using stored sudo token"
     
     # Add content-type header if data provided
     if [ -n "$data" ]; then
@@ -1298,7 +1440,19 @@ make_root_request() {
             echo "$response"
             return 0
             ;;
-        400|404|500)
+        401)
+            print_error "HTTP Error ($http_code) - Unauthorized"
+            print_info "Your sudo token may have expired. Use 'monk auth sudo' to get a new token"
+            echo "$response" >&2
+            exit 1
+            ;;
+        403)
+            print_error "HTTP Error ($http_code) - Forbidden"
+            print_info "Sudo token required. Use 'monk auth sudo' to escalate privileges"
+            echo "$response" >&2
+            exit 1
+            ;;
+        400|404|409|500)
             print_error "HTTP Error ($http_code)"
             echo "$response" >&2
             exit 1
@@ -1309,38 +1463,6 @@ make_root_request() {
             exit 1
             ;;
     esac
-}
-
-# Format tenant data for table output
-format_tenant_table() {
-    local tenants="$1"
-    local include_trashed="$2"
-    local include_deleted="$3"
-    
-    if [ "$JSON_PARSER" != "jq" ]; then
-        print_error "jq required for tenant table formatting"
-        exit 1
-    fi
-    
-    local count
-    count=$(echo "$tenants" | jq 'length')
-    
-    echo
-    print_info "Total tenants: $count"
-    echo
-    
-    if [[ "$count" -gt 0 ]]; then
-        printf "%-20s %-10s %-20s %-20s %-20s\n" "NAME" "STATUS" "DATABASE" "HOST" "CREATED"
-        echo "--------------------------------------------------------------------------------"
-        
-        echo "$tenants" | jq -r '.[] | [.name, .status, .database, .host, (.created_at | split("T")[0])] | @tsv' | \
-        while IFS=$'\t' read -r name status database host created; do
-            printf "%-20s %-10s %-20s %-20s %-20s\n" "$name" "$status" "$database" "$host" "$created"
-        done
-    else
-        print_info "No tenants found"
-    fi
-    echo
 }
 
 # Confirm destructive operation with user input

@@ -12,11 +12,32 @@ fi
 # Extract tenant and username from bashly args
 tenant="${args[tenant]}"
 username="${args[username]}"
+database="${args[--database]}"
+description="${args[--description]}"
 
-print_info "Registering new tenant: $tenant, username: $username"
+# Build registration request JSON
+register_data="{\"tenant\": \"$tenant\""
 
-# Prepare registration request
-register_data="{\"tenant\": \"$tenant\", \"username\": \"$username\"}"
+# Add optional username (if provided)
+if [ -n "$username" ]; then
+    register_data+=", \"username\": \"$username\""
+    print_info "Registering new tenant: $tenant, username: $username"
+else
+    print_info "Registering new tenant: $tenant (username will default to 'root' in personal mode)"
+fi
+
+# Add optional database (personal mode only)
+if [ -n "$database" ]; then
+    register_data+=", \"database\": \"$database\""
+    print_info "Custom database name: $database"
+fi
+
+# Add optional description
+if [ -n "$description" ]; then
+    register_data+=", \"description\": \"$description\""
+fi
+
+register_data+="}"
 base_url=$(get_base_url)
 
 print_info "Sending registration request to: ${base_url}/auth/register"

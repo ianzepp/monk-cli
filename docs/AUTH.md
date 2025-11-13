@@ -53,15 +53,52 @@ monk --json auth list
 
 #### **Register New Tenant and User**
 ```bash
-monk auth register <tenant> <username>
+monk auth register <tenant> [username] [--database <name>] [--description <text>]
 ```
+
+**Arguments:**
+- `tenant` (required) - Tenant name
+- `username` (optional) - Username (defaults to 'root' in personal mode, required in enterprise mode)
+
+**Flags:**
+- `--database` - Custom database name (personal mode only)
+- `--description` - Human-readable tenant description
+
+**Server Modes:**
+
+The server can run in two modes (controlled by server administrator):
+
+**Enterprise Mode (Default):**
+- Database names are SHA256 hashes (e.g., `tenant_a1b2c3d4`)
+- `username` parameter is **required**
+- Most secure for multi-tenant SaaS deployments
+
+**Personal Mode:**
+- Database names are human-readable (e.g., `tenant_monk_irc`)
+- `username` parameter is **optional** (defaults to 'root')
+- `--database` parameter can specify custom database name
+- Useful for personal PaaS deployments
 
 **Examples:**
 ```bash
-# Register new tenant and user in one step
-monk auth register my-new-app admin
+# Enterprise mode - username required
+monk auth register my-company admin
 
-# Register with Unicode tenant name
+# Personal mode - minimal (username defaults to 'root')
+monk auth register monk-irc
+
+# Personal mode - with custom database name
+monk auth register monk-irc --database my-irc-bridge
+
+# Personal mode - with description
+monk auth register monk-irc --description "IRC bridge for Slack integration"
+
+# Personal mode - all options
+monk auth register monk-irc admin \
+  --database my-irc-bridge \
+  --description "IRC bridge service"
+
+# Unicode tenant names (enterprise mode)
 monk auth register "测试应用" admin
 ```
 
@@ -93,8 +130,67 @@ Tenant added to local registry for server: local
 - Automated tenant provisioning in scripts
 - Development and testing workflows
 - Self-service tenant creation
+- Personal PaaS with readable database names
 
-**Note**: This is a convenience command that combines `monk root tenant create` + `monk tenant add` + `monk auth login` into a single operation.
+#### **List Available Tenants (Personal Mode Only)**
+```bash
+monk auth tenants
+```
+
+**Description:**
+Lists all available tenants on the server with their available users for login. This command is only available when the server is running in **personal mode**. In enterprise mode, it returns a 403 error to prevent tenant enumeration.
+
+**Text Format (Default):**
+```
+Available tenants: 3
+
+NAME                      DESCRIPTION                         USERS                         
+--------------------------------------------------------------------------------
+monk-irc                  IRC bridge for Slack integration    root, admin                   
+my-app                    -                                   root                          
+test-tenant               Testing environment                 root, testuser                
+```
+
+**JSON Format:**
+```bash
+monk --json auth tenants
+```
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "name": "monk-irc",
+      "description": "IRC bridge for Slack integration",
+      "users": ["root", "admin"]
+    },
+    {
+      "name": "my-app",
+      "description": null,
+      "users": ["root"]
+    },
+    {
+      "name": "test-tenant",
+      "description": "Testing environment",
+      "users": ["root", "testuser"]
+    }
+  ]
+}
+```
+
+**Response Details:**
+- **name**: Tenant identifier for login
+- **description**: Optional human-readable description
+- **users**: Array of available usernames (up to 10, sorted by creation date)
+
+**Use Cases:**
+- Discover available tenants and users before login (personal mode)
+- See which usernames are available for each tenant
+- Build tenant and user selection interfaces
+- Generate tenant inventory for documentation
+- CLI autocomplete for tenant and username selection
+
+**Note**: Only available when server is in personal mode (`TENANT_NAMING_MODE=personal`).
 
 #### **Login to Tenant**
 ```bash
@@ -297,6 +393,66 @@ monk --json auth ping
 {"success":false,"reachable":true,"http_code":401,"timestamp":"2025-08-29T11:30:00Z","error":"Authentication failed","message":"JWT token is invalid or expired"}
 ```
 
+### **Sudo Token Management**
+
+#### **Request Sudo Token**
+```bash
+monk auth sudo [--reason <text>]
+```
+
+**Description:**
+Request a short-lived sudo token for dangerous operations like user management. The sudo token expires after 15 minutes and requires the user to have `access='root'` level.
+
+**Options:**
+- `--reason` - Audit trail description (recommended for compliance)
+
+**Examples:**
+```bash
+# With reason (recommended)
+monk auth sudo --reason "Creating new team member account"
+
+# Without reason
+monk auth sudo
+```
+
+**Output:**
+```
+Requesting sudo token with reason: Creating new team member account
+✓ Sudo token acquired successfully
+Elevated from: root
+Expires in: 900 seconds (15 minutes)
+
+⚠ Root token expires in 15 minutes
+
+Use 'monk sudo users' commands to perform user management operations
+```
+
+**Token Lifecycle:**
+- **Duration**: 15 minutes (900 seconds)
+- **Storage**: Stored separately from regular JWT token
+- **Expiration**: Automatic after 15 minutes
+- **Re-acquisition**: Simply run `monk auth sudo` again
+
+**Use Cases:**
+- User management operations (create, update, delete users)
+- Administrative tasks requiring elevated privileges
+- Audit trail for dangerous operations
+
+**Security Model:**
+- Even users with `access='root'` must explicitly escalate
+- Time-limited to reduce window for accidental operations
+- Logs reason for audit compliance
+- Separate from long-lived authentication tokens
+
+**Next Steps:**
+After acquiring a sudo token, use `monk sudo users` commands:
+```bash
+monk sudo users list
+monk sudo users create --name "John Doe" --auth "john@example.com" --access "full"
+```
+
+**See Also:** [SUDO.md](SUDO.md) for complete sudo command documentation
+
 ## Session Management
 
 ### **Server+Tenant Sessions**
@@ -433,9 +589,13 @@ curl -H "Authorization: Bearer $token" \
      "$API_URL/api/data/users"
 ```
 
-## JWT Token Structure
+## Token Architecture
 
-monk-cli works with standard JWT tokens containing:
+monk-cli uses a **two-token system** for enhanced security:
+
+### **1. User JWT Token** (Regular Authentication)
+
+Obtained via `monk auth login` or `monk auth register`:
 
 ```json
 {
@@ -447,6 +607,81 @@ monk-cli works with standard JWT tokens containing:
   "iat": 1756464200,       // Issued at (timestamp)
   "exp": 1756550645        // Expires at (timestamp)
 }
+```
+
+**Characteristics:**
+- **Duration**: 1 hour (3600 seconds)
+- **Purpose**: Regular data operations
+- **Storage**: `~/.config/monk/cli/auth.json` (sessions object)
+- **Scope**: Server + tenant specific
+
+### **2. Sudo Token** (Privilege Escalation)
+
+Obtained via `monk auth sudo` (requires `access='root'`):
+
+```json
+{
+  "sub": "admin",
+  "tenant": "my-app",
+  "database": "tenant_abc123",
+  "access": "root",
+  "is_sudo": true,         // Marks this as sudo token
+  "elevated_from": "root", // Original access level
+  "iat": 1756464200,
+  "exp": 1756465100        // Expires in 15 minutes
+}
+```
+
+**Characteristics:**
+- **Duration**: 15 minutes (900 seconds)
+- **Purpose**: User management operations only
+- **Storage**: `~/.config/monk/cli/auth.json` (separate from user JWT)
+- **Scope**: Server + tenant specific
+- **Security**: Time-limited, audit-logged, explicit escalation
+
+### **Token Comparison**
+
+| Feature | User JWT | Sudo Token |
+|---------|----------|------------|
+| Duration | 1 hour | 15 minutes |
+| Command | `monk auth login` | `monk auth sudo` |
+| Usage | Data operations | User management |
+| Required Access | Any level | `root` level only |
+| Storage | Long-term | Short-term |
+| Auto-expires | Yes | Yes |
+| Audit Trail | Standard | Enhanced with reason |
+
+### **When to Use Each Token**
+
+**Use User JWT for:**
+- `monk data` commands
+- `monk describe` commands
+- `monk find` commands
+- `monk fs` commands
+- Most regular operations
+
+**Use Sudo Token for:**
+- `monk sudo users` commands (user management)
+- Creating/updating/deleting users
+- Administrative operations
+
+**Example Workflow:**
+```bash
+# 1. Regular authentication (gets user JWT)
+monk auth login my-app admin
+
+# 2. Regular operations (uses user JWT)
+monk data list users
+monk describe select users
+
+# 3. Request sudo (gets sudo token)
+monk auth sudo --reason "Creating new team member"
+
+# 4. User management (uses sudo token)
+monk sudo users create --name "John" --auth "john@example.com" --access "full"
+
+# 5. Back to regular operations (uses user JWT)
+monk data list users
 ```
 
 ## Integration with Other Commands
@@ -468,8 +703,39 @@ monk fs ls /data/              # Browses authenticated tenant filesystem
 1. **Environment Isolation**: Maintain separate authentication per server environment
 2. **Token Management**: Monitor expiration and re-authenticate proactively  
 3. **Role-Based Access**: Use appropriate user roles for different operations
-4. **Session Security**: Protect auth.json file and avoid sharing tokens
+4. **Session Security**: Protect auth.json file (600 permissions) and avoid sharing tokens
 5. **Context Awareness**: Always verify current authentication before data operations
 6. **Automation**: Use `monk auth expired` in scripts for conditional re-authentication
+7. **Sudo Token Usage**: 
+   - Always provide `--reason` for audit trails
+   - Request sudo only when needed (don't preemptively escalate)
+   - Be prepared for 15-minute expiration
+   - Use separate token for user management vs data operations
+8. **Personal Mode Benefits**: Use personal mode for self-hosted deployments with readable database names
 
-Authentication commands provide **secure, multi-tenant access control** for all monk-cli data operations.
+## Server Modes
+
+monk-cli supports two server deployment modes:
+
+### **Enterprise Mode** (Multi-tenant SaaS)
+- Secure SHA256 database names
+- Required username on registration
+- Tenant enumeration prevented
+- Best for production SaaS deployments
+
+### **Personal Mode** (Self-hosted PaaS)
+- Human-readable database names
+- Optional username (defaults to 'root')
+- Tenant listing available (`monk auth tenants`)
+- Custom database naming supported
+- Best for personal infrastructure
+
+The server administrator controls the mode via the `TENANT_NAMING_MODE` environment variable.
+
+## Related Documentation
+
+- **[SUDO.md](SUDO.md)** - Complete sudo user management documentation
+- **[TENANT.md](TENANT.md)** - Tenant registry management
+- **[SERVER.md](SERVER.md)** - Remote server configuration
+
+Authentication commands provide **secure, multi-tenant access control** with explicit privilege escalation for all monk-cli operations.

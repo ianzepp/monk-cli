@@ -190,8 +190,15 @@ commands:
       required: true
       help: Tenant name to register
     - name: username
-      required: true
-      help: Username to register
+      required: false
+      help: Username to register (defaults to 'root' in personal mode, required in enterprise mode)
+    flags:
+    - long: --database
+      arg: database
+      help: Custom database name (personal mode only)
+    - long: --description
+      arg: description
+      help: Human-readable description of the tenant
 
   - name: login
     help: Authenticate with tenant and username
@@ -246,6 +253,16 @@ commands:
 
   - name: expired
     help: Check if JWT token is expired (exit code 0=valid, 1=expired)
+
+  - name: tenants
+    help: List available tenants (personal mode only)
+
+  - name: sudo
+    help: Request sudo token for dangerous operations (15min validity)
+    flags:
+    - long: --reason
+      arg: reason
+      help: Reason for privilege escalation (for audit trail)
 
 # Data operations on dynamic schemas
 - name: data
@@ -642,74 +659,65 @@ commands:
     required: true
     help: Documentation area to view (e.g., auth, data, describe, find, bulk, file, acls, root)
 
-# Administrative operations (development only)
-- name: root
-  help: Administrative operations for tenant management (localhost development only)
+# Administrative operations requiring sudo token
+- name: sudo
+  help: User management operations requiring sudo token (requires root access)
 
   commands:
-  - name: tenant
-    help: Tenant management operations
+  - name: users
+    help: User management operations
 
     commands:
     - name: list
-      help: List all tenants
+      help: List all users in current tenant
       alias: ls
-      flags:
-      - long: --include-trashed
-        help: Include soft-deleted tenants
-      - long: --include-deleted
-        help: Include hard-deleted tenants
 
     - name: create
-      help: Create new tenant
+      help: Create new user
       alias: add
-      args:
-      - name: name
-        required: true
-        help: Tenant name
       flags:
-      - long: --host
-        arg: hostname
-        help: "Database host (default: localhost)"
-      - long: --force
-        help: Force creation even if exists
+      - long: --name
+        arg: name
+        required: true
+        help: Display name for the user
+      - long: --auth
+        arg: auth
+        required: true
+        help: Authentication identifier (username/email)
+      - long: --access
+        arg: access
+        required: true
+        help: "Access level: deny, read, edit, full, or root"
 
     - name: show
-      help: Show tenant details
+      help: Show user details
       alias: info
       args:
-      - name: name
+      - name: id
         required: true
-        help: Tenant name
+        help: User ID (UUID)
 
-    - name: trash
-      help: Soft delete tenant (set trashed_at)
+    - name: update
+      help: Update existing user
       args:
-      - name: name
+      - name: id
         required: true
-        help: Tenant name
-
-    - name: restore
-      help: Restore soft deleted tenant
-      args:
-      - name: name
-        required: true
-        help: Tenant name
+        help: User ID (UUID)
+      flags:
+      - long: --name
+        arg: name
+        help: Display name
+      - long: --access
+        arg: access
+        help: "Access level: deny, read, edit, full, or root"
 
     - name: delete
-      help: Hard delete tenant (permanent)
-      alias: purge
+      help: Delete user (soft delete)
+      alias: rm
       args:
-      - name: name
+      - name: id
         required: true
-        help: Tenant name
+        help: User ID (UUID)
       flags:
       - long: --force
         help: Skip confirmation
-
-    - name: health
-      help: Check tenant database health
-      args:
-      - name: name
-        required: true
-        help: Tenant name
