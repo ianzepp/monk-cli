@@ -1,421 +1,457 @@
-# Bulk Commands Documentation
+# Bulk API Commands
 
 ## Overview
 
-The `monk bulk` commands provide **batch processing operations** for executing multiple data operations across schemas in single API transactions. These commands enable efficient bulk data manipulation with immediate execution and planned async capabilities.
+The `monk bulk` command executes multiple operations across schemas in a single transaction. All operations are processed sequentially, and the entire transaction commits on success or rolls back on error - ensuring no partial writes are persisted.
 
-**Format Note**: Bulk commands work exclusively with **JSON format** for structured batch operations. The `--text` flag is not supported as bulk operations require structured data input/output.
-
-## Command Structure
+## Command Usage
 
 ```bash
-monk bulk <operation> [arguments] [flags]
+monk bulk
 ```
 
-## Available Commands
+Reads a JSON array of operations from stdin and executes them as a single transaction.
 
-### **Immediate Bulk Operations**
+## Input Format
 
-#### **Execute Raw Bulk Operations (Synchronous)**
-```bash
-monk bulk raw
-```
-
-**Input**: Array of operation objects via stdin
-
-**Examples:**
-
-**Mixed Operations:**
-```bash
-cat << 'EOF' | monk bulk raw
+```json
 [
   {
-    "operation": "create",
+    "operation": "create-one",
     "schema": "users",
     "data": {"name": "Alice", "email": "alice@example.com"}
   },
   {
-    "operation": "create", 
+    "operation": "update-one",
     "schema": "users",
-    "data": {"name": "Bob", "email": "bob@example.com"}
-  },
-  {
-    "operation": "update",
-    "schema": "users", 
-    "id": "123",
-    "data": {"status": "verified"}
-  },
-  {
-    "operation": "delete",
-    "schema": "posts",
-    "id": "456"
+    "id": "user-123",
+    "data": {"status": "active"}
   }
 ]
-EOF
 ```
 
-**Response:**
-```json
-{"success":true,"results":[{"operation":"create","schema":"users","success":true,"data":{"id":"789","name":"Alice","email":"alice@example.com"}},{"operation":"create","schema":"users","success":true,"data":{"id":"790","name":"Bob","email":"bob@example.com"}},{"operation":"update","schema":"users","success":true,"data":{"id":"123","status":"verified"}},{"operation":"delete","schema":"posts","success":true,"deleted_id":"456"}],"summary":{"total":4,"successful":4,"failed":0}}
-```
+### Operation Object Structure
 
-**Cross-Schema Operations:**
+| Field | Required | Type | Description |
+|-------|----------|------|-------------|
+| `operation` | Yes | string | Operation type (hyphenated, e.g., `create-one`) |
+| `schema` | Yes | string | Target schema name |
+| `data` | Varies | object/array | Payload for mutations |
+| `id` | Varies | string | Record ID for single-record operations |
+| `filter` | Varies | object | Filter criteria for `*-any` operations |
+| `aggregate` | Varies | object | Aggregation specification |
+| `groupBy` | No | string/array | Group by fields for aggregations |
+| `message` | No | string | Custom 404 message for `*-404` operations |
+
+## Supported Operations
+
+### Read Helpers
+
+| Operation | Description | Required Fields | Optional Fields |
+|-----------|-------------|----------------|-----------------|
+| `select` / `select-all` | Return records matching optional filter | `schema` | `filter` |
+| `select-one` | Return single record by ID or filter | `schema` | `id`, `filter` |
+| `select-404` | Like `select-one` but raises 404 when missing | `schema` | `id`, `filter`, `message` |
+| `count` | Return count of records | `schema` | `filter` |
+| `aggregate` | Run aggregations with optional grouping | `schema`, `aggregate` | `filter`, `groupBy` |
+
+### Create Operations
+
+| Operation | Description | Required Fields |
+|-----------|-------------|----------------|
+| `create` / `create-one` | Create single record | `schema`, `data` (object) |
+| `create-all` | Create multiple records | `schema`, `data` (array) |
+
+### Update Operations
+
+| Operation | Description | Required Fields |
+|-----------|-------------|----------------|
+| `update` / `update-one` | Update record by ID | `schema`, `id`, `data` |
+| `update-all` | Update explicit records (each with `id`) | `schema`, `data` (array with `id`) |
+| `update-any` | Update records matching filter | `schema`, `filter`, `data` |
+| `update-404` | Update single record, raise 404 if missing | `schema`, `data` | `id` or `filter`, `message` |
+
+### Delete Operations (Soft Delete)
+
+| Operation | Description | Required Fields |
+|-----------|-------------|----------------|
+| `delete` / `delete-one` | Soft delete record by ID | `schema`, `id` |
+| `delete-all` | Soft delete explicit records | `schema`, `data` (array with `id`) |
+| `delete-any` | Soft delete records matching filter | `schema`, `filter` |
+| `delete-404` | Soft delete single record, raise 404 if missing | `schema` | `id` or `filter`, `message` |
+
+### Access Control Operations
+
+| Operation | Description | Required Fields |
+|-----------|-------------|----------------|
+| `access` / `access-one` | Update ACL fields for record | `schema`, `id`, `data` |
+| `access-all` | Update ACL fields for specific IDs | `schema`, `data` (array with `id`) |
+| `access-any` | Update ACL fields matching filter | `schema`, `filter`, `data` |
+| `access-404` | ACL update, raise 404 if missing | `schema`, `data` | `id` or `filter`, `message` |
+
+### Unsupported Operations
+
+- `select-max` - Not implemented (returns empty array)
+- `upsert`, `upsert-one`, `upsert-all` - Not implemented (throws 422 error)
+
+## Examples
+
+### Mixed Operations
+
 ```bash
-cat << 'EOF' | monk bulk raw
+echo '[
+  {
+    "operation": "create-one",
+    "schema": "users",
+    "data": {"name": "Jane", "email": "jane@example.com"}
+  },
+  {
+    "operation": "update-one",
+    "schema": "users",
+    "id": "user-123",
+    "data": {"status": "active"}
+  },
+  {
+    "operation": "delete-one",
+    "schema": "posts",
+    "id": "post-456"
+  }
+]' | monk bulk
+```
+
+Response:
+```json
 [
   {
-    "operation": "create",
+    "operation": "create-one",
     "schema": "users",
-    "data": {"name": "Manager", "role": "admin"}
+    "result": {"id": "user-789", "name": "Jane", "email": "jane@example.com"}
   },
   {
-    "operation": "create", 
-    "schema": "projects",
-    "data": {"name": "New Project", "owner_id": "123"}
+    "operation": "update-one",
+    "schema": "users",
+    "result": {"id": "user-123", "status": "active"}
   },
   {
-    "operation": "create",
-    "schema": "tasks", 
-    "data": {"title": "Setup project", "project_id": "456"}
+    "operation": "delete-one",
+    "schema": "posts",
+    "result": {"id": "post-456", "deleted_at": "2024-11-12T10:30:00Z"}
   }
 ]
-EOF
 ```
 
-## Operation Types
+### Batch Create
 
-### **Supported Operations**
+```bash
+echo '[
+  {
+    "operation": "create-all",
+    "schema": "users",
+    "data": [
+      {"name": "Alice", "email": "alice@example.com"},
+      {"name": "Bob", "email": "bob@example.com"},
+      {"name": "Carol", "email": "carol@example.com"}
+    ]
+  }
+]' | monk bulk
+```
 
-| Operation | Required Fields | Optional Fields | Description |
-|-----------|----------------|----------------|-------------|
-| **create** | `schema`, `data` | `message` | Create new record |
-| **update** | `schema`, `data` | `id`, `filter`, `message` | Update existing record(s) |
-| **delete** | `schema` | `id`, `filter`, `message` | Delete record(s) |
-| **select** | `schema` | `id`, `filter`, `limit`, `offset` | Retrieve record(s) |
+### Filter-Based Update
 
-### **Operation Object Structure**
+```bash
+echo '[
+  {
+    "operation": "update-any",
+    "schema": "orders",
+    "filter": {"where": {"status": "pending", "total": {"$gte": 1000}}},
+    "data": {"priority": "high"}
+  }
+]' | monk bulk
+```
+
+### Aggregation in Bulk
+
+```bash
+echo '[
+  {
+    "operation": "aggregate",
+    "schema": "orders",
+    "aggregate": {
+      "total_revenue": {"$sum": "amount"},
+      "order_count": {"$count": "*"}
+    },
+    "filter": {"where": {"status": "paid"}},
+    "groupBy": ["country"]
+  }
+]' | monk bulk
+```
+
+### Cross-Schema Operations
+
+```bash
+echo '[
+  {
+    "operation": "create-one",
+    "schema": "projects",
+    "data": {"name": "New Project", "owner_id": "user-123"}
+  },
+  {
+    "operation": "create-all",
+    "schema": "tasks",
+    "data": [
+      {"title": "Setup", "project_id": "proj-456"},
+      {"title": "Development", "project_id": "proj-456"}
+    ]
+  },
+  {
+    "operation": "update-one",
+    "schema": "users",
+    "id": "user-123",
+    "data": {"active_projects_count": {"$increment": 1}}
+  }
+]' | monk bulk
+```
+
+### Access Control Updates
+
+```bash
+echo '[
+  {
+    "operation": "access-one",
+    "schema": "documents",
+    "id": "doc-123",
+    "data": {
+      "access_read": ["user-123", "user-456"],
+      "access_write": ["user-123"]
+    }
+  },
+  {
+    "operation": "access-any",
+    "schema": "documents",
+    "filter": {"where": {"folder": "shared"}},
+    "data": {
+      "access_read": ["team-engineering"]
+    }
+  }
+]' | monk bulk
+```
+
+### Explicit Record Updates
+
+```bash
+echo '[
+  {
+    "operation": "update-all",
+    "schema": "inventory",
+    "data": [
+      {"id": "product-1", "stock": 100, "reserved": 10},
+      {"id": "product-2", "stock": 50, "reserved": 4},
+      {"id": "product-3", "stock": 200, "reserved": 25}
+    ]
+  }
+]' | monk bulk
+```
+
+### Conditional Deletions
+
+```bash
+echo '[
+  {
+    "operation": "delete-any",
+    "schema": "notifications",
+    "filter": {"where": {"read": true, "created_at": {"$lt": "2024-01-01"}}}
+  },
+  {
+    "operation": "delete-any",
+    "schema": "sessions",
+    "filter": {"where": {"expires_at": {"$lt": "2024-11-12T00:00:00Z"}}}
+  }
+]' | monk bulk
+```
+
+## Response Format
+
+Success response (HTTP 200):
+```json
+[
+  {
+    "operation": "create-one",
+    "schema": "users",
+    "result": {"id": "user-123", "name": "Alice"}
+  },
+  {
+    "operation": "update-one",
+    "schema": "users",
+    "result": {"id": "user-456", "status": "active"}
+  }
+]
+```
+
+Error response (transaction rolled back):
 ```json
 {
-  "operation": "create|update|delete|select",
-  "schema": "schema_name",
-  "data": { /* record data */ },
-  "id": "record_id", 
-  "filter": { /* filter criteria */ },
-  "limit": 100,
-  "offset": 0,
-  "message": "Custom operation description"
+  "success": false,
+  "error": "OPERATION_MISSING_DATA",
+  "message": "Operation requires data field"
 }
 ```
 
-## Bulk Operation Examples
+## Transaction Behavior
 
-### **Bulk User Creation**
-```bash
-cat << 'EOF' | monk bulk raw
-[
-  {
-    "operation": "create",
-    "schema": "users",
-    "data": {"name": "Alice Smith", "email": "alice@company.com", "department": "Engineering"}
-  },
-  {
-    "operation": "create", 
-    "schema": "users",
-    "data": {"name": "Bob Jones", "email": "bob@company.com", "department": "Marketing"}
-  },
-  {
-    "operation": "create",
-    "schema": "users", 
-    "data": {"name": "Carol Davis", "email": "carol@company.com", "department": "Sales"}
-  }
-]
-EOF
-```
+All operations execute inside a single database transaction:
 
-### **Bulk Status Update**
-```bash
-cat << 'EOF' | monk bulk raw
-[
-  {
-    "operation": "update",
-    "schema": "users",
-    "filter": {"department": "Engineering"},
-    "data": {"access_level": "developer"}
-  },
-  {
-    "operation": "update", 
-    "schema": "users",
-    "filter": {"department": "Marketing"},
-    "data": {"access_level": "editor"}
-  }
-]
-EOF
-```
+- **On Success**: Transaction commits, all changes are persisted, results returned
+- **On Error**: Transaction rolls back, no changes are persisted, error returned
+- **Atomicity**: All operations succeed together or all fail together
 
-### **Data Migration**
-```bash
-cat << 'EOF' | monk bulk raw
-[
-  {
-    "operation": "create",
-    "schema": "new_users",
-    "data": {"id": "u1", "name": "Alice", "email": "alice@example.com"}
-  },
-  {
-    "operation": "create",
-    "schema": "new_users", 
-    "data": {"id": "u2", "name": "Bob", "email": "bob@example.com"}
-  },
-  {
-    "operation": "delete",
-    "schema": "old_users",
-    "filter": {"migrated": true}
-  }
-]
-EOF
-```
+This ensures data consistency across multiple schemas and operations.
 
-### **Cleanup Operations**
-```bash
-cat << 'EOF' | monk bulk raw
-[
-  {
-    "operation": "delete",
-    "schema": "temp_data",
-    "filter": {"created_at": {"$lt": "2025-08-01"}}
-  },
-  {
-    "operation": "delete",
-    "schema": "log_entries", 
-    "filter": {"level": "debug", "timestamp": {"$lt": "2025-08-25"}}
-  },
-  {
-    "operation": "update",
-    "schema": "users",
-    "filter": {"last_login": {"$lt": "2025-07-01"}},
-    "data": {"status": "inactive"}
-  }
-]
-EOF
-```
+## Validation Rules
 
-## Future Async Operations
+1. **Array validation**:
+   - `create-all`, `update-all`, `delete-all`, `access-all` require `data` to be an array
+   - `update-all`, `delete-all`, `access-all` require each element to include `id`
 
-*Note: Async operations are planned for future implementation*
+2. **Filter validation**:
+   - `update-any`, `delete-any`, `access-any` require `filter` object
+   - `*-all` operations reject `filter` (use `*-any` for filter-based operations)
 
-#### **Submit Async Bulk Operation**
-```bash
-monk bulk submit
-```
+3. **Aggregate validation**:
+   - `aggregate` requires non-empty `aggregate` object
+   - Does not accept `data` field
 
-#### **Check Operation Status**  
-```bash
-monk bulk status <operation_id>
-```
+4. **ID validation**:
+   - `*-one` and `*-404` operations require `id` unless `filter` is provided
 
-#### **Download Operation Results**
-```bash
-monk bulk result <operation_id>
-```
+## Error Codes
 
-#### **Cancel Pending Operation**
-```bash
-monk bulk cancel <operation_id>
-```
+| Status | Error Code | Message | Condition |
+|--------|------------|---------|-----------|
+| 400 | `REQUEST_INVALID_FORMAT` | "Request body must contain an operations array" | Missing/invalid payload |
+| 400 | `OPERATION_MISSING_FIELDS` | "Operation missing required fields" | Missing `operation` or `schema` |
+| 400 | `OPERATION_MISSING_ID` | "ID required for operation" | `*-one` without `id` |
+| 400 | `OPERATION_MISSING_DATA` | "Operation requires data field" | Mutation without payload |
+| 400 | `OPERATION_INVALID_DATA` | "Operation requires data to be [object\|array]" | Wrong payload shape |
+| 400 | `OPERATION_MISSING_FILTER` | "Operation requires filter to be an object" | `*-any` without filter |
+| 400 | `OPERATION_INVALID_FILTER` | "Operation does not support filter" | `*-all` with filter |
+| 400 | `OPERATION_MISSING_AGGREGATE` | "Operation requires aggregate" | `aggregate` without spec |
+| 422 | `OPERATION_UNSUPPORTED` | "Unsupported operation" | Upsert / select-max |
+| 401 | `TOKEN_MISSING` | "Authorization header required" | Missing bearer token |
+| 403 | `PERMISSION_DENIED` | "Operation not authorized" | Lacking schema permission |
 
-## Error Handling
+## Use Cases
 
-### **Invalid Operations**
-```bash
-cat << 'EOF' | monk bulk raw
-[{"operation": "invalid", "schema": "users"}]
-EOF
-```
-```json
-{"success":false,"error":"Invalid operation type 'invalid'","supported_operations":["create","update","delete","select"]}
-```
-
-### **Schema Validation**
-```bash
-cat << 'EOF' | monk bulk raw  
-[{"operation": "create", "schema": "nonexistent", "data": {}}]
-EOF
-```
-```json
-{"success":false,"results":[{"operation":"create","schema":"nonexistent","success":false,"error":"Schema 'nonexistent' not found"}],"summary":{"total":1,"successful":0,"failed":1}}
-```
-
-### **Partial Failures**
-```bash
-cat << 'EOF' | monk bulk raw
-[
-  {"operation": "create", "schema": "users", "data": {"name": "Valid User", "email": "valid@example.com"}},
-  {"operation": "create", "schema": "users", "data": {"invalid_field": "value"}},
-  {"operation": "create", "schema": "users", "data": {"name": "Another Valid", "email": "valid2@example.com"}}
-]
-EOF
-```
-```json
-{"success":true,"results":[{"operation":"create","success":true,"data":{"id":"123"}},{"operation":"create","success":false,"error":"Invalid field 'invalid_field'"},{"operation":"create","success":true,"data":{"id":"124"}}],"summary":{"total":3,"successful":2,"failed":1}}
-```
-
-## Format Restrictions
-
-Bulk commands **only support JSON format**:
+### Data Migration
 
 ```bash
-# ✅ Correct usage
-echo '[{"operation": "create", "schema": "users", "data": {...}}]' | monk bulk raw
-
-# ❌ Invalid format flags  
-monk --text bulk raw
-# Error: The --text option is not supported for bulk operations
-# Bulk operations require JSON format for structured batch processing
-```
-
-**Rationale**: Bulk operations require **structured arrays** of operation objects that are inherently JSON-formatted for machine processing and API consistency.
-
-## Performance Considerations
-
-### **Batch Size Optimization**
-```bash
-# Good: Reasonable batch size
-cat operations-100.json | monk bulk raw
-
-# Avoid: Very large batches (may timeout)
-cat operations-10000.json | monk bulk raw
-```
-
-### **Transaction Efficiency**
-- All operations in single request execute as **one transaction**
-- **Faster** than individual `monk data` commands for multiple records
-- **Atomic**: Either all succeed or all rollback on critical failures
-
-### **Memory Usage**
-- Large bulk operations load entirely into memory
-- Consider chunking very large datasets
-- Monitor response sizes for system limits
-
-## Integration Patterns
-
-### **Data Migration Workflow**
-```bash
-# 1. Export from source
+# Export from source
 monk data export old_schema ./migration/
 
-# 2. Transform data format  
-python transform-data.py ./migration/ > bulk-operations.json
+# Transform to bulk operations
+jq '[.[] | {operation: "create-one", schema: "new_schema", data: .}]' \
+  ./migration/*.json | monk bulk
 
-# 3. Bulk import to new schema
-cat bulk-operations.json | monk bulk raw
-
-# 4. Verify migration
+# Verify
 monk data list new_schema | jq 'length'
 ```
 
-### **Batch Processing Pipeline**
+### Batch Processing
+
 ```bash
-#!/bin/bash
-# Process daily data updates
+# Generate operations from CSV
+python csv-to-bulk-ops.py input.csv | monk bulk
 
-# Generate bulk operations
-python generate-daily-updates.py > daily-ops.json
-
-# Execute bulk operations
-result=$(cat daily-ops.json | monk bulk raw)
-
-# Check for failures
-failed=$(echo "$result" | jq '.summary.failed')
-if [ "$failed" -gt 0 ]; then
-    echo "❌ $failed operations failed"
-    echo "$result" | jq '.results[] | select(.success == false)'
-    exit 1
-fi
-
-echo "✅ All $(echo "$result" | jq '.summary.successful') operations completed"
+# Process results
+monk bulk < operations.json | jq '.[] | select(.error) | .error'
 ```
 
-### **Data Synchronization**
-```bash
-# Sync users between environments
-source_users=$(monk data list users)
-cat << EOF | monk bulk raw
-[
-$(echo "$source_users" | jq -r '.[] | {
-  "operation": "create",
-  "schema": "users_backup", 
-  "data": .
-}' | jq -s '. | join(",\n")')
-]
-EOF
-```
+### Cleanup Operations
 
-## Advanced Features
-
-### **Conditional Operations**
 ```bash
-cat << 'EOF' | monk bulk raw
-[
+echo '[
   {
-    "operation": "update",
-    "schema": "users",
-    "filter": {"status": "pending", "created_at": {"$lt": "2025-08-25"}},
-    "data": {"status": "expired"}
+    "operation": "delete-any",
+    "schema": "temp_data",
+    "filter": {"where": {"created_at": {"$lt": "2024-01-01"}}}
   },
   {
-    "operation": "delete",
-    "schema": "sessions",
-    "filter": {"expires_at": {"$lt": "2025-08-29T00:00:00Z"}}
+    "operation": "update-any",
+    "schema": "users",
+    "filter": {"where": {"last_login": {"$lt": "2024-06-01"}}},
+    "data": {"status": "inactive"}
   }
-]
-EOF
+]' | monk bulk
 ```
 
-### **Cross-Schema Relationships**
+### Cross-Schema Relationships
+
 ```bash
-cat << 'EOF' | monk bulk raw
-[
+echo '[
   {
-    "operation": "create",
+    "operation": "create-one",
     "schema": "projects",
-    "data": {"name": "New Project", "owner_id": "123"}
+    "data": {"name": "Q4 Initiative", "owner_id": "user-123"}
   },
   {
-    "operation": "update",
+    "operation": "update-one",
     "schema": "users",
-    "id": "123", 
+    "id": "user-123",
     "data": {"active_projects": {"$increment": 1}}
   }
-]
-EOF
+]' | monk bulk
 ```
+
+## Performance Considerations
+
+### Batch Size
+
+- Recommended: < 1000 operations per batch
+- Very large batches may timeout
+- Consider chunking large datasets
+
+### Transaction Duration
+
+- All operations execute in single transaction
+- Long-running transactions may lock resources
+- Monitor transaction time for large batches
+
+### Memory Usage
+
+- All operations and results load into memory
+- Large payloads increase memory pressure
+- Monitor response sizes
 
 ## Best Practices
 
-1. **Batch Sizing**: Keep operations under 1000 per batch for optimal performance
-2. **Error Handling**: Always check summary for failed operations
-3. **Atomic Operations**: Group related operations in single batch for consistency
-4. **Schema Validation**: Ensure all schemas exist before bulk operations
-5. **Testing**: Test bulk operations in development before production use
-6. **Monitoring**: Log bulk operation results for audit trails
+1. **Validate Input**: Test operations on small dataset first
+2. **Error Handling**: Always check response for errors
+3. **Batch Sizing**: Keep operations under 1000 per batch
+4. **Atomicity**: Group related operations for consistency
+5. **Logging**: Log bulk operations for audit trails
+6. **Testing**: Test in development before production
 
 ## Comparison with Individual Commands
 
-| Approach | Use Case | Performance | Transaction Safety |
-|----------|----------|-------------|-------------------|
-| **Individual** | `echo '{}' \| monk data create users` | Slower (multiple requests) | Per-operation |
-| **Bulk** | `echo '[{}, {}]' \| monk bulk raw` | Faster (single request) | All-or-nothing |
+| Approach | Command | Performance | Transaction | Use Case |
+|----------|---------|-------------|-------------|----------|
+| Individual | `monk data create` | Slower (N requests) | Per-operation | Single records, interactive |
+| Bulk | `monk bulk` | Faster (1 request) | All-or-nothing | Multiple records, batch jobs |
 
-**Choose Bulk When:**
+Choose bulk when:
 - Processing multiple records simultaneously
 - Need transaction consistency across operations
-- Performance is critical for large datasets
-- Working with cross-schema operations
+- Performance is critical
+- Working across multiple schemas
 
-**Choose Individual When:**
+Choose individual commands when:
 - Single record operations
 - Interactive data exploration
 - Error isolation is important
 - Simple CRUD workflows
 
-Bulk commands provide **efficient, transactional batch processing** for high-performance data operations.
+## See Also
+
+- `monk find` - Advanced search with Filter DSL
+- `monk aggregate` - Statistical queries
+- `monk data` - Individual CRUD operations
+- `monk sync` - Data synchronization

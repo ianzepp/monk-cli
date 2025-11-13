@@ -351,35 +351,7 @@ commands:
 
 # Bulk operations for batch processing
 - name: bulk
-  help: Bulk operations for batch processing across multiple schemas
-
-  commands:
-  - name: raw
-    help: Execute bulk operations immediately (synchronous)
-
-  - name: submit
-    help: Submit bulk operations for async processing (future feature)
-
-  - name: status
-    help: Check status of async bulk operation (future feature)
-    args:
-    - name: operation_id
-      required: true
-      help: Bulk operation ID from submit command
-
-  - name: result
-    help: Download results of completed bulk operation (future feature)
-    args:
-    - name: operation_id
-      required: true
-      help: Bulk operation ID from submit command
-
-  - name: cancel
-    help: Cancel pending bulk operation (future feature)
-    args:
-    - name: operation_id
-      required: true
-      help: Bulk operation ID to cancel
+  help: Execute multiple operations across schemas in a single transaction via JSON input
 
 # Filesystem-like operations for API data exploration
 - name: fs

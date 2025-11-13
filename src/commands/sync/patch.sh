@@ -171,20 +171,20 @@ bulk_operations=$(echo "$operations" | jq -c --arg schema "$schema" '
         select(.op != "unchanged") |
         if .op == "insert" then
             {
-                operation: "create",
+                operation: "create-one",
                 schema: $schema,
                 data: .record
             }
         elif .op == "update" then
             {
-                operation: "update",
+                operation: "update-one",
                 schema: $schema,
                 id: .id,
                 data: .new
             }
         elif .op == "delete" then
             {
-                operation: "delete",
+                operation: "delete-one",
                 schema: $schema,
                 id: .id
             }
@@ -225,33 +225,27 @@ if [ "$tenant" != "$prev_tenant" ]; then
     }
 fi
 
-# Apply patch using bulk API
+# Apply patch using bulk API with new format
 print_info "Applying patch via bulk API..."
-response=$(make_request_json "POST" "/api/bulk" "$bulk_operations")
+wrapped_payload=$(echo "$bulk_operations" | jq '{operations: .}')
+response=$(make_request_json "POST" "/api/bulk" "$wrapped_payload")
 
 # Restore previous context
 [ -n "$prev_tenant" ] && switch_tenant "$prev_tenant" >/dev/null 2>&1
 [ -n "$prev_server" ] && switch_server "$prev_server" >/dev/null 2>&1
 
-# Check response
-if echo "$response" | jq -e 'type == "array"' >/dev/null 2>&1; then
-    # Bulk API returns array of results
-    success_count=$(echo "$response" | jq '[.[] | select(.result.success == true)] | length')
-    error_count=$(echo "$response" | jq '[.[] | select(.result.success != true)] | length')
+# Check response - new API format returns {"success": true, "data": [...]}
+if echo "$response" | jq -e '.success == true' >/dev/null 2>&1; then
+    data=$(echo "$response" | jq '.data')
     
-    print_success "Patch applied: $success_count succeeded, $error_count failed"
+    # Count successes and errors from data array
+    total=$(echo "$data" | jq 'length')
+    # In new format, each operation result is in the data array
     
-    if [ "$error_count" -gt 0 ]; then
-        echo ""
-        echo "Errors:"
-        echo "$response" | jq -r '.[] | select(.result.success != true) | 
-            "\(.operation) \(.id // .schema): \(.result.error // "unknown error")"'
-        exit 1
-    fi
-    
-    echo "$response" | jq '.'
+    print_success "Patch applied: $total operations completed"
+    echo "$data" | jq '.'
 else
-    print_error "Unexpected response format from bulk API"
+    print_error "Patch application failed"
     echo "$response" | jq '.'
     exit 1
 fi

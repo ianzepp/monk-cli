@@ -200,7 +200,7 @@ elif [ "$strategy" = "merge" ]; then
         print_info "Preparing $to_insert insert operations..."
         operations=$(echo "$diff_json" | jq -c --arg schema "$dst_schema" '
             [.operations[] | select(.op == "insert") | {
-                operation: "create",
+                operation: "create-one",
                 schema: $schema,
                 data: .record
             }]
@@ -212,7 +212,7 @@ elif [ "$strategy" = "merge" ]; then
         print_info "Preparing $to_update update operations..."
         updates=$(echo "$diff_json" | jq -c --arg schema "$dst_schema" '
             [.operations[] | select(.op == "update") | {
-                operation: "update",
+                operation: "update-one",
                 schema: $schema,
                 id: .id,
                 data: .new
@@ -221,10 +221,18 @@ elif [ "$strategy" = "merge" ]; then
         operations=$(jq -n --argjson ops "$operations" --argjson updates "$updates" '$ops + $updates')
     fi
     
-    # Execute bulk operations
+    # Execute bulk operations with new API format
     if [ "$operations" != "[]" ]; then
         print_info "Executing $(echo "$operations" | jq 'length') operations via bulk API..."
-        import_response=$(make_request_json "POST" "/api/bulk" "$operations")
+        wrapped_payload=$(echo "$operations" | jq '{operations: .}')
+        bulk_response=$(make_request_json "POST" "/api/bulk" "$wrapped_payload")
+        
+        # Extract data from response
+        if echo "$bulk_response" | jq -e '.success == true' >/dev/null 2>&1; then
+            import_response=$(echo "$bulk_response" | jq '{success: true, data: .data}')
+        else
+            import_response="$bulk_response"
+        fi
     else
         import_response='{"success": true, "message": "No operations to perform"}'
     fi
