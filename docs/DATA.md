@@ -231,8 +231,8 @@ Typical data workflow with other monk commands:
 
 ```bash
 # 1. Set up environment
-monk server use local
-monk tenant use my-app
+monk config server use local
+monk config tenant use my-app
 monk auth login my-app admin
 
 # 2. Define schema (if not exists)

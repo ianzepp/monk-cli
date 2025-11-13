@@ -16,13 +16,13 @@ This creates the necessary configuration directories and files.
 
 ### 2. Add Your Server
 ```bash
-monk server add dev localhost:3000 --description "Development server"
+monk config server add dev localhost:3000 --description "Development server"
 ```
 Replace `localhost:3000` with your actual server endpoint.
 
 ### 3. Switch to Your Server
 ```bash
-monk server use dev
+monk config server use dev
 ```
 
 ### 4. Register Tenant and User
@@ -33,7 +33,7 @@ This creates both the tenant and user account, and automatically logs you in.
 
 ### 5. Verify Connection
 ```bash
-monk server ping
+monk config server ping
 monk auth status
 ```
 
@@ -52,10 +52,10 @@ After running these commands, you'll have:
 $ monk init
 ✓ CLI configuration initialized
 
-$ monk server add dev localhost:3000 --description "Development server"
+$ monk config server add dev localhost:3000 --description "Development server"
 ✓ Server 'dev' added successfully
 
-$ monk server use dev
+$ monk config server use dev
 ✓ Switched to server 'dev'
 
 $ monk auth register myproject admin
@@ -68,7 +68,7 @@ $ monk auth register myproject admin
 ℹ JWT token stored for server+tenant context
 ✓ Tenant added to local registry for server: dev
 
-$ monk server ping
+$ monk config server ping
 ✓ Server 'dev' is healthy
 
 $ monk auth status
@@ -81,13 +81,13 @@ Token expires: 2024-12-31 23:59:59
 ### Connection Issues
 ```bash
 # Check if server is running
-monk server ping dev
+monk config server ping dev
 
 # Get detailed server info
-monk server info dev
+monk config server info dev
 
 # Check server health
-monk server health dev
+monk config server health dev
 ```
 
 ### Authentication Issues

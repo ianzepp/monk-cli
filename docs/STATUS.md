@@ -117,10 +117,10 @@ Available Schemas: 0
 Current Status
 
 Server: ✗ No server selected
-  Use 'monk server use <name>' to select a server
+  Use 'monk config server use <name>' to select a server
 
 Tenant: ✗ No tenant selected
-  Use 'monk tenant use <name>' or 'monk project use <name>' to select a tenant
+  Use 'monk config tenant use <name>' or 'monk project use <name>' to select a tenant
 
 Authentication: ✗ Not authenticated
   Server selection required before authentication
@@ -173,8 +173,8 @@ monk status
 ### **Context Switching Verification**
 ```bash
 # Switch to different environment
-monk server use production
-monk tenant use "Customer Portal"
+monk config server use production
+monk config tenant use "Customer Portal"
 
 # Verify the switch worked
 monk status
@@ -212,7 +212,7 @@ monk data list users         # Proceed with operations
 # Check all environments
 for server in local staging production; do
     echo "=== $server ==="
-    monk server use $server
+    monk config server use $server
     monk status
     echo
 done
@@ -232,9 +232,9 @@ monk status                    # Shows new project context
 **No Server Selected:**
 ```
 Server: ✗ No server selected
-Use 'monk server use <name>' to select a server
+Use 'monk config server use <name>' to select a server
 ```
-**Solution**: `monk server use <server-name>`
+**Solution**: `monk config server use <server-name>`
 
 **Authentication Required:**
 ```
@@ -253,8 +253,8 @@ Server: remote (api.remote.com:443)
 ### **Recovery Commands**
 ```bash
 # Reset to working state
-monk server use local
-monk tenant use "known-project"
+monk config server use local
+monk config tenant use "known-project"
 monk auth login my-project admin
 monk status                    # Verify recovery
 ```
@@ -280,7 +280,7 @@ echo "Current context: $server/$tenant as $auth_user"
 ```bash
 # When commands fail:
 1. monk status              # Check overall state
-2. monk server ping         # Verify server connectivity
+2. monk config server ping         # Verify server connectivity
 3. monk auth status         # Check authentication
 4. monk data list         # Test data access
 ```

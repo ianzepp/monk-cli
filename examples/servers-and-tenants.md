@@ -23,22 +23,22 @@ Monk CLI
 
 ### List All Servers
 ```bash
-monk server list
+monk config server list
 ```
 
 Shows all registered servers with health status.
 
 ### Add a Server
 ```bash
-monk server add dev localhost:9001 --description "Development server"
-monk server add staging api.staging.example.com:443 --description "Staging"
-monk server add prod api.example.com:443 --description "Production"
+monk config server add dev localhost:9001 --description "Development server"
+monk config server add staging api.staging.example.com:443 --description "Staging"
+monk config server add prod api.example.com:443 --description "Production"
 ```
 
 ### Switch Servers
 ```bash
-monk server use dev
-monk server use prod
+monk config server use dev
+monk config server use prod
 ```
 
 Your server selection persists across CLI sessions.
@@ -46,24 +46,24 @@ Your server selection persists across CLI sessions.
 ### Check Server Status
 ```bash
 # Check current server
-monk server current
+monk config server current
 
 # Ping a specific server
-monk server ping dev
+monk config server ping dev
 
 # Check server health
-monk server health dev
+monk config server health dev
 
 # Ping all registered servers
-monk server ping-all
+monk config server ping-all
 
 # Get detailed server info
-monk server info dev
+monk config server info dev
 ```
 
 ### Remove a Server
 ```bash
-monk server delete staging
+monk config server delete staging
 ```
 
 ## Tenant Management
@@ -76,7 +76,7 @@ Tenants are isolated workspaces within a server. Each tenant has:
 
 ### List Tenants
 ```bash
-monk tenant list
+monk config tenant list
 ```
 
 Shows tenants on the current server.
@@ -91,17 +91,17 @@ This creates the tenant, user account, and authenticates you automatically.
 
 Alternatively, for manual tenant creation:
 ```bash
-monk tenant add myproject "My Project"
+monk config tenant add myproject "My Project"
 ```
 
 ### Switch Tenants
 ```bash
-monk tenant use myproject
+monk config tenant use myproject
 ```
 
 ### Remove a Tenant
 ```bash
-monk tenant delete old-project
+monk config tenant delete old-project
 ```
 
 ## Complete Workflow
@@ -110,12 +110,12 @@ monk tenant delete old-project
 
 ```bash
 # Add all your servers
-monk server add dev localhost:9001
-monk server add staging api-staging.company.com:443
-monk server add prod api.company.com:443
+monk config server add dev localhost:9001
+monk config server add staging api-staging.company.com:443
+monk config server add prod api.company.com:443
 
 # Switch to development
-monk server use dev
+monk config server use dev
 
 # Create and use a tenant
 monk auth register myapp admin
@@ -128,19 +128,19 @@ monk status
 
 ```bash
 # Development work
-monk server use dev
-monk tenant use myapp
+monk config server use dev
+monk config tenant use myapp
 monk describe list
 monk data list users
 
 # Switch to staging
-monk server use staging
-monk tenant use myapp
+monk config server use staging
+monk config tenant use myapp
 monk data list users  # Same tenant, different server
 
 # Switch to production
-monk server use prod
-monk tenant use myapp
+monk config server use prod
+monk config tenant use myapp
 monk data list users  # Production data
 ```
 
@@ -148,7 +148,7 @@ monk data list users  # Production data
 
 ```bash
 # Create separate tenants for different projects
-monk server use dev
+monk config server use dev
 
 monk auth register fitness-app admin
 monk describe create users  # Fitness user schema
@@ -157,10 +157,10 @@ monk auth register inventory-sys admin
 monk describe create products  # Inventory schema
 
 # Switch between projects easily
-monk tenant use fitness-app
+monk config tenant use fitness-app
 monk data list users  # Fitness users
 
-monk tenant use inventory-sys
+monk config tenant use inventory-sys
 monk data list products  # Inventory products
 ```
 
@@ -208,10 +208,10 @@ Shows:
 ### Detailed Information
 ```bash
 # Current server
-monk server current
+monk config server current
 
 # Server info
-monk server info
+monk config server info
 
 # Authentication details
 monk auth status
@@ -226,9 +226,9 @@ monk describe list
 
 **Servers:**
 ```bash
-monk server add dev ...       # Local development
-monk server add staging ...   # Staging environment
-monk server add prod ...      # Production
+monk config server add dev ...       # Local development
+monk config server add staging ...   # Staging environment
+monk config server add prod ...      # Production
 ```
 
 **Tenants:**
@@ -246,8 +246,8 @@ monk auth register prod-api admin
 
 ```bash
 # Always verify connection after switching
-monk server use prod
-monk server ping
+monk config server use prod
+monk config server ping
 
 # Check status before operations
 monk status
@@ -259,25 +259,25 @@ Keep development and production completely separate:
 
 ```bash
 # Development
-monk server use dev
-monk tenant use myapp-dev
+monk config server use dev
+monk config tenant use myapp-dev
 
 # Production (different server entirely)
-monk server use prod
-monk tenant use myapp
+monk config server use prod
+monk config tenant use myapp
 ```
 
 ## Data Migration Between Environments
 
 ```bash
 # Export from staging
-monk server use staging
-monk tenant use myapp
+monk config server use staging
+monk config tenant use myapp
 monk data list users > users-export.json
 
 # Import to production
-monk server use prod
-monk tenant use myapp
+monk config server use prod
+monk config tenant use myapp
 cat users-export.json | monk data create users
 ```
 
@@ -286,14 +286,14 @@ cat users-export.json | monk data create users
 ### Can't Connect to Server
 ```bash
 # Check server status
-monk server ping dev
+monk config server ping dev
 
 # Get server info
-monk server info dev
+monk config server info dev
 
 # Try re-adding server
-monk server delete dev
-monk server add dev localhost:9001
+monk config server delete dev
+monk config server add dev localhost:9001
 ```
 
 ### Authentication Issues
@@ -314,38 +314,38 @@ monk auth register newproject admin
 monk status
 
 # Switch if needed
-monk server use correct-server
-monk tenant use correct-tenant
+monk config server use correct-server
+monk config tenant use correct-tenant
 ```
 
 ### Tenant Not Found
 ```bash
 # List available tenants
-monk tenant list
+monk config tenant list
 
 # Check you're on the right server
-monk server current
+monk config server current
 ```
 
 ## Common Commands Reference
 
 ```bash
 # Server operations
-monk server list                    # List all servers
-monk server add <name> <host:port> # Add server
-monk server use <name>             # Switch server
-monk server delete <name>          # Remove server
-monk server ping <name>            # Check health
+monk config server list                    # List all servers
+monk config server add <name> <host:port> # Add server
+monk config server use <name>             # Switch server
+monk config server delete <name>          # Remove server
+monk config server ping <name>            # Check health
 
 # Tenant operations
-monk tenant list                   # List tenants
+monk config tenant list                   # List tenants
 monk auth register <tenant> <user> # Create tenant + user
-monk tenant use <name>             # Switch tenant
-monk tenant delete <name>          # Remove tenant
+monk config tenant use <name>             # Switch tenant
+monk config tenant delete <name>          # Remove tenant
 
 # Status and info
 monk status                        # Complete status
-monk server current                # Current server
+monk config server current                # Current server
 monk auth status                   # Auth details
 ```
 

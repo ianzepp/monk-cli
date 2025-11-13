@@ -189,7 +189,7 @@ monk root tenant list
 monk root tenant create "new-app"
 
 # Regular: work within selected tenant
-monk tenant use new-app
+monk config tenant use new-app
 monk auth login new-app admin
 monk data list users
 ```

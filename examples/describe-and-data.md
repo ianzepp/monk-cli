@@ -362,7 +362,7 @@ monk data list users > users-data.json
 ### Import to Another Tenant
 ```bash
 # Switch tenant
-monk tenant use production
+monk config tenant use production
 
 # Import schema
 cat users-schema.json | monk describe create users

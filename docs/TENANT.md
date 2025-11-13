@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `monk tenant` commands provide **tenant registry management** for organizing and switching between different tenant contexts. These commands manage the local CLI configuration for tenant access across multiple servers.
+The `monk config tenant` commands provide **tenant registry management** for organizing and switching between different tenant contexts. These commands manage the local CLI configuration for tenant access across multiple servers.
 
 **Format Note**: Tenant commands support both **text format** (human-readable tables) and **JSON format** (machine-readable data) via global `--text` and `--json` flags.
 
@@ -18,7 +18,7 @@ monk [--text|--json] tenant <operation> [arguments] [flags]
 
 #### **List Registered Tenants**
 ```bash
-monk tenant list [--server <server_name>]
+monk config tenant list [--server <server_name>]
 ```
 
 **Options:**
@@ -28,7 +28,7 @@ monk tenant list [--server <server_name>]
 
 **Text Format (Default):**
 ```bash
-monk tenant list
+monk config tenant list
 ```
 ```
 Registered Tenants for Server: local
@@ -52,25 +52,25 @@ monk --json tenant list
 
 **Cross-Server Listing:**
 ```bash
-monk tenant list --server staging
+monk config tenant list --server staging
 monk --json tenant list --server production
 ```
 
 #### **Register New Tenant**
 ```bash
-monk tenant add <name> <display_name> [--description <text>]
+monk config tenant add <name> <display_name> [--description <text>]
 ```
 
 **Examples:**
 ```bash
 # Basic tenant registration
-monk tenant add my-app "My Application"
+monk config tenant add my-app "My Application"
 
 # With description
-monk tenant add test-env "Test Environment" --description "Development testing sandbox"
+monk config tenant add test-env "Test Environment" --description "Development testing sandbox"
 
 # Unicode support
-monk tenant add 测试应用 "测试应用程序" --description "中文测试环境"
+monk config tenant add 测试应用 "测试应用程序" --description "中文测试环境"
 ```
 
 **What Happens:**
@@ -80,16 +80,16 @@ monk tenant add 测试应用 "测试应用程序" --description "中文测试环
 
 #### **Switch to Tenant**
 ```bash
-monk tenant use <name>
+monk config tenant use <name>
 ```
 
 **Examples:**
 ```bash
 # Switch active tenant context
-monk tenant use my-app
+monk config tenant use my-app
 
 # Switch to different tenant
-monk tenant use test-env
+monk config tenant use test-env
 ```
 
 **Context Change:**
@@ -99,13 +99,13 @@ monk tenant use test-env
 
 #### **Remove Tenant from Registry**
 ```bash
-monk tenant delete <name>
+monk config tenant delete <name>
 ```
 
 **Examples:**
 ```bash
 # Remove tenant from local registry
-monk tenant delete old-project
+monk config tenant delete old-project
 
 # Removes from CLI config only (doesn't affect server)
 ```
@@ -116,7 +116,7 @@ monk tenant delete old-project
 
 Understanding the difference between **local registry** and **server tenants**:
 
-### **Local Tenant Registry (`monk tenant`)**
+### **Local Tenant Registry (`monk config tenant`)**
 - **Purpose**: CLI configuration and context management
 - **Storage**: `~/.config/monk/cli/tenant.json`
 - **Scope**: Per-server tenant organization
@@ -134,10 +134,10 @@ Understanding the difference between **local registry** and **server tenants**:
 monk root tenant create "my-new-app"
 
 # 2. Register in local CLI (for easy access)
-monk tenant add my-new-app "My New Application"
+monk config tenant add my-new-app "My New Application"
 
 # 3. Select for use
-monk tenant use my-new-app
+monk config tenant use my-new-app
 
 # 4. Authenticate and work
 monk auth login my-new-app admin
@@ -150,14 +150,14 @@ Tenant registry tracks authentication status:
 
 ```bash
 # Check authentication status
-monk tenant list
+monk config tenant list
 # Auth column shows "yes" for authenticated tenants
 
 # Authenticate with tenant
 monk auth login my-app admin
 
 # Authentication is server+tenant specific
-monk tenant list --server staging  # May show different auth status
+monk config tenant list --server staging  # May show different auth status
 ```
 
 ## Output Format Support
@@ -234,23 +234,23 @@ Tenant registry is stored in JSON configuration:
 
 ### **Server Selection Errors**
 ```bash
-monk tenant list
+monk config tenant list
 # Error: No server specified and no current server selected
-# Use 'monk server use <name>' to select a server or use --server flag
+# Use 'monk config server use <name>' to select a server or use --server flag
 ```
 
 ### **Tenant Not Found**
 ```bash
-monk tenant use nonexistent
+monk config tenant use nonexistent
 # Error: Tenant 'nonexistent' not found
 ```
 
 ### **Empty Registry**
 ```bash
-monk tenant list  
+monk config tenant list  
 # Registered Tenants for Server: local
 # No tenants configured for this server
-# Use 'monk tenant add <name> <display_name>' to add tenants
+# Use 'monk config tenant add <name> <display_name>' to add tenants
 ```
 
 ## Multi-Server Support
@@ -259,19 +259,19 @@ Tenants are **server-scoped** in the registry:
 
 ```bash
 # Add tenants to different servers
-monk server use local
-monk tenant add local-app "Local Development"
+monk config server use local
+monk config tenant add local-app "Local Development"
 
-monk server use staging  
-monk tenant add staging-app "Staging Environment"
+monk config server use staging  
+monk config tenant add staging-app "Staging Environment"
 
-monk server use production
-monk tenant add prod-app "Production Application"
+monk config server use production
+monk config tenant add prod-app "Production Application"
 
 # List tenants for specific server
-monk tenant list --server local
-monk tenant list --server staging
-monk tenant list --server production
+monk config tenant list --server local
+monk config tenant list --server staging
+monk config tenant list --server production
 ```
 
 ## Best Practices
@@ -288,7 +288,7 @@ Tenant selection affects all tenant-scoped operations:
 
 ```bash
 # Set context
-monk tenant use my-app
+monk config tenant use my-app
 
 # Affects these commands:
 monk auth login my-app admin    # Authenticates to selected tenant

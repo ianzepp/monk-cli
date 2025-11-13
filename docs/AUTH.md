@@ -460,9 +460,9 @@ Authentication is **server and tenant specific**:
 
 ```bash
 # Each combination is a separate session
-monk server use local && monk auth login app1 admin    # Session: local:app1
-monk server use local && monk auth login app2 user     # Session: local:app2  
-monk server use staging && monk auth login app1 admin  # Session: staging:app1
+monk config server use local && monk auth login app1 admin    # Session: local:app1
+monk config server use local && monk auth login app2 user     # Session: local:app2  
+monk config server use staging && monk auth login app1 admin  # Session: staging:app1
 ```
 
 ### **Session Storage**
@@ -493,12 +493,12 @@ monk server use staging && monk auth login app1 admin  # Session: staging:app1
 ### **Context Switching**
 ```bash
 # Switch server - may need re-authentication
-monk server use staging
+monk config server use staging
 monk auth status          # May show "Not authenticated"
 monk auth login my-app admin
 
 # Switch tenant - need new authentication  
-monk tenant use different-app
+monk config tenant use different-app
 monk auth login different-app user
 ```
 
@@ -544,7 +544,7 @@ monk auth ping
 ```bash
 monk auth status
 # Error: No current server selected
-# Use 'monk server use <name>' to select a server
+# Use 'monk config server use <name>' to select a server
 ```
 
 ## Automation Examples
@@ -556,7 +556,7 @@ monk auth status
 
 servers=$(monk --json server list | jq -r '.servers[].name')
 for server in $servers; do
-    monk server use $server
+    monk config server use $server
     if monk auth expired; then
         echo "$server: authentication expired"
     else

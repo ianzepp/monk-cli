@@ -78,13 +78,13 @@ monk init ~/.config/monk/custom
 ## Step 2: Add Server Connection
 ```bash
 # Add local development server
-monk server add local localhost:9001 --description "Local development server"
+monk config server add local localhost:9001 --description "Local development server"
 
 # Switch to the server
-monk server use local
+monk config server use local
 
 # Verify server connectivity
-monk server ping
+monk config server ping
 ```
 
 ## Step 3: Create Your First Project
@@ -283,7 +283,7 @@ Each example includes common error scenarios and solutions:
 monk auth login <tenant> <username>
 
 # If you get "Server not found" error:
-monk server use <server-name>
+monk config server use <server-name>
 
 # If you get "Schema not found" error:
 monk describe select  # List available schemas
@@ -297,7 +297,7 @@ Examples show where to customize for your needs:
 monk project init "Your Project Name"
 
 # Replace with your server details
-monk server add production your-api.com:443
+monk config server add production your-api.com:443
 
 # Replace with your user preferences
 monk project init "My App" --create-user your-username
@@ -371,10 +371,10 @@ monk describe select users > users-schema-backup.json
 **Server Connection**:
 ```bash
 # Verify server is running
-monk server ping
+monk config server ping
 
 # Check server configuration
-monk server list
+monk config server list
 ```
 
 **Authentication Problems**:

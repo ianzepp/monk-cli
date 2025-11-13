@@ -27,7 +27,7 @@ flags:
   help: Output in JSON format
 
 # Server selection is automatically handled via ~/.config/monk/servers.json
-# Use 'monk server use <name>' to select target server (persistent across commands)
+# Use 'monk config server use <name>' to select target server (persistent across commands)
 
 commands:
 # Configuration initialization
@@ -72,108 +72,113 @@ commands:
     short: -r
     help: Output raw response without pretty-printing
 
-# Remote server management
-- name: server
-  help: Remote server management
+# Configuration management
+- name: config
+  help: Configuration management for servers and tenants
 
   commands:
-  - name: add
-    help: Register remote server
-    args:
-    - name: name
-      required: true
-      help: Server name
-    - name: endpoint
-      required: true
-      help: "Server endpoint (host:port)"
-    flags:
-    - long: --description
-      arg: description
-      help: Optional server description
+  # Remote server management
+  - name: server
+    help: Remote server management
 
-  - name: list
-    help: List all servers with health status
+    commands:
+    - name: add
+      help: Register remote server
+      args:
+      - name: name
+        required: true
+        help: Server name
+      - name: endpoint
+        required: true
+        help: "Server endpoint (host:port)"
+      flags:
+      - long: --description
+        arg: description
+        help: Optional server description
 
-  - name: current
-    help: Show currently selected server
+    - name: list
+      help: List all servers with health status
 
-  - name: use
-    help: "Switch to server (persistent selection) or show current server"
-    args:
-    - name: name
-      required: false
-      help: Server name to switch to (omit to show current server)
+    - name: current
+      help: Show currently selected server
 
-  - name: delete
-    help: Remove server from registry
-    args:
-    - name: name
-      required: true
-      help: Server name to delete
+    - name: use
+      help: "Switch to server (persistent selection) or show current server"
+      args:
+      - name: name
+        required: false
+        help: Server name to switch to (omit to show current server)
 
-  - name: ping
-    help: Health check specific server (defaults to current server)
-    args:
-    - name: name
-      required: false
-      help: Server name to ping (optional, defaults to current server)
+    - name: delete
+      help: Remove server from registry
+      args:
+      - name: name
+        required: true
+        help: Server name to delete
 
-  - name: ping-all
-    help: Health check all registered servers
+    - name: ping
+      help: Health check specific server (defaults to current server)
+      args:
+      - name: name
+        required: false
+        help: Server name to ping (optional, defaults to current server)
 
-  - name: info
-    help: Show server information from API root endpoint
-    args:
-    - name: name
-      required: false
-      help: Server name to query (optional, defaults to current server)
+    - name: ping-all
+      help: Health check all registered servers
 
-  - name: health
-    help: Check server health status from API /health endpoint
-    args:
-    - name: name
-      required: false
-      help: Server name to check (optional, defaults to current server)
+    - name: info
+      help: Show server information from API root endpoint
+      args:
+      - name: name
+        required: false
+        help: Server name to query (optional, defaults to current server)
 
-# Tenant registry management
-- name: tenant
-  help: Tenant registry management
+    - name: health
+      help: Check server health status from API /health endpoint
+      args:
+      - name: name
+        required: false
+        help: Server name to check (optional, defaults to current server)
 
-  commands:
-  - name: add
-    help: Register new tenant
-    args:
-    - name: name
-      required: true
-      help: Tenant identifier name
-    - name: display_name
-      required: true
-      help: Human-readable tenant name
-    flags:
-    - long: --description
-      arg: description
-      help: Optional tenant description
+  # Tenant registry management
+  - name: tenant
+    help: Tenant registry management
 
-  - name: list
-    help: List all registered tenants
-    flags:
-    - long: --server
-      arg: server
-      help: Target server (defaults to current server)
+    commands:
+    - name: add
+      help: Register new tenant
+      args:
+      - name: name
+        required: true
+        help: Tenant identifier name
+      - name: display_name
+        required: true
+        help: Human-readable tenant name
+      flags:
+      - long: --description
+        arg: description
+        help: Optional tenant description
 
-  - name: delete
-    help: Remove tenant from registry
-    args:
-    - name: name
-      required: true
-      help: Tenant name to delete
+    - name: list
+      help: List all registered tenants
+      flags:
+      - long: --server
+        arg: server
+        help: Target server (defaults to current server)
 
-  - name: use
-    help: Switch to tenant (persistent selection)
-    args:
-    - name: name
-      required: true
-      help: Tenant name to switch to
+    - name: delete
+      help: Remove tenant from registry
+      args:
+      - name: name
+        required: true
+        help: Tenant name to delete
+
+    - name: use
+      help: Switch to tenant (persistent selection)
+      args:
+      - name: name
+        required: true
+        help: Tenant name to switch to
 
 # Authentication and token management
 - name: auth

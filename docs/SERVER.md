@@ -2,14 +2,14 @@
 
 ## Overview
 
-The `monk server` commands provide **remote server management** for connecting to multiple Monk API instances. These commands handle server registry, health monitoring, and context switching for multi-environment workflows.
+The `monk config server` commands provide **remote server management** for connecting to multiple Monk API instances. These commands handle server registry, health monitoring, and context switching for multi-environment workflows.
 
 **Format Note**: Server commands support both **text format** (human-readable tables) and **JSON format** (machine-readable data) via global `--text` and `--json` flags.
 
 ## Command Structure
 
 ```bash
-monk [--text|--json] server <operation> [arguments] [flags]
+monk [--text|--json] config server <operation> [arguments] [flags]
 ```
 
 ## Available Commands
@@ -18,20 +18,20 @@ monk [--text|--json] server <operation> [arguments] [flags]
 
 #### **Add New Server**
 ```bash
-monk server add <name> <endpoint> [--description <text>]
+monk config server add <name> <endpoint> [--description <text>]
 ```
 
 **Examples:**
 ```bash
 # Local development server
-monk server add local localhost:9001
+monk config server add local localhost:9001
 
 # Remote servers with descriptions
-monk server add staging api.staging.example.com:443 --description "Staging environment"
-monk server add prod api.example.com:443 --description "Production API server"
+monk config server add staging api.staging.example.com:443 --description "Staging environment"
+monk config server add prod api.example.com:443 --description "Production API server"
 
 # Custom ports
-monk server add dev localhost:8080 --description "Development server"
+monk config server add dev localhost:8080 --description "Development server"
 ```
 
 **What Happens:**
@@ -42,7 +42,7 @@ monk server add dev localhost:8080 --description "Development server"
 
 #### **List All Servers**
 ```bash
-monk server list
+monk config server list
 ```
 
 **Text Format (Default):**
@@ -69,7 +69,7 @@ monk --json server list
 
 #### **Show Current Server**
 ```bash
-monk server current
+monk config server current
 ```
 
 **Examples:**
@@ -95,16 +95,16 @@ monk --json server current
 
 #### **Switch Server Context**
 ```bash
-monk server use <name>
+monk config server use <name>
 ```
 
 **Examples:**
 ```bash
 # Switch to development server
-monk server use local
+monk config server use local
 
 # Switch to production 
-monk server use production
+monk config server use production
 
 # Context affects all subsequent commands
 monk auth login my-tenant admin  # Authenticates to selected server
@@ -112,13 +112,13 @@ monk auth login my-tenant admin  # Authenticates to selected server
 
 #### **Remove Server**
 ```bash
-monk server delete <name>
+monk config server delete <name>
 ```
 
 **Examples:**
 ```bash
 # Remove server from registry
-monk server delete old-server
+monk config server delete old-server
 
 # Cleans up associated authentication sessions
 ```
@@ -127,14 +127,14 @@ monk server delete old-server
 
 #### **Ping Specific Server**
 ```bash
-monk server ping [name]
+monk config server ping [name]
 ```
 
 **Examples:**
 
 **Text Format (Default):**
 ```bash
-monk server ping local
+monk config server ping local
 # Using current server: local
 # Server is up and responding
 # Response time: 12ms
@@ -150,20 +150,20 @@ monk --json server ping local
 
 **Default Server:**
 ```bash
-monk server ping        # Uses current server
-monk server ping local  # Specific server
+monk config server ping        # Uses current server
+monk config server ping local  # Specific server
 ```
 
 #### **Server Information**
 ```bash
-monk server info [name]
+monk config server info [name]
 ```
 
 **Examples:**
 
 **Text Format (Default):**
 ```bash
-monk server info local
+monk config server info local
 # Using current server: local
 
 # Server Information: local
@@ -206,20 +206,20 @@ monk --json server info local
 
 **Default Server:**
 ```bash
-monk server info        # Uses current server
-monk server info local  # Specific server
+monk config server info        # Uses current server
+monk config server info local  # Specific server
 ```
 
 #### **Server Health Check**
 ```bash
-monk server health [name]
+monk config server health [name]
 ```
 
 **Examples:**
 
 **Text Format (Default):**
 ```bash
-monk server health local
+monk config server health local
 # Using current server: local
 
 # Server Health: local
@@ -254,8 +254,8 @@ monk --json server health local
 
 **Default Server:**
 ```bash
-monk server health        # Uses current server
-monk server health local  # Specific server
+monk config server health        # Uses current server
+monk config server health local  # Specific server
 ```
 
 **Difference from `ping`:**
@@ -265,7 +265,7 @@ monk server health local  # Specific server
 
 #### **Ping All Servers**
 ```bash
-monk server ping-all
+monk config server ping-all
 ```
 
 **Text Format (Default):**
@@ -308,27 +308,27 @@ Compact single-line machine-readable data:
 ### **Environment Setup**
 ```bash
 # Development
-monk server add dev localhost:9001 --description "Local development"
-monk server use dev
+monk config server add dev localhost:9001 --description "Local development"
+monk config server use dev
 
 # Staging  
-monk server add staging api-staging.company.com:443 --description "Staging environment"
+monk config server add staging api-staging.company.com:443 --description "Staging environment"
 
 # Production
-monk server add prod api.company.com:443 --description "Production API"
+monk config server add prod api.company.com:443 --description "Production API"
 ```
 
 ### **Environment Switching**
 ```bash
 # Work in development
-monk server use dev
-monk tenant use my-app
+monk config server use dev
+monk config tenant use my-app
 monk auth login my-app admin
 monk data list users
 
 # Switch to staging
-monk server use staging  
-monk tenant use my-app      # Same tenant, different server
+monk config server use staging  
+monk config tenant use my-app      # Same tenant, different server
 monk auth login my-app admin # Re-authenticate for staging
 monk data list users      # Now working with staging data
 ```
@@ -336,10 +336,10 @@ monk data list users      # Now working with staging data
 ### **Health Monitoring Across Environments**
 ```bash
 # Check all environments
-monk server ping-all
+monk config server ping-all
 
 # Monitor specific environment
-monk server ping production
+monk config server ping production
 
 # JSON output for monitoring scripts
 monk --json server ping-all | jq '.summary'
@@ -351,14 +351,14 @@ Server registry tracks authentication sessions per server:
 
 ```bash
 # Authentication is server-scoped
-monk server use local
+monk config server use local
 monk auth login my-app admin     # Creates session: local:my-app
 
-monk server use staging  
+monk config server use staging  
 monk auth login my-app admin     # Creates session: staging:my-app
 
 # Sessions are independent per server
-monk server list                 # Shows auth count per server
+monk config server list                 # Shows auth count per server
 ```
 
 ## Configuration Management
@@ -370,7 +370,7 @@ monk server list                 # Shows auth count per server
 ```bash
 # Use custom config location
 export MONK_CLI_CONFIG_DIR="/path/to/custom/config"
-monk server add dev localhost:9001
+monk config server add dev localhost:9001
 ```
 
 ### **Configuration Structure**
@@ -394,22 +394,22 @@ monk server add dev localhost:9001
 
 ### **Connection Errors**
 ```bash
-monk server ping unreachable
+monk config server ping unreachable
 # Error: Server is down or not responding
 ```
 
 ### **Registry Errors**
 ```bash
-monk server use nonexistent
+monk config server use nonexistent
 # Error: Server 'nonexistent' not found
-# Use 'monk server list' to see available servers
+# Use 'monk config server list' to see available servers
 ```
 
 ### **No Server Selected**
 ```bash
-monk server current
+monk config server current
 # Error: No current server selected  
-# Use 'monk server use <name>' to select a server
+# Use 'monk config server use <name>' to select a server
 ```
 
 ## Automation Examples
@@ -449,7 +449,7 @@ fi
 monk --json server list > server-backup.json
 
 # Restore server configuration
-jq -r '.servers[] | "monk server add \(.name) \(.endpoint) --description \"\(.description)\""' server-backup.json | bash
+jq -r '.servers[] | "monk config server add \(.name) \(.endpoint) --description \"\(.description)\""' server-backup.json | bash
 ```
 
 ## Protocol Detection
@@ -457,9 +457,9 @@ jq -r '.servers[] | "monk server add \(.name) \(.endpoint) --description \"\(.de
 Server commands automatically detect protocols:
 
 ```bash
-monk server add api api.example.com:443    # Auto-detects HTTPS (port 443)
-monk server add local localhost:9001       # Auto-detects HTTP (other ports)
-monk server add secure https://api.com:443 # Explicit protocol override
+monk config server add api api.example.com:443    # Auto-detects HTTPS (port 443)
+monk config server add local localhost:9001       # Auto-detects HTTP (other ports)
+monk config server add secure https://api.com:443 # Explicit protocol override
 ```
 
 ## Best Practices
@@ -476,10 +476,10 @@ Server selection affects all API-dependent commands:
 
 ```bash
 # Set server context
-monk server use production
+monk config server use production
 
 # Affects these operations:
-monk tenant list                # Lists tenants for production server
+monk config tenant list                # Lists tenants for production server
 monk auth login my-app admin    # Authenticates to production
 monk data list users          # Accesses production database
 monk describe select         # Retrieves production schemas

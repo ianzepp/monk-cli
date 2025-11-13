@@ -16,10 +16,10 @@
 
 3. **Set up your environment:**
    ```bash
-   monk server add local localhost:9001 --description "Local development"
-   monk server use local
-   monk tenant add my-app "My Application"
-   monk tenant use my-app
+   monk config server add local localhost:9001 --description "Local development"
+   monk config server use local
+   monk config tenant add my-app "My Application"
+   monk config tenant use my-app
    monk auth login my-app admin
    ```
 
@@ -114,30 +114,30 @@ monk init /path/to/custom/config
 ### **Single Environment**
 ```bash
 monk init
-monk server add local localhost:9001
-monk server use local
-monk tenant add my-app "My Application"
-monk tenant use my-app
+monk config server add local localhost:9001
+monk config server use local
+monk config tenant add my-app "My Application"
+monk config tenant use my-app
 monk auth login my-app admin
 ```
 
 ### **Multi-Environment Setup**
 ```bash
 # Development
-monk server add dev localhost:9001 --description "Development"
-monk tenant add dev-app "Development App"
+monk config server add dev localhost:9001 --description "Development"
+monk config tenant add dev-app "Development App"
 
 # Staging  
-monk server add staging api.staging.com:443 --description "Staging"
-monk tenant add staging-app "Staging App"
+monk config server add staging api.staging.com:443 --description "Staging"
+monk config tenant add staging-app "Staging App"
 
 # Production
-monk server add prod api.company.com:443 --description "Production"
-monk tenant add prod-app "Production App"
+monk config server add prod api.company.com:443 --description "Production"
+monk config tenant add prod-app "Production App"
 
 # Switch between environments
-monk server use dev && monk tenant use dev-app
-monk server use staging && monk tenant use staging-app
+monk config server use dev && monk config tenant use dev-app
+monk config server use staging && monk config tenant use staging-app
 ```
 
 ## Verification
@@ -149,8 +149,8 @@ monk --version
 monk --help
 
 # Test configuration
-monk server list
-monk tenant list
+monk config server list
+monk config tenant list
 monk auth status
 
 # Test output formats
@@ -161,8 +161,8 @@ monk --json server list
 ### **Test API Connectivity**
 ```bash
 # Health checks
-monk server ping
-monk server ping-all
+monk config server ping
+monk config server ping-all
 
 # Authentication test
 monk auth ping
@@ -279,7 +279,7 @@ rm -rf $MONK_CLI_CONFIG_DIR
 monk --json server list > team-servers.json
 
 # Team members import
-jq -r '.servers[] | "monk server add \(.name) \(.endpoint) --description \"\(.description)\""' team-servers.json | bash
+jq -r '.servers[] | "monk config server add \(.name) \(.endpoint) --description \"\(.description)\""' team-servers.json | bash
 ```
 
 ### **Project Configuration Template**
@@ -288,12 +288,12 @@ jq -r '.servers[] | "monk server add \(.name) \(.endpoint) --description \"\(.de
 # setup-team-environment.sh
 
 monk init
-monk server add local localhost:9001 --description "Local development"
-monk server add staging api.staging.company.com:443 --description "Staging"
-monk tenant add main-app "Main Application" 
-monk tenant add test-app "Test Application"
-monk server use local
-monk tenant use main-app
+monk config server add local localhost:9001 --description "Local development"
+monk config server add staging api.staging.company.com:443 --description "Staging"
+monk config tenant add main-app "Main Application" 
+monk config tenant add test-app "Test Application"
+monk config server use local
+monk config tenant use main-app
 
 echo "✅ Team environment configured"
 echo "Next: monk auth login main-app <your-username>"

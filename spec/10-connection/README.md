@@ -19,7 +19,7 @@ Tests for basic server connectivity and CLI communication functionality.
 - `01-ping-server.test.sh` - Basic server connectivity and ping operations
 
 **Prerequisites:**
-- Server must be configured (use `monk server add` if needed)
+- Server must be configured (use `monk config server add` if needed)
 - Basic authentication may be required for some operations
 
 **Usage:**

@@ -71,13 +71,13 @@ Documentation commands use the **current server context**:
 
 ```bash
 # Set server context
-monk server use production
+monk config server use production
 
 # Fetch docs from production server
 monk docs data
 
 # Switch to development
-monk server use local
+monk config server use local
 
 # Fetch docs from development server  
 monk docs auth
@@ -85,7 +85,7 @@ monk docs auth
 
 ## Prerequisites
 
-1. **Server Selection**: Must have a current server selected via `monk server use <name>`
+1. **Server Selection**: Must have a current server selected via `monk config server use <name>`
 2. **Server Connectivity**: Target server must be running and accessible
 3. **API Availability**: Server must support documentation endpoints (`/docs/auth`, `/docs/data`)
 
@@ -95,7 +95,7 @@ monk docs auth
 ```bash
 monk docs data
 # Error: No current server selected
-# Use 'monk server use <name>' to select a server first
+# Use 'monk config server use <name>' to select a server first
 ```
 
 ### **Server Connectivity Issues**
@@ -133,7 +133,7 @@ Documentation commands complement server and API operations:
 
 ```bash
 # Check available documentation from server info
-monk server info
+monk config server info
 
 # Read specific API documentation
 monk docs data

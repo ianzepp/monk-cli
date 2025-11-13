@@ -433,7 +433,7 @@ monk fs ls /data/
 - `monk auth login` - Authenticate to get user JWT
 - `monk auth status` - Check authentication status
 - `monk auth logout` - Clear authentication tokens
-- `monk tenant list` - List available tenants (for context)
+- `monk config tenant list` - List available tenants (for context)
 
 ---
 

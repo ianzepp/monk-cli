@@ -153,7 +153,7 @@ monk --text docs describe | grep "^##" | wc -l
 
 ### Step 1: Check Server Information
 ```bash
-monk server info
+monk config server info
 ```
 
 This shows the server version and available endpoints.
@@ -286,11 +286,11 @@ Documentation is server-specific. When you switch servers, you may see different
 
 ```bash
 # Check docs on development server
-monk server use dev
+monk config server use dev
 monk docs data
 
 # Check docs on production server
-monk server use production
+monk config server use production
 monk docs data
 ```
 
@@ -319,8 +319,8 @@ $ monk docs data
 ```
 
 **Solution:** 
-1. Verify server is running: `monk server ping`
-2. Check server info: `monk server info`
+1. Verify server is running: `monk config server ping`
+2. Check server info: `monk config server info`
 3. Ensure you're connected: `monk status`
 
 ### Display Issues
@@ -352,7 +352,7 @@ brew install glow
 ## Related Commands
 
 ```bash
-monk server info        # View server capabilities
+monk config server info        # View server capabilities
 monk status            # Check current connection
 monk --help            # CLI command reference
 monk describe list     # List available schemas

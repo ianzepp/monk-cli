@@ -37,8 +37,8 @@
 
 #### **Infrastructure & Setup**
 - `monk init` - Initialize CLI configuration with customizable directory support
-- `monk server` - Multi-server registry, health monitoring, and context switching
-- `monk tenant` - Server-scoped tenant registry management and context selection
+- `monk config server` - Multi-server registry, health monitoring, and context switching
+- `monk config tenant` - Server-scoped tenant registry management and context selection
 
 #### **Authentication & Security**  
 - `monk auth` - JWT authentication workflows with session management and token inspection
@@ -128,8 +128,8 @@ monk --version
 #### **Simplified Project Setup (Recommended)**
 ```bash
 monk init                           # Initialize CLI configuration
-monk server add local localhost:9001 # Add server endpoint  
-monk server use local               # Select server
+monk config server add local localhost:9001 # Add server endpoint  
+monk config server use local               # Select server
 monk project init "My App" --create-user admin --auto-login  # Create project!
 monk data select users              # Start working with data immediately
 
@@ -142,10 +142,10 @@ monk fs cat /data/users/user-123/email # Read specific field
 #### **Traditional Tenant Setup**
 ```bash
 monk init                           # Initialize CLI configuration
-monk server add local localhost:9001 # Add server endpoint  
-monk tenant add my-tenant "My Tenant" # Register tenant for server
-monk server use local               # Select server
-monk tenant use my-tenant           # Select tenant
+monk config server add local localhost:9001 # Add server endpoint  
+monk config tenant add my-tenant "My Tenant" # Register tenant for server
+monk config server use local               # Select server
+monk config tenant use my-tenant           # Select tenant
 monk auth login my-tenant admin     # Authenticate to server+tenant
 monk data select users              # Start working with data
 ```
@@ -154,7 +154,7 @@ monk data select users              # Start working with data
 
 ```bash
 # Universal format support for administrative commands
-monk server list                    # Default: human-readable table
+monk config server list                    # Default: human-readable table
 monk --json server list             # Compact: {"servers":[...],"current_server":"local"}
 
 # Format-optimized command design  

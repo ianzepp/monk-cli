@@ -41,10 +41,10 @@ CLI configuration files created in: /Users/username/.config/monk/cli
   - env.json: Current working context (server+tenant+user)
 
 Next steps:
-  1. Add a server: monk server add <name> <hostname:port>
-  2. Add a tenant: monk tenant add <name> <display_name>
-  3. Select server: monk server use <name>
-  4. Select tenant: monk tenant use <name>
+  1. Add a server: monk config server add <name> <hostname:port>
+  2. Add a tenant: monk config tenant add <name> <display_name>
+  3. Select server: monk config server use <name>
+  4. Select tenant: monk config tenant use <name>
   5. Authenticate: monk auth login <tenant> <username>
   6. Start working: monk data list <schema>
 ```
@@ -179,10 +179,10 @@ monk init
 ```bash
 # Local development setup
 monk init
-monk server add local localhost:9001 --description "Local dev server"
-monk server use local
-monk tenant add my-app "My Application"  
-monk tenant use my-app
+monk config server add local localhost:9001 --description "Local dev server"
+monk config server use local
+monk config tenant add my-app "My Application"  
+monk config tenant use my-app
 monk auth login my-app admin
 ```
 
@@ -194,10 +194,10 @@ monk auth login my-app admin
 export MONK_CLI_CONFIG_DIR="/tmp/monk-ci-${BUILD_ID}"
 monk init
 
-monk server add ci "$API_HOST:$API_PORT" --description "CI environment"
-monk server use ci
-monk tenant add "$TENANT_NAME" "$TENANT_DISPLAY_NAME"
-monk tenant use "$TENANT_NAME"
+monk config server add ci "$API_HOST:$API_PORT" --description "CI environment"
+monk config server use ci
+monk config tenant add "$TENANT_NAME" "$TENANT_DISPLAY_NAME"
+monk config tenant use "$TENANT_NAME"
 
 # Import token from CI secrets
 echo "$JWT_TOKEN" | monk auth import "$TENANT_NAME" "$CI_USER"
@@ -211,17 +211,17 @@ monk data list users
 # Development
 export MONK_CLI_CONFIG_DIR="~/.config/monk/dev"
 monk init
-monk server add local localhost:9001
+monk config server add local localhost:9001
 
 # Staging  
 export MONK_CLI_CONFIG_DIR="~/.config/monk/staging"
 monk init
-monk server add staging api.staging.com:443
+monk config server add staging api.staging.com:443
 
 # Production
 export MONK_CLI_CONFIG_DIR="~/.config/monk/prod" 
 monk init
-monk server add prod api.example.com:443
+monk config server add prod api.example.com:443
 ```
 
 ## Troubleshooting
@@ -263,12 +263,12 @@ Init creates the foundation for all monk-cli operations:
 monk init
 
 # 2. Set up server access
-monk server add local localhost:9001
-monk server use local
+monk config server add local localhost:9001
+monk config server use local
 
 # 3. Configure tenant access
-monk tenant add my-app "My Application"
-monk tenant use my-app
+monk config tenant add my-app "My Application"
+monk config tenant use my-app
 
 # 4. Authenticate
 monk auth login my-app admin
@@ -297,7 +297,7 @@ cp ~/.config/monk/cli/tenant.json tenant-backup.json
 monk --json server list > team-servers.json
 
 # Team members import
-jq -r '.servers[] | "monk server add \(.name) \(.endpoint) --description \"\(.description)\""' team-servers.json | bash
+jq -r '.servers[] | "monk config server add \(.name) \(.endpoint) --description \"\(.description)\""' team-servers.json | bash
 ```
 
 ### **Environment-Specific Config**
@@ -306,10 +306,10 @@ jq -r '.servers[] | "monk server add \(.name) \(.endpoint) --description \"\(.de
 cat > setup-dev.sh << 'EOF'
 #!/bin/bash
 monk init
-monk server add local localhost:9001 --description "Local development"
-monk server add dev-shared dev.team.com:9001 --description "Shared dev server"
-monk tenant add app1 "Application 1"
-monk tenant add app2 "Application 2"
+monk config server add local localhost:9001 --description "Local development"
+monk config server add dev-shared dev.team.com:9001 --description "Shared dev server"
+monk config tenant add app1 "Application 1"
+monk config tenant add app2 "Application 2"
 EOF
 
 chmod +x setup-dev.sh && ./setup-dev.sh
