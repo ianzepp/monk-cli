@@ -557,7 +557,13 @@ commands:
     short: -T
     help: Return only last record from results
 
-
+# Aggregation with grouping and statistics
+- name: aggregate
+  help: Perform aggregation queries with GROUP BY and statistics via JSON input
+  args:
+  - name: schema
+    required: true
+    help: Schema to aggregate
 
 # API Documentation viewer
 - name: docs
