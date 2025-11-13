@@ -14,7 +14,7 @@
 #   Creates monk.json in current directory with:
 #   - Package metadata (name, version, description, author, license)
 #   - Requirements for monk-api version
-#   - Schema, fixture, and user file references
+#   - Describe (schema), data (fixtures), and user file references
 #   - Installation configuration
 #   - Dependencies on other packages
 
@@ -68,10 +68,10 @@ cat > monk.json <<EOF
     "monk-api": ">=2.0.0"
   },
 
-  "schemas": [
+  "describe": [
   ],
 
-  "fixtures": [
+  "data": [
   ],
 
   "users": [
@@ -102,9 +102,9 @@ else
   echo "  Author: $author"
   echo ""
   echo "Next steps:"
-  echo "  1. Edit monk.json to add your schemas, fixtures, and users"
-  echo "  2. Create schema files in schemas/ directory"
-  echo "  3. Create fixture files in fixtures/ directory (optional)"
-  echo "  4. Create user files in users/ directory (optional)"
+  echo "  1. Edit monk.json to add your describe, data, and user files"
+  echo "  2. Create schema definition files in describe/ directory"
+  echo "  3. Create data fixture files in data/ directory (optional)"
+  echo "  4. Create user definition files in users/ directory (optional)"
   echo "  5. Run 'monk package verify' to validate your package"
 fi
