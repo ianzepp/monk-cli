@@ -1680,3 +1680,241 @@ handle_output() {
     # Fallback: output data as-is
     echo "$data"
 }
+
+##############################################################################
+# Sync Helper Functions
+##############################################################################
+
+# Parse sync endpoint into components
+# Formats supported:
+#   tenant:schema                 (current server)
+#   server:tenant:schema          (specific server)
+#   /path/to/directory            (local filesystem)
+#   ./relative/path               (local filesystem)
+#
+# Returns JSON object with:
+#   {"type": "remote|local", "server": "...", "tenant": "...", "schema": "...", "path": "..."}
+parse_sync_endpoint() {
+    local endpoint="$1"
+    
+    # Check if it's a directory path
+    if [[ "$endpoint" =~ ^[./] ]] || [[ "$endpoint" == /* ]]; then
+        echo "{\"type\":\"local\",\"path\":\"$endpoint\"}"
+        return 0
+    fi
+    
+    # Count colons to determine format
+    local colon_count=$(echo "$endpoint" | tr -cd ':' | wc -c | tr -d ' ')
+    
+    if [ "$colon_count" -eq 1 ]; then
+        # Format: tenant:schema
+        local tenant=$(echo "$endpoint" | cut -d: -f1)
+        local schema=$(echo "$endpoint" | cut -d: -f2)
+        local server=$(get_current_server_name)
+        
+        if [ -z "$server" ]; then
+            print_error "No current server set. Use 'monk server use <name>' first."
+            return 1
+        fi
+        
+        echo "{\"type\":\"remote\",\"server\":\"$server\",\"tenant\":\"$tenant\",\"schema\":\"$schema\"}"
+        return 0
+        
+    elif [ "$colon_count" -eq 2 ]; then
+        # Format: server:tenant:schema
+        local server=$(echo "$endpoint" | cut -d: -f1)
+        local tenant=$(echo "$endpoint" | cut -d: -f2)
+        local schema=$(echo "$endpoint" | cut -d: -f3)
+        
+        echo "{\"type\":\"remote\",\"server\":\"$server\",\"tenant\":\"$tenant\",\"schema\":\"$schema\"}"
+        return 0
+    else
+        print_error "Invalid endpoint format: $endpoint"
+        print_info "Expected: tenant:schema, server:tenant:schema, or /path/to/dir"
+        return 1
+    fi
+}
+
+# Fetch data from a remote endpoint
+# Args: server, tenant, schema, filter_json
+# Returns: JSON array of records
+sync_fetch_remote() {
+    local server="$1"
+    local tenant="$2"
+    local schema="$3"
+    local filter_json="$4"
+    
+    # Save current context
+    local prev_server=$(get_current_server_name)
+    local prev_tenant=$(get_current_tenant_name)
+    
+    # Switch to target context
+    if [ "$server" != "$prev_server" ]; then
+        switch_server "$server" >/dev/null 2>&1 || {
+            print_error "Failed to switch to server: $server"
+            return 1
+        }
+    fi
+    
+    if [ "$tenant" != "$prev_tenant" ]; then
+        switch_tenant "$tenant" >/dev/null 2>&1 || {
+            print_error "Failed to switch to tenant: $tenant"
+            # Restore previous server
+            [ -n "$prev_server" ] && switch_server "$prev_server" >/dev/null 2>&1
+            return 1
+        }
+    fi
+    
+    # Fetch data
+    local response
+    if [ -n "$filter_json" ] && [ "$filter_json" != "null" ]; then
+        # Use find API with filter
+        response=$(make_request_json "POST" "/api/find/$schema" "$filter_json")
+    else
+        # Use data list API
+        response=$(make_request_json "GET" "/api/data/$schema" "")
+    fi
+    
+    # Restore previous context
+    [ -n "$prev_tenant" ] && switch_tenant "$prev_tenant" >/dev/null 2>&1
+    [ -n "$prev_server" ] && switch_server "$prev_server" >/dev/null 2>&1
+    
+    # Extract data array from response
+    if [ "$JSON_PARSER" = "jq" ]; then
+        if echo "$response" | jq -e '.success == true' >/dev/null 2>&1; then
+            echo "$response" | jq -c '.data'
+        else
+            print_error "API request failed"
+            echo "$response" | jq -r '.error // "Unknown error"' >&2
+            return 1
+        fi
+    else
+        echo "$response"
+    fi
+}
+
+# Compute diff between two datasets
+# Args: source_data (JSON array), dest_data (JSON array)
+# Returns: JSON diff object
+sync_compute_diff() {
+    local source_data="$1"
+    local dest_data="$2"
+    
+    if [ "$JSON_PARSER" != "jq" ]; then
+        print_error "jq is required for diff computation"
+        return 1
+    fi
+    
+    # Compute diff using jq
+    jq -n \
+        --argjson source "$source_data" \
+        --argjson dest "$dest_data" '
+        # Build ID-keyed maps
+        ($source | map({(.id): .}) | add // {}) as $src_map |
+        ($dest | map({(.id): .}) | add // {}) as $dst_map |
+        
+        # Find all unique IDs
+        (($src_map | keys) + ($dst_map | keys) | unique) as $all_ids |
+        
+        # Categorize operations
+        {
+            summary: {
+                source_count: ($source | length),
+                dest_count: ($dest | length),
+                total_ids: ($all_ids | length)
+            },
+            operations: (
+                $all_ids | map(
+                    . as $id |
+                    if ($src_map | has($id) | not) then
+                        {op: "delete", id: $id, record: $dst_map[$id]}
+                    elif ($dst_map | has($id) | not) then
+                        {op: "insert", id: $id, record: $src_map[$id]}
+                    elif ($src_map[$id] == $dst_map[$id]) then
+                        {op: "unchanged", id: $id}
+                    else
+                        {
+                            op: "update",
+                            id: $id,
+                            old: $dst_map[$id],
+                            new: $src_map[$id]
+                        }
+                    end
+                )
+            )
+        } |
+        # Add operation counts to summary
+        .summary += {
+            unchanged: ([.operations[] | select(.op == "unchanged")] | length),
+            to_insert: ([.operations[] | select(.op == "insert")] | length),
+            to_update: ([.operations[] | select(.op == "update")] | length),
+            to_delete: ([.operations[] | select(.op == "delete")] | length)
+        }
+    '
+}
+
+# Format diff output for display
+# Args: diff_json, format (summary|json)
+sync_format_diff() {
+    local diff_json="$1"
+    local format="$2"
+    
+    if [ "$format" = "json" ]; then
+        echo "$diff_json" | jq '.'
+        return 0
+    fi
+    
+    # Summary format (default)
+    local source_count=$(echo "$diff_json" | jq -r '.summary.source_count')
+    local dest_count=$(echo "$diff_json" | jq -r '.summary.dest_count')
+    local unchanged=$(echo "$diff_json" | jq -r '.summary.unchanged')
+    local to_insert=$(echo "$diff_json" | jq -r '.summary.to_insert')
+    local to_update=$(echo "$diff_json" | jq -r '.summary.to_update')
+    local to_delete=$(echo "$diff_json" | jq -r '.summary.to_delete')
+    
+    local total=$((unchanged + to_insert + to_update + to_delete))
+    
+    # Calculate percentages
+    local unchanged_pct=0
+    local insert_pct=0
+    local update_pct=0
+    local delete_pct=0
+    
+    if [ "$total" -gt 0 ]; then
+        unchanged_pct=$(awk "BEGIN {printf \"%.1f\", ($unchanged / $total) * 100}")
+        insert_pct=$(awk "BEGIN {printf \"%.1f\", ($to_insert / $total) * 100}")
+        update_pct=$(awk "BEGIN {printf \"%.1f\", ($to_update / $total) * 100}")
+        delete_pct=$(awk "BEGIN {printf \"%.1f\", ($to_delete / $total) * 100}")
+    fi
+    
+    # Print summary
+    echo "Sync Diff Summary"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "Source records:      $source_count"
+    echo "Destination records: $dest_count"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "Changes:"
+    echo "  ✓ Unchanged:       $unchanged records (${unchanged_pct}%)"
+    
+    if [ "$to_insert" -gt 0 ]; then
+        echo "  + To insert:       $to_insert records (${insert_pct}%)"
+    fi
+    
+    if [ "$to_update" -gt 0 ]; then
+        echo "  ~ To update:       $to_update records (${update_pct}%)"
+    fi
+    
+    if [ "$to_delete" -gt 0 ]; then
+        echo "  - To delete:       $to_delete records (${delete_pct}%)"
+    fi
+    
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    
+    # Show totals
+    local changes=$((to_insert + to_update + to_delete))
+    if [ "$changes" -eq 0 ]; then
+        echo "No changes needed - datasets are identical"
+    else
+        echo "Total changes: $changes operations"
+    fi
+}

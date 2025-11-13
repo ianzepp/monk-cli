@@ -565,6 +565,103 @@ commands:
     required: true
     help: Schema to aggregate
 
+# Data synchronization between tenants and servers
+- name: sync
+  help: Synchronize data between tenants, servers, or local directories
+
+  commands:
+  - name: pull
+    help: Pull data from remote tenant to local directory
+    args:
+    - name: source
+      required: true
+      help: "Source endpoint (tenant:schema or server:tenant:schema)"
+    - name: directory
+      required: true
+      help: Local directory path to save data
+    flags:
+    - long: --filter
+      short: -f
+      arg: json
+      help: Filter DSL for selective sync
+    - long: --overwrite
+      help: Overwrite existing files in directory
+
+  - name: push
+    help: Push data from local directory to remote tenant
+    args:
+    - name: directory
+      required: true
+      help: Local directory path containing JSON files
+    - name: destination
+      required: true
+      help: "Destination endpoint (tenant:schema or server:tenant:schema)"
+    flags:
+    - long: --dry-run
+      help: Show what would be synced without making changes
+
+  - name: diff
+    help: Show differences between two endpoints
+    args:
+    - name: source
+      required: true
+      help: "Source endpoint (tenant:schema, server:tenant:schema, or directory)"
+    - name: destination
+      required: true
+      help: "Destination endpoint (tenant:schema, server:tenant:schema, or directory)"
+    flags:
+    - long: --format
+      arg: format
+      allowed: [summary, json]
+      default: summary
+      help: Output format (summary or json)
+    - long: --output
+      short: -o
+      arg: file
+      help: Save diff to patch file
+    - long: --filter
+      short: -f
+      arg: json
+      help: Filter DSL to limit comparison scope
+
+  - name: copy
+    help: Direct copy between two remote tenants (streaming)
+    args:
+    - name: source
+      required: true
+      help: "Source endpoint (tenant:schema or server:tenant:schema)"
+    - name: destination
+      required: true
+      help: "Destination endpoint (tenant:schema or server:tenant:schema)"
+    flags:
+    - long: --filter
+      short: -f
+      arg: json
+      help: Filter DSL for selective sync
+    - long: --dry-run
+      help: Show what would be synced without making changes
+    - long: --strategy
+      arg: strategy
+      allowed: [replace, merge]
+      default: replace
+      help: Sync strategy (replace all or merge/upsert)
+
+  - name: patch
+    help: Apply a previously generated patch file
+    args:
+    - name: patch_file
+      required: true
+      help: Patch file from sync diff --output
+    - name: destination
+      required: true
+      help: "Destination endpoint (tenant:schema or server:tenant:schema)"
+    flags:
+    - long: --dry-run
+      help: Show what would be changed without applying
+    - long: --reverse
+      short: -R
+      help: Apply patch in reverse (undo)
+
 # API Documentation viewer
 - name: docs
   help: View API documentation from remote server
