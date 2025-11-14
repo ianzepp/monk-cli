@@ -479,7 +479,7 @@ Then `monk package install` executes bulk operations as part of setup.
 ```bash
 # Export
 monk describe get users > users-schema.json
-monk data select users --json > users-data.json
+monk --json data select users > users-data.json
 
 # Import
 monk describe create users < users-schema.json

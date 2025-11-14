@@ -128,7 +128,7 @@ done
 **Option B: Use Bulk API for Schemas (Requires API Enhancement)**
 ```bash
 # Build bulk operations array
-operations=$(monk describe list --json | jq '[.data[] | {
+operations=$(monk --json describe list | jq '[.data[] | {
   operation: "describe-select",
   schema: .
 }]')
@@ -375,13 +375,13 @@ monk describe export-all ./package/schemas/
 **Validation Needed**:
 ```bash
 # Test if this returns all schemas
-monk curl GET /api/meta/schema --json | jq .
+monk curl GET /api/meta/schema | jq .
 ```
 
 **If confirmed**, Phase 1 package export becomes trivial:
 ```bash
 # Single API call to export all schemas
-response=$(monk curl GET /api/meta/schema --json)
+response=$(monk curl GET /api/meta/schema)
 echo "$response" | jq -r '.data | keys[]' | while read schema; do
   echo "$response" | jq ".data[\"$schema\"]" > "schemas/$schema.json"
 done

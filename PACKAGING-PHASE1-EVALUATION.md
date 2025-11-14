@@ -326,7 +326,7 @@ create_users() {
         # Check if user already exists (by auth identifier)
         # This requires querying monk sudo users list
         local existing
-        existing=$(monk sudo users list --json | jq -r ".data[] | select(.auth == \"$auth\")")
+        existing=$(monk --json sudo users list | jq -r ".data[] | select(.auth == \"$auth\")")
 
         if [ -n "$existing" ]; then
             print_warning "User already exists: $auth (skipping)"

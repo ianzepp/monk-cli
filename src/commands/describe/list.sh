@@ -7,7 +7,7 @@
 #
 # Usage Examples:
 #   monk describe list                    # List all schemas
-#   monk describe list --json             # JSON output format
+#   monk --json describe list             # JSON output format
 #   monk --text describe list             # Raw text output
 #
 # Output Format:
