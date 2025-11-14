@@ -11,6 +11,11 @@ help: |
     monk data list users             # List all users
     monk examples                    # List all available examples
 
+  Output format flags (must come BEFORE command):
+    monk --json status               # Get status in JSON format
+    monk --text config server list   # Get server list in text format
+    monk --json data list users      # Get user data in JSON format
+
   For detailed help on a command, run: monk <command> --help
 version: 2.24.0
 
@@ -22,9 +27,9 @@ environment_variables:
 
 flags:
 - long: --text
-  help: Output in human-readable text format
+  help: Output in human-readable text format (use before command, e.g., 'monk --text status')
 - long: --json
-  help: Output in JSON format
+  help: Output in JSON format (use before command, e.g., 'monk --json status')
 
 # Server selection is automatically handled via ~/.config/monk/servers.json
 # Use 'monk config server use <name>' to select target server (persistent across commands)
