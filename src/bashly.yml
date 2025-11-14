@@ -12,7 +12,7 @@ help: |
     monk examples                    # List all available examples
 
   For detailed help on a command, run: monk <command> --help
-version: 2.23.0
+version: 2.24.0
 
 environment_variables:
 - name: CLI_VERBOSE
