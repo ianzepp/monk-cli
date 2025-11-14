@@ -19,10 +19,17 @@ fi
 declare -a results=()
 all_passed=true
 
-# Color codes for status display
-STATUS_PASS="${GREEN}✓${NC}"
-STATUS_FAIL="${RED}✗${NC}"
-STATUS_SKIP="${YELLOW}⊘${NC}"
+# Color codes for status display using $'' syntax for proper escape interpretation
+# Disable colors if output is not to a terminal or NO_COLOR is set
+if [ -t 2 ] && [ -z "${NO_COLOR:-}" ]; then
+    STATUS_PASS=$'\033[0;32m✓\033[0m'
+    STATUS_FAIL=$'\033[0;31m✗\033[0m'
+    STATUS_SKIP=$'\033[1;33m⊘\033[0m'
+else
+    STATUS_PASS='✓'
+    STATUS_FAIL='✗'
+    STATUS_SKIP='⊘'
+fi
 
 # Helper function to add result
 add_result() {
@@ -55,6 +62,7 @@ print_test_result() {
             status_icon="$STATUS_FAIL"
         fi
 
+        # Format and print with proper alignment
         printf "%-40s %s %s\n" "$test_name" "$status_icon" "$message" >&2
     fi
 }
