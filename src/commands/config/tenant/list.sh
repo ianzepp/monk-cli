@@ -32,7 +32,7 @@ if [ -z "$target_server" ] || [ "$target_server" = "null" ]; then
     
     if [[ "$output_format" == "text" ]]; then
         print_error "No server specified and no current server selected"
-        print_info "Use 'monk server use <name>' to select a server or use --server flag"
+        print_info "Use 'monk config server use <name>' to select a server or use --server flag"
     else
         handle_output "$error_result" "$output_format" "json"
     fi
@@ -50,7 +50,7 @@ if [ -z "$tenant_names" ]; then
         print_info "Registered Tenants for Server: $target_server"
         echo
         print_info "No tenants configured for this server"
-        print_info "Use 'monk tenant add <name> <display_name>' to add tenants"
+        print_info "Use 'monk config tenant add <name> <display_name>' to add tenants"
     else
         handle_output "$empty_result" "$output_format" "json"
     fi
@@ -135,7 +135,7 @@ if [[ "$output_format" == "text" ]]; then
         print_info "Current tenant: $current_tenant (marked with *)"
     else
         print_info "No current tenant selected for this server"
-        print_info "Use 'monk tenant use <name>' to select a tenant"
+        print_info "Use 'monk config tenant use <name>' to select a tenant"
     fi
 else
     handle_output "$tenants_json" "$output_format" "json"

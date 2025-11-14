@@ -171,7 +171,7 @@ get_base_url() {
     # Check if config file exists
     if [[ ! -f "$SERVER_CONFIG" ]]; then
         echo "Error: No server configuration found" >&2
-        echo "Use 'monk server add <name> <hostname:port>' to add a server" >&2
+        echo "Use 'monk config server add <name> <hostname:port>' to add a server" >&2
         exit 1
     fi
     
@@ -182,7 +182,7 @@ get_base_url() {
     
     if [[ -z "$current_server" || "$current_server" == "null" ]]; then
         echo "Error: No current server selected" >&2
-        echo "Use 'monk server use <name>' to select a server" >&2
+        echo "Use 'monk config server use <name>' to select a server" >&2
         exit 1
     fi
     
@@ -192,7 +192,7 @@ get_base_url() {
     
     if [[ "$server_info" == "null" ]]; then
         echo "Error: Current server '$current_server' not found in configuration" >&2
-        echo "Use 'monk server list' to see available servers" >&2
+        echo "Use 'monk config server list' to see available servers" >&2
         exit 1
     fi
     
@@ -265,7 +265,7 @@ store_token() {
     current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
     
     if [ -z "$current_server" ] || [ "$current_server" = "null" ]; then
-        echo "Error: No current server selected. Use 'monk server use <name>' first" >&2
+        echo "Error: No current server selected. Use 'monk config server use <name>' first" >&2
         return 1
     fi
     
@@ -1835,7 +1835,7 @@ parse_sync_endpoint() {
         local server=$(get_current_server_name)
         
         if [ -z "$server" ]; then
-            print_error "No current server set. Use 'monk server use <name>' first."
+            print_error "No current server set. Use 'monk config server use <name>' first."
             return 1
         fi
         

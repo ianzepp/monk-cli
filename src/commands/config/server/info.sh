@@ -27,7 +27,7 @@ if [ -z "$name" ]; then
         
         if [[ "$output_format" == "text" ]]; then
             print_error "No server specified and no current server selected"
-            print_info "Use 'monk server info <name>' or 'monk server use <name>' first"
+            print_info "Use 'monk config server info <name>' or 'monk config server use <name>' first"
         else
             handle_output "$error_result" "$output_format" "json"
         fi
@@ -46,7 +46,7 @@ if [ "$server_info" = "null" ]; then
     
     if [[ "$output_format" == "text" ]]; then
         print_error "Server '$name' not found"
-        print_info "Use 'monk server list' to see available servers"
+        print_info "Use 'monk config server list' to see available servers"
     else
         handle_output "$error_result" "$output_format" "json"
     fi
@@ -175,7 +175,7 @@ else
     
     if [[ "$output_format" == "text" ]]; then
         print_error "Failed to connect to server '$name' at $base_url"
-        print_info "Use 'monk server ping $name' to check connectivity"
+        print_info "Use 'monk config server ping $name' to check connectivity"
     else
         handle_output "$error_result" "$output_format" "json"
     fi

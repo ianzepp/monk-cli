@@ -71,8 +71,8 @@ setup_test_basic() {
     wait_for_server
     
     # Verify we have a configured server
-    if ! monk server current >/dev/null 2>&1; then
-        test_fail "No server configured. Please run 'monk server add' first."
+    if ! monk config server current >/dev/null 2>&1; then
+        test_fail "No server configured. Please run 'monk config server add' first."
     fi
     
     print_success "Basic test environment ready"
@@ -84,9 +84,9 @@ wait_for_server() {
     local attempt=1
     
     print_step "Waiting for server to be responsive"
-    
+
     while [[ $attempt -le $max_attempts ]]; do
-        if monk server ping >/dev/null 2>&1; then
+        if monk config server ping >/dev/null 2>&1; then
             print_success "Server is responsive"
             return 0
         fi
@@ -111,7 +111,7 @@ setup_auth() {
     fi
     
     # Try to authenticate with default credentials if available
-    local current_tenant=$(monk tenant current 2>/dev/null || echo "")
+    local current_tenant=$(monk config tenant current 2>/dev/null || echo "")
     if [[ -n "$current_tenant" ]]; then
         # Try common authentication patterns
         if monk auth login "$current_tenant" admin >/dev/null 2>&1; then

@@ -15,7 +15,7 @@ name="${args[name]}"
 current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
 if [ -z "$current_server" ] || [ "$current_server" = "null" ]; then
     print_error "No current server selected"
-    print_info "Use 'monk server use <name>' to select a server first"
+    print_info "Use 'monk config server use <name>' to select a server first"
     exit 1
 fi
 
@@ -23,14 +23,14 @@ fi
 tenant_info=$(jq -r ".tenants.\"$name\"" "$TENANT_CONFIG" 2>/dev/null)
 if [ "$tenant_info" = "null" ]; then
     print_error "Tenant '$name' not found"
-    print_info "Use 'monk tenant list' to see available tenants for current server"
+    print_info "Use 'monk config tenant list' to see available tenants for current server"
     exit 1
 fi
 
 tenant_server=$(echo "$tenant_info" | jq -r '.server')
 if [ "$tenant_server" != "$current_server" ]; then
     print_error "Tenant '$name' belongs to server '$tenant_server', but current server is '$current_server'"
-    print_info "Use 'monk server use $tenant_server' to switch servers first"
+    print_info "Use 'monk config server use $tenant_server' to switch servers first"
     exit 1
 fi
 

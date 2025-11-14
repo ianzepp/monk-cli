@@ -27,7 +27,7 @@ if [ -z "$name" ]; then
         
         if [[ "$output_format" == "text" ]]; then
             print_error "No server specified and no current server selected"
-            print_info "Use 'monk server ping <name>' or 'monk server use <name>' first"
+            print_info "Use 'monk config server ping <name>' or 'monk config server use <name>' first"
         else
             handle_output "$error_result" "$output_format" "json"
         fi

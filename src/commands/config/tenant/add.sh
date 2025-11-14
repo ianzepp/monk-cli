@@ -17,7 +17,7 @@ description="${args[--description]}"
 current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
 if [ -z "$current_server" ] || [ "$current_server" = "null" ]; then
     print_error "No current server selected"
-    print_info "Use 'monk server use <name>' to select a server first"
+    print_info "Use 'monk config server use <name>' to select a server first"
     exit 1
 fi
 

@@ -24,7 +24,7 @@ display_name=$(echo "$tenant_info" | jq -r '.display_name')
 current_tenant=$(jq -r '.current_tenant // empty' "$ENV_CONFIG" 2>/dev/null)
 if [ "$name" = "$current_tenant" ]; then
     print_warning "Cannot delete current tenant '$name'"
-    print_info "Use 'monk tenant use <other_tenant>' to switch first"
+    print_info "Use 'monk config tenant use <other_tenant>' to switch first"
     exit 1
 fi
 

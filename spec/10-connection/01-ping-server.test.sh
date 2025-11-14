@@ -13,10 +13,10 @@ print_step "Testing basic server connection via CLI ping"
 setup_test_basic
 
 # Test 1: Basic server ping
-print_step "Testing 'monk server ping' command"
+print_step "Testing 'monk config server ping' command"
 
 # Execute the ping command and capture output
-response=$(monk server ping 2>&1)
+response=$(monk config server ping 2>&1)
 exit_code=$?
 
 # Check if the command executed successfully
@@ -26,9 +26,9 @@ assert_cli_success "$exit_code" "$response" "Server ping command"
 assert_success_indicators "$response" "Server ping response"
 
 # Test 2: Server list to verify connection
-print_step "Testing 'monk server list' command"
+print_step "Testing 'monk config server list' command"
 
-response=$(monk server list 2>&1)
+response=$(monk config server list 2>&1)
 exit_code=$?
 
 assert_cli_success "$exit_code" "$response" "Server list command"
@@ -41,9 +41,9 @@ else
 fi
 
 # Test 3: Server health check
-print_step "Testing 'monk server health' command"
+print_step "Testing 'monk config server health' command"
 
-response=$(monk server health 2>&1)
+response=$(monk config server health 2>&1)
 exit_code=$?
 
 assert_cli_success "$exit_code" "$response" "Server health command"

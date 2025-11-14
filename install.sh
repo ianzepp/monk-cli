@@ -80,11 +80,11 @@ chmod +x "$INSTALL_DIR/monk"
 echo -e "${GREEN}✓${NC} Monk CLI installed successfully!"
 echo
 echo "Usage:"
-echo "  monk --help              # Show all commands"
-echo "  monk init                # Initialize configuration"
-echo "  monk server add <name> <host:port>  # Add server"
-echo "  monk tenant add <name> <display>    # Add tenant"
-echo "  monk auth login <tenant> <user>     # Authenticate"
+echo "  monk --help                              # Show all commands"
+echo "  monk init                                # Initialize configuration"
+echo "  monk config server add <name> <host:port>  # Add server"
+echo "  monk config tenant add <name> <display>    # Add tenant"
+echo "  monk auth login <tenant> <user>          # Authenticate"
 echo
 echo "Installed to: ${INSTALL_DIR}/monk"
 

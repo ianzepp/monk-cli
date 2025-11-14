@@ -155,7 +155,7 @@ monk data select users              # Start working with data
 ```bash
 # Universal format support for administrative commands
 monk config server list                    # Default: human-readable table
-monk --json server list             # Compact: {"servers":[...],"current_server":"local"}
+monk --json config server list      # Compact: {"servers":[...],"current_server":"local"}
 
 # Format-optimized command design  
 monk data select users              # Default: compact JSON for data operations
