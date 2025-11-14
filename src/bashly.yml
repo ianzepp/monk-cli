@@ -53,6 +53,10 @@ commands:
 - name: status
   help: Show current server, tenant, user, and available schemas
 
+# Progressive health checks
+- name: ping
+  help: Run progressive health checks on current connection and API endpoints
+
 # Direct API testing with curl wrapper
 - name: curl
   help: Make authenticated API requests using current server and credentials
