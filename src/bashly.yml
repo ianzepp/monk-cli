@@ -17,7 +17,7 @@ help: |
     monk --json data list users      # Get user data in JSON format
 
   For detailed help on a command, run: monk <command> --help
-version: 2.25.0
+version: 2.26.0
 
 environment_variables:
 - name: CLI_VERBOSE
