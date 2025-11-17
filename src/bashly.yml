@@ -274,6 +274,9 @@ commands:
   - name: tenants
     help: List available tenants (personal mode only)
 
+  - name: templates
+    help: List available templates (personal mode only)
+
   - name: sudo
     help: Request sudo token for dangerous operations (15min validity)
     flags:
