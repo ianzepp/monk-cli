@@ -12,6 +12,7 @@ type_flag="${args[--type]}"
 name_flag="${args[--name]}"
 maxdepth_flag="${args[--maxdepth]}"
 print0_flag="${args[--print0]}"
+flat_flag="${args[--flat]}"
 tenant_flag="${args[--tenant]}"
 
 print_info "Searching: $path"
@@ -57,6 +58,12 @@ file_options_parts=()
 
 # Add recursive search (always on for find)
 file_options_parts+=("\"recursive\": true")
+
+# Flat listing (files only) when requested
+if [ "$flat_flag" = "1" ]; then
+    file_options_parts+=("\"flat\": true")
+    print_info "Flattening results to files only"
+fi
 
 # Add max_depth if specified
 if [ -n "$maxdepth_flag" ]; then

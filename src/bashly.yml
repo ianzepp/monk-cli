@@ -207,6 +207,9 @@ commands:
       required: false
       help: Username to register (defaults to 'root' in personal mode, required in enterprise mode)
     flags:
+    - long: --template
+      arg: template
+      help: Template name to use (defaults to 'empty', use 'monk auth templates' to list available)
     - long: --database
       arg: database
       help: Custom database name (personal mode only)

@@ -1109,12 +1109,23 @@ build_file_payload() {
 # Process file API response and extract specific field - UPDATED for new API format
 process_file_response() {
     local response="$1"
-    local extract_field="$2"  # "content", "data", "entries", etc. (optional)
+    local extract_field="$2"  # "content", "entries", "results.deleted_count", etc. (optional)
     
     if [ "$JSON_PARSER" = "jq" ]; then
         if [ -n "$extract_field" ]; then
-            # Handle nested data structure in new API format
-            echo "$response" | jq ".data.$extract_field" 2>/dev/null
+            local jq_suffix=""
+            local IFS='.'
+            read -ra path_parts <<< "$extract_field"
+            unset IFS
+            for part in "${path_parts[@]}"; do
+                if [[ "$part" =~ ^[0-9]+$ ]]; then
+                    jq_suffix+="[${part}]"
+                else
+                    jq_suffix+="[\"$part\"]"
+                fi
+            done
+            local jq_filter=".data${jq_suffix} // .${jq_suffix}"
+            echo "$response" | jq "$jq_filter" 2>/dev/null
         else
             echo "$response"
         fi

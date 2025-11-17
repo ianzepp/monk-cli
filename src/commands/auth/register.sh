@@ -12,6 +12,7 @@ fi
 # Extract tenant and username from bashly args
 tenant="${args[tenant]}"
 username="${args[username]}"
+template="${args[--template]}"
 database="${args[--database]}"
 description="${args[--description]}"
 
@@ -24,6 +25,12 @@ if [ -n "$username" ]; then
     print_info "Registering new tenant: $tenant, username: $username"
 else
     print_info "Registering new tenant: $tenant (username will default to 'root' in personal mode)"
+fi
+
+# Add optional template
+if [ -n "$template" ]; then
+    register_data+=", \"template\": \"$template\""
+    print_info "Using template: $template"
 fi
 
 # Add optional database (personal mode only)
