@@ -45,6 +45,7 @@ commands:
 # Configuration initialization
 - name: init
   help: Initialize configuration directory with required files
+  group: Configuration & Utilities
   args:
   - name: path
     required: false
@@ -56,6 +57,7 @@ commands:
 # Quick context switching
 - name: use
   help: Switch server context (and optionally tenant)
+  group: Configuration & Utilities
   args:
   - name: server
     required: true
@@ -67,6 +69,7 @@ commands:
 # Usage examples and getting started guide (recommended for new users)
 - name: examples
   help: Browse interactive examples and complete workflows (start here!)
+  group: Configuration & Utilities
   args:
   - name: name
     required: false
@@ -75,14 +78,17 @@ commands:
 # Current CLI status and environment overview
 - name: status
   help: Show current server, tenant, user, and available schemas
+  group: Configuration & Utilities
 
 # Progressive health checks
 - name: ping
   help: Run progressive health checks on current connection and API endpoints
+  group: Configuration & Utilities
 
 # Direct API testing with curl wrapper
 - name: curl
   help: Make authenticated API requests using current server and credentials
+  group: Configuration & Utilities
   args:
   - name: method
     required: true
@@ -102,6 +108,7 @@ commands:
 # Configuration management
 - name: config
   help: Configuration management for servers and tenants
+  group: Configuration & Utilities
 
   commands:
   # Remote server management
@@ -210,6 +217,7 @@ commands:
 # Authentication and token management
 - name: auth
   help: Authentication and token management
+  group: API Endpoints
 
   commands:
   - name: list
@@ -305,6 +313,7 @@ commands:
 # Data operations on dynamic schemas
 - name: data
   help: Data operations on dynamic schemas
+  group: API Endpoints
 
   commands:
   - name: list
@@ -371,6 +380,7 @@ commands:
 # Schema description and metadata management
 - name: describe
   help: Schema description and metadata management
+  group: API Endpoints
 
   commands:
   - name: list
@@ -407,10 +417,12 @@ commands:
 # Bulk operations for batch processing
 - name: bulk
   help: Execute multiple operations across schemas in a single transaction via JSON input
+  group: API Endpoints
 
 # Filesystem-like operations for API data exploration
 - name: fs
   help: Filesystem-like operations for API data exploration via File API
+  group: Configuration & Utilities
 
   commands:
   - name: ls
@@ -572,6 +584,7 @@ commands:
 # Advanced search with filter DSL
 - name: find
   help: Advanced search with enterprise Filter DSL via JSON input
+  group: API Endpoints
   args:
   - name: schema
     required: true
@@ -587,6 +600,7 @@ commands:
 # Aggregation with grouping and statistics
 - name: aggregate
   help: Perform aggregation queries with GROUP BY and statistics via JSON input
+  group: API Endpoints
   args:
   - name: schema
     required: true
@@ -595,6 +609,7 @@ commands:
 # Get record metadata without fetching full data
 - name: stat
   help: Get record metadata without fetching full record data
+  group: API Endpoints
   args:
   - name: schema
     required: true
@@ -606,6 +621,7 @@ commands:
 # Data synchronization between tenants and servers
 - name: sync
   help: Synchronize data between tenants, servers, or local directories
+  group: Configuration & Utilities
 
   commands:
   - name: pull
@@ -703,6 +719,7 @@ commands:
 # API Documentation viewer
 - name: docs
   help: View API documentation from remote server
+  group: Configuration & Utilities
   args:
   - name: area
     required: false
@@ -711,6 +728,7 @@ commands:
 # Package management operations
 - name: package
   help: Package management operations for schema and data distribution
+  group: Configuration & Utilities
 
   commands:
   - name: init
@@ -772,6 +790,7 @@ commands:
 # Administrative operations requiring sudo token
 - name: sudo
   help: User management operations requiring sudo token (requires root access)
+  group: API Endpoints
 
   commands:
   - name: users
