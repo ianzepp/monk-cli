@@ -18,7 +18,7 @@ help: |
     monk --select id,name data list users    # Extract specific fields
 
   For detailed help on a command, run: monk <command> --help
-version: 2.29.0
+version: 2.30.0
 
 environment_variables:
 - name: CLI_VERBOSE
