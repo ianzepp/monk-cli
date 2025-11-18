@@ -592,6 +592,17 @@ commands:
     required: true
     help: Schema to aggregate
 
+# Get record metadata without fetching full data
+- name: stat
+  help: Get record metadata without fetching full record data
+  args:
+  - name: schema
+    required: true
+    help: Schema name
+  - name: id
+    required: true
+    help: Record ID to retrieve metadata for
+
 # Data synchronization between tenants and servers
 - name: sync
   help: Synchronize data between tenants, servers, or local directories
