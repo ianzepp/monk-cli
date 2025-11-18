@@ -75,8 +75,8 @@ if api_response=$(curl -s --max-time 30 --fail "$base_url/" 2>/dev/null); then
         exit 1
     fi
     
-    # Get available areas (keys from documentation object)
-    available_areas=$(echo "$documentation_section" | jq -r 'keys[]' 2>/dev/null)
+    # Get available areas (keys from documentation object) and sort alphabetically
+    available_areas=$(echo "$documentation_section" | jq -r 'keys | sort[]' 2>/dev/null)
     
     if [ -z "$available_areas" ]; then
         print_error "No documentation areas found"
@@ -86,21 +86,10 @@ if api_response=$(curl -s --max-time 30 --fail "$base_url/" 2>/dev/null); then
     # If no area specified, list all available areas
     if [ -z "$area" ]; then
         echo
-        print_success "Available Documentation Areas"
-        echo
-        echo "Server: $current_server ($base_url)"
-        echo
-        
-        # Display in a formatted table
-        printf "%-15s %-50s\n" "AREA" "ENDPOINT"
-        echo "-------------------------------------------------------------------------"
-        
+        echo "Available documentation areas:"
         for available_area in $available_areas; do
-            # Get the first route for this area
-            first_route=$(echo "$documentation_section" | jq -r ".$available_area[0]" 2>/dev/null)
-            printf "%-15s %-50s\n" "$available_area" "$first_route"
+            echo "  - $available_area"
         done
-        
         echo
         print_info "Usage: monk docs <area>"
         print_info "Example: monk docs auth"
