@@ -496,12 +496,19 @@ make_request_json() {
     local url="$2"
     local data="$3"
     local base_url=$(get_base_url)
-    local full_url="${base_url}${url}"
-    
+
+    # Build query string with format and pick parameters
+    local query_string=$(build_api_query_string)
+    local full_url="${base_url}${url}${query_string}"
+
     print_info "Making $method request to: $full_url"
-    
+
     local curl_args=(-s -X "$method" -H "Content-Type: application/json")
-    
+
+    # Add Accept header based on format parameter
+    local accept_header=$(get_accept_header)
+    curl_args+=(-H "Accept: $accept_header")
+
     # Add JWT token if available (unless it's an auth request)
     if [[ "$url" != "/auth/"* ]]; then
         local jwt_token
@@ -511,18 +518,23 @@ make_request_json() {
             print_info "Using stored JWT token"
         fi
     fi
-    
+
     if [ -n "$data" ]; then
         curl_args+=(-d "$data")
     fi
-    
+
     local response
     local http_code
-    
-    # Make request and capture both response and HTTP status code
-    response=$(curl "${curl_args[@]}" -w "\n%{http_code}" "$full_url")
-    http_code=$(echo "$response" | tail -n1)
-    response=$(echo "$response" | sed '$d')
+    local content_type
+
+    # Make request and capture response, HTTP status code, and Content-Type
+    response=$(curl "${curl_args[@]}" -w "\n%{http_code}\n%{content_type}" "$full_url")
+    http_code=$(echo "$response" | tail -n2 | head -n1)
+    content_type=$(echo "$response" | tail -n1)
+    response=$(echo "$response" | sed '$d' | sed '$d')
+
+    # Store content_type in global variable for response handlers
+    export RESPONSE_CONTENT_TYPE="$content_type"
     
     # Handle HTTP errors
     case "$http_code" in
@@ -573,7 +585,66 @@ make_request_json() {
 handle_response_json() {
     local response="$1"
     local operation_type="$2"  # "list", "create", "select", etc.
-    
+
+    # If user requested a non-JSON format, trust it and skip JSON parsing
+    # (API may not set correct Content-Type header for all formats)
+    if [ -n "${args[--format]}" ]; then
+        case "${args[--format]}" in
+            toon|yaml|markdown|morse|qr|brainfuck)
+                # User requested non-JSON format, pass through directly
+                echo "$response"
+                return
+                ;;
+            json|"")
+                # JSON format requested or not specified, continue with JSON parsing
+                ;;
+        esac
+    fi
+
+    # Check if response is pre-formatted by API (non-JSON Content-Type)
+    local content_type="${RESPONSE_CONTENT_TYPE:-application/json}"
+    local is_pre_formatted=false
+
+    case "$content_type" in
+        application/toon*|text/toon*)
+            is_pre_formatted=true
+            ;;
+        application/yaml*|text/yaml*)
+            is_pre_formatted=true
+            ;;
+        text/markdown*)
+            is_pre_formatted=true
+            ;;
+        application/morse*)
+            is_pre_formatted=true
+            ;;
+        text/plain*)
+            # Could be QR code, brainfuck, or plain text from pick parameter
+            is_pre_formatted=true
+            ;;
+    esac
+
+    # If pre-formatted, pass through directly without JSON parsing
+    if [ "$is_pre_formatted" = true ]; then
+        echo "$response"
+        return
+    fi
+
+    # If --pick was used, response may already be extracted (plain text or simple JSON)
+    if [ -n "${args[--pick]}" ]; then
+        # Check if response is simple plain text (not wrapped in JSON envelope)
+        if ! echo "$response" | jq -e '.' >/dev/null 2>&1; then
+            # Plain text response from pick parameter
+            echo "$response"
+            return
+        fi
+        # If it's still JSON, it might be multiple fields - pass through
+        if echo "$response" | jq -e 'type == "object"' >/dev/null 2>&1; then
+            echo "$response" | jq -c '.'
+            return
+        fi
+    fi
+
     # Exit code only mode - no output, just exit status
     if [ "$CLI_EXIT_CODE_ONLY" = "true" ]; then
         if echo "$response" | grep -q '"success":true'; then
@@ -582,7 +653,7 @@ handle_response_json() {
             exit 1
         fi
     fi
-    
+
     # Count mode for list operations
     if [ "$CLI_COUNT_MODE" = "true" ] && [ "$operation_type" = "list" ]; then
         if [ "$JSON_PARSER" = "jq" ]; then
@@ -594,8 +665,8 @@ handle_response_json() {
         fi
         return
     fi
-    
-    # Field extraction mode
+
+    # Field extraction mode (legacy CLI_FORMAT variable)
     if [ -n "$CLI_FORMAT" ]; then
         if [ "$JSON_PARSER" = "jq" ]; then
             # Handle both single objects and arrays
@@ -623,7 +694,7 @@ handle_response_json() {
         fi
         return
     fi
-    
+
     # Default: auto-extract 'data' property and output as compact JSON
     if [ "$JSON_PARSER" = "jq" ]; then
         # Check if response has success:true and extract data
@@ -1402,6 +1473,63 @@ url_encode() {
             -e 's/&/%26/g' \
             -e "s/'/%27/g"
     fi
+}
+
+# Build query string with format and pick parameters
+build_api_query_string() {
+    local format="${args[--format]:-}"
+    local pick="${args[--pick]:-}"
+    local query_params=""
+
+    # Add format parameter
+    if [ -n "$format" ]; then
+        query_params="format=$(url_encode "$format")"
+    fi
+
+    # Add pick parameter
+    if [ -n "$pick" ]; then
+        if [ -n "$query_params" ]; then
+            query_params="${query_params}&"
+        fi
+        query_params="${query_params}pick=$(url_encode "$pick")"
+    fi
+
+    # Return query string with leading ? if params exist
+    if [ -n "$query_params" ]; then
+        echo "?${query_params}"
+    fi
+}
+
+# Get Accept header based on format parameter
+get_accept_header() {
+    local format="${args[--format]:-}"
+
+    case "$format" in
+        toon)
+            echo "application/toon"
+            ;;
+        yaml)
+            echo "application/yaml"
+            ;;
+        markdown)
+            echo "text/markdown"
+            ;;
+        morse)
+            echo "application/morse"
+            ;;
+        qr)
+            echo "text/plain"
+            ;;
+        brainfuck)
+            echo "text/plain"
+            ;;
+        json|"")
+            echo "application/json"
+            ;;
+        *)
+            echo "application/json"
+            ;;
+    esac
 }
 
 # Make HTTP request to sudo API (requires sudo token from /api/auth/sudo)
