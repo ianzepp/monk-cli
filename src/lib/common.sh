@@ -1475,10 +1475,11 @@ url_encode() {
     fi
 }
 
-# Build query string with format and pick parameters
+# Build query string with format, unwrap, and select parameters
 build_api_query_string() {
     local format="${args[--format]:-}"
-    local pick="${args[--pick]:-}"
+    local unwrap="${args[--unwrap]:-}"
+    local select="${args[--select]:-}"
     local query_params=""
 
     # Add format parameter
@@ -1486,12 +1487,20 @@ build_api_query_string() {
         query_params="format=$(url_encode "$format")"
     fi
 
-    # Add pick parameter
-    if [ -n "$pick" ]; then
+    # Add unwrap parameter (boolean flag)
+    if [ -n "$unwrap" ]; then
         if [ -n "$query_params" ]; then
             query_params="${query_params}&"
         fi
-        query_params="${query_params}pick=$(url_encode "$pick")"
+        query_params="${query_params}unwrap"
+    fi
+
+    # Add select parameter
+    if [ -n "$select" ]; then
+        if [ -n "$query_params" ]; then
+            query_params="${query_params}&"
+        fi
+        query_params="${query_params}select=$(url_encode "$select")"
     fi
 
     # Return query string with leading ? if params exist
@@ -1643,14 +1652,9 @@ confirm_destructive_operation() {
 get_output_format() {
     local default_format="$1"  # "text" or "json"
     
-    # Check global flags
-    if [[ "${args[--text]}" == "1" ]]; then
-        echo "text"
-    elif [[ "${args[--json]}" == "1" ]]; then
-        echo "json"
-    else
-        echo "$default_format"
-    fi
+    # Legacy function - now that formatting is handled server-side via --format,
+    # this just returns the default. Commands should migrate to server-side formatting.
+    echo "$default_format"
 }
 
 # Validate format compatibility and show error if incompatible

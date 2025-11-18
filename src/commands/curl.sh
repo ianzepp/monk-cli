@@ -31,7 +31,16 @@ fi
 # Remove trailing slash from base URL, remove leading slash from path if present
 base_url="${base_url%/}"
 path="${path#/}"
-full_url="${base_url}/${path}"
+
+# Build query string from global flags (--format, --unwrap, --select)
+query_string=$(build_api_query_string)
+
+# Combine path with query string
+if [ -n "$query_string" ]; then
+    full_url="${base_url}/${path}${query_string}"
+else
+    full_url="${base_url}/${path}"
+fi
 
 print_info "Request: $method $full_url"
 

@@ -12,9 +12,10 @@ help: |
     monk examples                    # List all available examples
 
   Output format flags (must come BEFORE command):
-    monk --json status               # Get status in JSON format
-    monk --text config server list   # Get server list in text format
-    monk --json data list users      # Get user data in JSON format
+    monk --format json status        # Get status in JSON format
+    monk --format markdown data list users   # Get user list in markdown table
+    monk --unwrap status             # Remove envelope, return data object only
+    monk --select id,name data list users    # Extract specific fields
 
   For detailed help on a command, run: monk <command> --help
 version: 2.28.0
@@ -26,17 +27,15 @@ environment_variables:
   help: "Custom directory for CLI configuration files (default: ~/.config/monk/cli)"
 
 flags:
-- long: --text
-  help: Output in human-readable text format (use before command, e.g., 'monk --text status')
-- long: --json
-  help: Output in JSON format (use before command, e.g., 'monk --json status')
 - long: --format
   arg: format
   allowed: [json, toon, yaml, markdown, morse, qr, brainfuck]
-  help: API response format (json/toon/yaml/markdown/etc) - sent to server via ?format= parameter
-- long: --pick
+  help: Server-side response format (json/toon/yaml/markdown/etc) via ?format= parameter
+- long: --unwrap
+  help: Remove response envelope, return data object only via ?unwrap parameter
+- long: --select
   arg: fields
-  help: Extract specific fields from response using dot notation (e.g., data.id or data.id,data.name) - sent to server via ?pick= parameter
+  help: Extract specific fields (comma-separated) via ?select= parameter (e.g., id,name or user.email)
 
 # Server selection is automatically handled via ~/.config/monk/servers.json
 # Use 'monk config server use <name>' to select target server (persistent across commands)
