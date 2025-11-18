@@ -30,6 +30,13 @@ flags:
   help: Output in human-readable text format (use before command, e.g., 'monk --text status')
 - long: --json
   help: Output in JSON format (use before command, e.g., 'monk --json status')
+- long: --format
+  arg: format
+  allowed: [json, toon, yaml, markdown, morse, qr, brainfuck]
+  help: API response format (json/toon/yaml/markdown/etc) - sent to server via ?format= parameter
+- long: --pick
+  arg: fields
+  help: Extract specific fields from response using dot notation (e.g., data.id or data.id,data.name) - sent to server via ?pick= parameter
 
 # Server selection is automatically handled via ~/.config/monk/servers.json
 # Use 'monk config server use <name>' to select target server (persistent across commands)
@@ -45,6 +52,17 @@ commands:
   flags:
   - long: --force
     help: Force reinitialization by overwriting existing config files (preserves env.json)
+
+# Quick context switching
+- name: use
+  help: Switch server context (and optionally tenant)
+  args:
+  - name: server
+    required: true
+    help: Server name to switch to (use '.' for current server)
+  - name: tenant
+    required: false
+    help: Optional tenant name to switch to
 
 # Usage examples and getting started guide (recommended for new users)
 - name: examples
