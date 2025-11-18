@@ -705,8 +705,8 @@ commands:
   help: View API documentation from remote server
   args:
   - name: area
-    required: true
-    help: Documentation area to view (e.g., auth, data, describe, find, bulk, file, acls, root)
+    required: false
+    help: Documentation area to view (omit to list all available areas)
 
 # Package management operations
 - name: package
