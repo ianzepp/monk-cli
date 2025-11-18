@@ -831,3 +831,113 @@ commands:
       flags:
       - long: --force
         help: Skip confirmation
+
+  - name: templates
+    help: Template management operations
+
+    commands:
+    - name: list
+      help: List all available templates
+      alias: ls
+
+    - name: show
+      help: Show template details
+      args:
+      - name: name
+        required: true
+        help: Template name
+
+  - name: sandboxes
+    help: Sandbox environment management
+
+    commands:
+    - name: list
+      help: List all sandboxes in current tenant
+      alias: ls
+
+    - name: create
+      help: Create new sandbox from template
+      flags:
+      - long: --template
+        arg: template
+        required: true
+        help: Template name to clone from
+      - long: --description
+        arg: description
+        help: Purpose of sandbox
+      - long: --expires-in-days
+        arg: days
+        help: Days until expiration (default 7)
+
+    - name: show
+      help: Show sandbox details
+      args:
+      - name: name
+        required: true
+        help: Sandbox name
+
+    - name: delete
+      help: Delete sandbox and its database
+      alias: rm
+      args:
+      - name: name
+        required: true
+        help: Sandbox name to delete
+      flags:
+      - long: --force
+        help: Skip confirmation
+
+    - name: extend
+      help: Extend sandbox expiration date
+      args:
+      - name: name
+        required: true
+        help: Sandbox name
+      flags:
+      - long: --days
+        arg: days
+        required: true
+        help: Number of days to extend
+
+  - name: snapshots
+    help: Snapshot management for backups
+
+    commands:
+    - name: list
+      help: List all snapshots for current tenant
+      alias: ls
+
+    - name: create
+      help: Create new snapshot (async operation)
+      flags:
+      - long: --name
+        arg: name
+        help: Unique snapshot name (auto-generated if omitted)
+      - long: --description
+        arg: description
+        help: Purpose of snapshot
+      - long: --type
+        arg: type
+        allowed: [manual, auto, pre_migration, scheduled]
+        help: Snapshot type
+      - long: --expires-in-days
+        arg: days
+        help: Days until expiration
+
+    - name: show
+      help: Show snapshot details and check status
+      args:
+      - name: name
+        required: true
+        help: Snapshot name
+
+    - name: delete
+      help: Delete snapshot and its database
+      alias: rm
+      args:
+      - name: name
+        required: true
+        help: Snapshot name to delete
+      flags:
+      - long: --force
+        help: Skip confirmation
