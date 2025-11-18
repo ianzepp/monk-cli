@@ -29,8 +29,8 @@ environment_variables:
 flags:
 - long: --format
   arg: format
-  allowed: [json, toon, yaml, toml, markdown, morse, qr, brainfuck, msgpack]
-  help: Server-side response format (json/toon/yaml/toml/markdown/msgpack/etc) via ?format= parameter
+  allowed: [json, toon, yaml, toml, csv, markdown, morse, qr, brainfuck, msgpack]
+  help: Server-side response format (json/toon/yaml/toml/csv/markdown/msgpack/etc) via ?format= parameter
 - long: --unwrap
   help: Remove response envelope, return data object only via ?unwrap parameter
 - long: --select
