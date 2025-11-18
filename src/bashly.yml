@@ -29,13 +29,17 @@ environment_variables:
 flags:
 - long: --format
   arg: format
-  allowed: [json, toon, yaml, toml, csv, markdown, morse, qr, brainfuck, msgpack, pgp]
-  help: Server-side response format (json/toon/yaml/toml/csv/markdown/msgpack/pgp/etc) via ?format= parameter
+  allowed: [json, toon, yaml, toml, csv, markdown, morse, qr, brainfuck, msgpack]
+  help: Server-side response format (json/toon/yaml/toml/csv/markdown/msgpack/etc) via ?format= parameter
 - long: --unwrap
   help: Remove response envelope, return data object only via ?unwrap parameter
 - long: --select
   arg: fields
   help: Extract specific fields (comma-separated) via ?select= parameter (e.g., id,name or user.email)
+- long: --encrypt
+  arg: type
+  allowed: [pgp]
+  help: Encrypt response using specified method (pgp) via ?encrypt= parameter
 
 # Server selection is automatically handled via ~/.config/monk/servers.json
 # Use 'monk config server use <name>' to select target server (persistent across commands)

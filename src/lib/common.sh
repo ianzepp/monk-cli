@@ -1475,11 +1475,12 @@ url_encode() {
     fi
 }
 
-# Build query string with format, unwrap, and select parameters
+# Build query string with format, unwrap, select, and encrypt parameters
 build_api_query_string() {
     local format="${args[--format]:-}"
     local unwrap="${args[--unwrap]:-}"
     local select="${args[--select]:-}"
+    local encrypt="${args[--encrypt]:-}"
     local query_params=""
 
     # Add format parameter
@@ -1501,6 +1502,14 @@ build_api_query_string() {
             query_params="${query_params}&"
         fi
         query_params="${query_params}select=$(url_encode "$select")"
+    fi
+
+    # Add encrypt parameter
+    if [ -n "$encrypt" ]; then
+        if [ -n "$query_params" ]; then
+            query_params="${query_params}&"
+        fi
+        query_params="${query_params}encrypt=$(url_encode "$encrypt")"
     fi
 
     # Return query string with leading ? if params exist
