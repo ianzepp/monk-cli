@@ -249,7 +249,7 @@ fi
 # Step 4: Authentication
 if [[ "$output_format" == "text" ]]; then
     echo "" >&2
-    print_info "Step 4: Testing authentication (GET /api/auth/whoami)..." >&2
+    print_info "Step 4: Testing authentication (GET /api/user/whoami)..." >&2
 fi
 
 jwt_token=$(get_jwt_token 2>/dev/null)
@@ -258,23 +258,23 @@ if [ -z "$jwt_token" ]; then
     print_test_result "Auth: JWT token available" "fail" "No token"
     all_passed=false
 
-    add_result "Auth: GET /api/auth/whoami" "skip" "No JWT token"
-    print_test_result "Auth: GET /api/auth/whoami" "skip" "No token"
+    add_result "Auth: GET /api/user/whoami" "skip" "No JWT token"
+    print_test_result "Auth: GET /api/user/whoami" "skip" "No token"
 else
     add_result "Auth: JWT token available" "pass" "Token found for $current_server:$current_tenant"
     print_test_result "Auth: JWT token available" "pass" "Token found"
 
     # Test whoami endpoint
-    response=$(curl -s --max-time 5 -H "Authorization: Bearer $jwt_token" "$base_url/api/auth/whoami" 2>/dev/null)
-    http_code=$(curl -s --max-time 5 -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $jwt_token" "$base_url/api/auth/whoami" 2>/dev/null)
+    response=$(curl -s --max-time 5 -H "Authorization: Bearer $jwt_token" "$base_url/api/user/whoami" 2>/dev/null)
+    http_code=$(curl -s --max-time 5 -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $jwt_token" "$base_url/api/user/whoami" 2>/dev/null)
 
     if [ "$http_code" = "200" ]; then
         user_name=$(echo "$response" | jq -r '.data.name // "unknown"' 2>/dev/null)
-        add_result "Auth: GET /api/auth/whoami" "pass" "Authenticated as: $user_name"
-        print_test_result "Auth: GET /api/auth/whoami" "pass" "Authenticated: $user_name"
+        add_result "Auth: GET /api/user/whoami" "pass" "Authenticated as: $user_name"
+        print_test_result "Auth: GET /api/user/whoami" "pass" "Authenticated: $user_name"
     else
-        add_result "Auth: GET /api/auth/whoami" "fail" "Authentication failed (HTTP $http_code)"
-        print_test_result "Auth: GET /api/auth/whoami" "fail" "HTTP $http_code"
+        add_result "Auth: GET /api/user/whoami" "fail" "Authentication failed (HTTP $http_code)"
+        print_test_result "Auth: GET /api/user/whoami" "fail" "HTTP $http_code"
         all_passed=false
     fi
 fi
@@ -329,51 +329,84 @@ else
         add_result "API: Endpoints" "skip" "No endpoints discovered from root API"
         print_test_result "API: Endpoints" "skip" "No endpoints discovered"
     else
+        # Test ALL endpoints in each API category for true full mode
         for api_category in $(echo "$available_endpoints" | jq -r 'keys[]' 2>/dev/null | sort); do
             if [ "$api_category" = "home" ] || [ "$api_category" = "docs" ]; then
                 continue
             fi
 
-            first_endpoint=$(echo "$available_endpoints" | jq -r ".$api_category[0]" 2>/dev/null)
+            # Get count of endpoints in this category
+            endpoint_count=$(echo "$available_endpoints" | jq -r ".$api_category | length" 2>/dev/null)
 
-            if [ -z "$first_endpoint" ] || [ "$first_endpoint" = "null" ]; then
+            if [ -z "$endpoint_count" ] || [ "$endpoint_count" = "0" ] || [ "$endpoint_count" = "null" ]; then
                 continue
             fi
 
-            test_endpoint=$(echo "$first_endpoint" | sed 's|:[^/]*||g')
+            # Test each endpoint in the category
+            for ((i=0; i<endpoint_count; i++)); do
+                endpoint=$(echo "$available_endpoints" | jq -r ".$api_category[$i]" 2>/dev/null)
 
-            case "$api_category" in
-                "file")
-                    payload='{"path": "/"}'
-                    http_code=$(curl -s --max-time 5 -o /dev/null -w '%{http_code}' \
-                        -H "Authorization: Bearer $jwt_token" \
-                        -H "Content-Type: application/json" \
-                        -X POST -d "$payload" "$base_url$test_endpoint" 2>/dev/null)
-                    ;;
-                "bulk"|"find"|"aggregate")
-                    http_code=$(curl -s --max-time 5 -o /dev/null -w '%{http_code}' \
-                        -H "Authorization: Bearer $jwt_token" \
-                        -H "Content-Type: application/json" \
-                        -X POST "$base_url$test_endpoint" 2>/dev/null)
-                    ;;
-                *)
-                    http_code=$(curl -s --max-time 5 -o /dev/null -w '%{http_code}' \
-                        -H "Authorization: Bearer $jwt_token" \
-                        "$base_url$test_endpoint" 2>/dev/null)
-                    ;;
-            esac
+                if [ -z "$endpoint" ] || [ "$endpoint" = "null" ]; then
+                    continue
+                fi
 
-            if [ "$http_code" = "200" ] || [ "$http_code" = "400" ] || [ "$http_code" = "404" ]; then
-                add_result "API: ${api_category^} API" "pass" "Reachable (HTTP $http_code)"
-                print_test_result "API: ${api_category^} API" "pass" "Reachable"
-            elif [ "$api_category" = "sudo" ] && [ "$http_code" = "403" ]; then
-                add_result "API: ${api_category^} API" "pass" "Reachable (requires sudo token)"
-                print_test_result "API: ${api_category^} API" "pass" "Reachable (403)"
-            else
-                add_result "API: ${api_category^} API" "fail" "HTTP $http_code"
-                print_test_result "API: ${api_category^} API" "fail" "HTTP $http_code"
-                all_passed=false
-            fi
+                # Remove parameter placeholders for testing
+                test_endpoint=$(echo "$endpoint" | sed 's|:[^/]*||g')
+
+                # Determine HTTP method and whether JWT is needed based on endpoint pattern
+                needs_jwt=true
+                http_method="GET"
+                payload=""
+
+                # Public auth endpoints don't need JWT
+                if [[ "$endpoint" =~ ^/auth/ ]]; then
+                    needs_jwt=false
+                fi
+
+                # Determine method based on category and endpoint
+                case "$api_category" in
+                    "bulk"|"find"|"aggregate")
+                        http_method="POST"
+                        ;;
+                esac
+
+                # Make the request
+                if [ "$needs_jwt" = "true" ]; then
+                    if [ "$http_method" = "POST" ]; then
+                        http_code=$(curl -s --max-time 5 -o /dev/null -w '%{http_code}' \
+                            -H "Authorization: Bearer $jwt_token" \
+                            -H "Content-Type: application/json" \
+                            -X POST "$base_url$test_endpoint" 2>/dev/null)
+                    else
+                        http_code=$(curl -s --max-time 5 -o /dev/null -w '%{http_code}' \
+                            -H "Authorization: Bearer $jwt_token" \
+                            "$base_url$test_endpoint" 2>/dev/null)
+                    fi
+                else
+                    # Public endpoint - no JWT needed
+                    if [ "$http_method" = "POST" ]; then
+                        http_code=$(curl -s --max-time 5 -o /dev/null -w '%{http_code}' \
+                            -H "Content-Type: application/json" \
+                            -X POST "$base_url$test_endpoint" 2>/dev/null)
+                    else
+                        http_code=$(curl -s --max-time 5 -o /dev/null -w '%{http_code}' \
+                            "$base_url$test_endpoint" 2>/dev/null)
+                    fi
+                fi
+
+                # Evaluate response
+                if [ "$http_code" = "200" ] || [ "$http_code" = "400" ] || [ "$http_code" = "404" ]; then
+                    add_result "API: $endpoint" "pass" "Reachable (HTTP $http_code)"
+                    print_test_result "API: $endpoint" "pass" "HTTP $http_code"
+                elif [ "$api_category" = "sudo" ] && [ "$http_code" = "403" ]; then
+                    add_result "API: $endpoint" "pass" "Reachable (requires sudo token)"
+                    print_test_result "API: $endpoint" "pass" "HTTP 403"
+                else
+                    add_result "API: $endpoint" "fail" "HTTP $http_code"
+                    print_test_result "API: $endpoint" "fail" "HTTP $http_code"
+                    all_passed=false
+                fi
+            done
         done
     fi
 fi
