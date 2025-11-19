@@ -59,12 +59,12 @@ commands:
 
 # Quick context switching
 - name: use
-  help: Switch server context (and optionally tenant)
+  help: Switch server context (and optionally tenant), or show current context
   group: Configuration & Utilities
   args:
   - name: server
-    required: true
-    help: Server name to switch to (use '.' for current server)
+    required: false
+    help: Server name to switch to (use '.' for current server, omit to show current context)
   - name: tenant
     required: false
     help: Optional tenant name to switch to
@@ -78,15 +78,15 @@ commands:
     required: false
     help: Example name to display (omit to list all examples)
 
-# Current CLI status and environment overview
+# Current CLI status and environment overview with optional health checks
 - name: status
-  help: Show current server, tenant, user, and available schemas
+  help: Show current connection status with optional health checks
   group: Configuration & Utilities
-
-# Progressive health checks
-- name: ping
-  help: Run progressive health checks on current connection and API endpoints
-  group: Configuration & Utilities
+  flags:
+  - long: --ping
+    help: Run progressive health checks on connection and API endpoints
+  - long: --fast
+    help: Run only essential health checks (requires --ping)
 
 # Direct API testing with curl wrapper
 - name: curl

@@ -1,216 +1,417 @@
 #!/bin/bash
 
-# status_command.sh - Show comprehensive CLI status and environment overview
+# status_command.sh - Show connection status with optional health checks
+#
+# Usage:
+#   monk status              # Quick status overview
+#   monk status --ping       # Full progressive health checks
+#   monk status --ping --fast # Essential health checks only
 
 # Check dependencies
 check_dependencies
 
-init_cli_configs
-
 # Determine output format from global flags
 output_format=$(get_output_format "text")
 
-# Get current context information
+init_cli_configs
+
+if ! command -v jq >/dev/null 2>&1; then
+    print_error "jq is required for status command"
+    exit 1
+fi
+
+# Get flags
+run_ping="${args[--ping]:-0}"
+fast_mode="${args[--fast]:-0}"
+
+# Validate flag usage
+if [ "$fast_mode" = "1" ] && [ "$run_ping" != "1" ]; then
+    print_error "The --fast flag requires --ping"
+    print_info "Usage: monk status --ping --fast"
+    exit 1
+fi
+
+# Initialize results array
+declare -a results=()
+all_passed=true
+
+# Color codes for status display
+if [ -t 2 ] && [ -z "${NO_COLOR:-}" ]; then
+    STATUS_PASS=$'\033[0;32m✓\033[0m'
+    STATUS_FAIL=$'\033[0;31m✗\033[0m'
+    STATUS_SKIP=$'\033[1;33m⊘\033[0m'
+else
+    STATUS_PASS='✓'
+    STATUS_FAIL='✗'
+    STATUS_SKIP='⊘'
+fi
+
+# Helper function to add result
+add_result() {
+    local test_name="$1"
+    local status="$2"
+    local message="$3"
+    local details="${4:-}"
+
+    results+=("$(jq -n \
+        --arg test "$test_name" \
+        --arg status "$status" \
+        --arg message "$message" \
+        --arg details "$details" \
+        '{test: $test, status: $status, message: $message, details: $details}')")
+}
+
+# Helper function to print test result
+print_test_result() {
+    local test_name="$1"
+    local status="$2"
+    local message="$3"
+
+    if [[ "$output_format" == "text" ]]; then
+        local status_icon
+        if [[ "$status" == "pass" ]]; then
+            status_icon="$STATUS_PASS"
+        elif [[ "$status" == "skip" ]]; then
+            status_icon="$STATUS_SKIP"
+        else
+            status_icon="$STATUS_FAIL"
+        fi
+
+        printf "%-40s %s %s\n" "$test_name" "$status_icon" "$message" >&2
+    fi
+}
+
+# Start status output
+if [[ "$output_format" == "text" ]]; then
+    echo "" >&2
+    if [ "$run_ping" = "1" ]; then
+        if [ "$fast_mode" = "1" ]; then
+            echo "Connection Status & Essential Health Checks" >&2
+        else
+            echo "Connection Status & Progressive Health Checks" >&2
+        fi
+    else
+        echo "Connection Status" >&2
+    fi
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" >&2
+fi
+
+# Step 1: Check connection configuration
+if [[ "$output_format" == "text" ]]; then
+    echo "" >&2
+    print_info "Step 1: Checking current connection configuration..." >&2
+fi
+
 current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
 current_tenant=$(jq -r '.current_tenant // empty' "$ENV_CONFIG" 2>/dev/null)
-current_user=$(jq -r '.current_user // empty' "$ENV_CONFIG" 2>/dev/null)
 
-# Get server details if one is selected
-server_info=""
-server_status="No server selected"
-server_endpoint=""
-server_health=""
+if [ -z "$current_server" ] || [ "$current_server" = "null" ]; then
+    add_result "Connection: Server configured" "fail" "No server configured"
+    print_test_result "Connection: Server configured" "fail" "No server configured"
+    all_passed=false
 
-if [[ -n "$current_server" ]]; then
-    server_info=$(jq -r ".servers.\"$current_server\"" "$SERVER_CONFIG" 2>/dev/null)
-    if [[ -n "$server_info" ]]; then
-        hostname=$(echo "$server_info" | jq -r '.hostname')
-        port=$(echo "$server_info" | jq -r '.port')
-        protocol=$(echo "$server_info" | jq -r '.protocol')
-        server_endpoint="$protocol://$hostname:$port"
-
-        # Check server health using /health endpoint (same as server health command)
-        if curl -s --max-time 5 --fail "$server_endpoint/health" >/dev/null 2>&1; then
-            server_status="Up"
-            server_health="✓ Healthy"
-        else
-            server_status="Down"
-            server_health="✗ Unreachable"
-        fi
-    else
-        server_status="Server config missing"
-    fi
-fi
-
-# Get authentication status
-auth_status="Not authenticated"
-user_details=""
-access_level=""
-
-if [[ -n "$current_server" && -n "$current_tenant" ]]; then
-    # Check if we have a valid token for this server/tenant combination
-    # (store_token uses server:tenant format)
-    session_key="${current_server}:${current_tenant}"
-    session_info=$(jq -r ".sessions.\"$session_key\"" "$AUTH_CONFIG" 2>/dev/null)
-
-    if [[ -n "$session_info" && "$session_info" != "null" ]]; then
-        token=$(echo "$session_info" | jq -r '.jwt_token // empty')
-
-        if [[ -n "$token" ]]; then
-            # Check if token is expired (same logic as auth_expired_command.sh)
-            # Extract payload (second part) from JWT
-            payload=$(echo "$token" | cut -d'.' -f2)
-
-            # Add padding if needed for base64 decoding
-            padding=$((4 - ${#payload} % 4))
-            if [ $padding -ne 4 ]; then
-                payload="${payload}$(printf '%*s' $padding '' | tr ' ' '=')"
-            fi
-
-            # Decode base64 payload
-            if decoded=$(echo "$payload" | base64 -d 2>/dev/null); then
-                if exp_timestamp=$(echo "$decoded" | jq -r '.exp // empty' 2>/dev/null); then
-                    if [ -n "$exp_timestamp" ] && [ "$exp_timestamp" != "null" ] && [ "$exp_timestamp" != "empty" ]; then
-                        current_timestamp=$(date +%s)
-
-                        if [ "$exp_timestamp" -gt "$current_timestamp" ]; then
-                            # Token is still valid
-                            auth_status="Authenticated"
-                            user_details="$current_user@$current_tenant"
-
-                            # Try to get user role/access level from token
-                            if command -v jq >/dev/null 2>&1; then
-                                role=$(echo "$decoded" | jq -r '.access // empty' 2>/dev/null)
-                                if [[ -n "$role" && "$role" != "null" ]]; then
-                                    access_level="$role"
-                                fi
-                            fi
-                        else
-                            # Token is expired
-                            auth_status="Token expired"
-                        fi
-                    else
-                        # No expiration found - assume expired for safety
-                        auth_status="Token expired"
-                    fi
-                else
-                    # Failed to parse JSON - assume expired for safety
-                    auth_status="Token expired"
-                fi
-            else
-                # Failed to decode - assume expired for safety
-                auth_status="Token expired"
-            fi
-        fi
-    fi
-fi
-
-# Get schemas if server is up and we're authenticated
-schemas=""
-schema_count=0
-
-if [[ "$server_status" == "Up" && "$auth_status" == "Authenticated" ]]; then
-    # Try to get schemas from the API using GET /api/describe
-    api_response=$(make_request_json "GET" "/api/describe" "")
-    if [[ $? -eq 0 ]]; then
-        # Extract the data array which contains schema names
-        schemas=$(echo "$api_response" | jq -r '.data[]' 2>/dev/null | sort)
-        if [[ -n "$schemas" ]]; then
-            schema_count=$(echo "$schemas" | grep -c '^' | tr -d ' ')
-        else
-            schema_count=0
-            schemas="No schemas found"
-        fi
-    else
-        schemas="Unable to fetch schemas"
-    fi
-fi
-
-# Build the status information
-if [[ "$output_format" == "text" ]]; then
-    echo
-    echo "Monk CLI Status"
-    echo "==============="
-    echo
-
-    # Server Information
-    echo "Server:"
-    if [[ -n "$current_server" ]]; then
-        echo "  Name: $current_server"
-        echo "  Endpoint: ${server_endpoint:-Unknown}"
-        echo "  Status: $server_status ${server_health:+($server_health)}"
-    else
-        echo "  No server selected (use 'monk server use <name>')"
-    fi
-    echo
-
-    # Tenant Information
-    echo "Tenant:"
-    if [[ -n "$current_tenant" ]]; then
-        echo "  Name: $current_tenant"
-    else
-        echo "  No tenant selected (use 'monk tenant use <name>')"
-    fi
-    echo
-
-    # User Information
-    echo "Authentication:"
-    echo "  Status: $auth_status"
-    if [[ -n "$user_details" ]]; then
-        echo "  User: $user_details"
-        if [[ -n "$access_level" ]]; then
-            echo "  Access Level: $access_level"
-        fi
-    fi
-    echo
-
-    # Schemas Information
-    if [[ "$server_status" == "Up" && "$auth_status" == "Authenticated" ]]; then
-        echo "Available Schemas ($schema_count):"
-        if [[ "$schemas" == "No schemas found" || "$schemas" == "Unable to fetch schemas" ]]; then
-            echo "  $schemas"
-        else
-            echo "$schemas" | while read -r schema; do
-                if [[ -n "$schema" ]]; then
-                    echo "  • $schema"
-                fi
-            done
-        fi
-    else
-        echo "Schemas: Not available (server down or not authenticated)"
+    # Early exit if no server
+    if [[ "$output_format" == "text" ]]; then
+        echo "" >&2
+        print_error "No server configured. Use 'monk config server set' to add a server." >&2
+        echo "" >&2
     fi
 
+    final_result=$(jq -n \
+        --argjson results "$(printf '%s\n' "${results[@]}" | jq -s '.')" \
+        --arg success "false" \
+        '{success: ($success == "true"), results: $results}')
+
+    if [[ "$output_format" == "json" ]]; then
+        echo "$final_result"
+    fi
+    exit 1
 else
-    # JSON output
-    status_json=$(jq -n \
-        --arg server_name "$current_server" \
-        --arg server_endpoint "$server_endpoint" \
-        --arg server_status "$server_status" \
-        --arg server_health "$server_health" \
-        --arg tenant "$current_tenant" \
-        --arg auth_status "$auth_status" \
-        --arg user_details "$user_details" \
-        --arg access_level "$access_level" \
-        --arg schemas "$schemas" \
-        --arg schema_count "$schema_count" \
-        '{
-            server: {
-                name: $server_name,
-                endpoint: $server_endpoint,
-                status: $server_status,
-                health: $server_health
-            },
-            tenant: $tenant,
-            authentication: {
-                status: $auth_status,
-                user: $user_details,
-                access_level: $access_level
-            },
-            schemas: {
-                count: ($schema_count | tonumber),
-                available: ($schemas | split("\n") | map(select(. != "")))
-            }
-        }')
+    add_result "Connection: Server configured" "pass" "Server: $current_server"
+    print_test_result "Connection: Server configured" "pass" "Server: $current_server"
+fi
 
-    handle_output "$status_json" "$output_format" "json" "status"
+if [ -z "$current_tenant" ] || [ "$current_tenant" = "null" ]; then
+    add_result "Connection: Tenant configured" "fail" "No tenant configured"
+    print_test_result "Connection: Tenant configured" "fail" "No tenant configured"
+    all_passed=false
+else
+    add_result "Connection: Tenant configured" "pass" "Tenant: $current_tenant"
+    print_test_result "Connection: Tenant configured" "pass" "Tenant: $current_tenant"
+fi
+
+# Get base URL
+base_url=$(get_base_url 2>/dev/null)
+if [ $? -ne 0 ] || [ -z "$base_url" ]; then
+    add_result "Connection: Base URL resolved" "fail" "Could not resolve base URL"
+    print_test_result "Connection: Base URL resolved" "fail" "Could not resolve base URL"
+    all_passed=false
+else
+    add_result "Connection: Base URL resolved" "pass" "$base_url"
+    print_test_result "Connection: Base URL resolved" "pass" "$base_url"
+fi
+
+# If not running ping checks, stop here
+if [ "$run_ping" != "1" ]; then
+    if [[ "$output_format" == "text" ]]; then
+        echo "" >&2
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" >&2
+
+        if [ "$all_passed" = "true" ]; then
+            print_success "Connection configured" >&2
+        else
+            print_error "Connection has issues" >&2
+        fi
+
+        print_info "Use 'monk status --ping' for full health checks" >&2
+        echo "" >&2
+    else
+        # JSON output
+        final_result=$(jq -n \
+            --argjson results "$(printf '%s\n' "${results[@]}" | jq -s '.')" \
+            --arg success "$all_passed" \
+            '{success: ($success == "true"), results: $results}')
+        echo "$final_result"
+    fi
+
+    exit 0
+fi
+
+# Continue with ping checks...
+
+# Step 2: Server connectivity
+if [[ "$output_format" == "text" ]]; then
+    echo "" >&2
+    print_info "Step 2: Testing server connectivity (GET /)..." >&2
+fi
+
+root_response=""
+available_endpoints=""
+available_documentation=""
+
+if [ -z "$base_url" ]; then
+    add_result "Server: GET /" "skip" "Skipped due to previous failure"
+    print_test_result "Server: GET /" "skip" "Skipped"
+    all_passed=false
+else
+    if root_response=$(curl -s --max-time 5 --fail "$base_url/" 2>/dev/null); then
+        add_result "Server: GET /" "pass" "Server is reachable"
+        print_test_result "Server: GET /" "pass" "Reachable"
+
+        # Extract endpoints and documentation for later use
+        available_endpoints=$(echo "$root_response" | jq -r '.data.endpoints // {}' 2>/dev/null)
+        available_documentation=$(echo "$root_response" | jq -r '.data.documentation // {}' 2>/dev/null)
+    else
+        add_result "Server: GET /" "fail" "Server is not reachable"
+        print_test_result "Server: GET /" "fail" "Not reachable"
+        all_passed=false
+
+        # Early exit
+        if [[ "$output_format" == "text" ]]; then
+            echo "" >&2
+            print_error "Server is not reachable at $base_url" >&2
+            echo "" >&2
+        fi
+
+        final_result=$(jq -n \
+            --argjson results "$(printf '%s\n' "${results[@]}" | jq -s '.')" \
+            --arg success "false" \
+            '{success: ($success == "true"), results: $results}')
+
+        if [[ "$output_format" == "json" ]]; then
+            echo "$final_result"
+        fi
+        exit 1
+    fi
+fi
+
+# Step 3: Health endpoint
+if [[ "$output_format" == "text" ]]; then
+    echo "" >&2
+    print_info "Step 3: Testing health endpoint (GET /health)..." >&2
+fi
+
+if echo "$available_endpoints" | jq -e '.home[] | select(. == "/health")' >/dev/null 2>&1; then
+    http_code=$(curl -s --max-time 5 -o /dev/null -w '%{http_code}' "$base_url/health" 2>/dev/null)
+    if [ "$http_code" = "200" ]; then
+        add_result "Server: GET /health" "pass" "Health check passed"
+        print_test_result "Server: GET /health" "pass" "Healthy"
+    else
+        add_result "Server: GET /health" "fail" "HTTP $http_code"
+        print_test_result "Server: GET /health" "fail" "HTTP $http_code"
+        all_passed=false
+    fi
+else
+    add_result "Server: GET /health" "skip" "Health endpoint not advertised"
+    print_test_result "Server: GET /health" "skip" "Not advertised"
+fi
+
+# Step 4: Authentication
+if [[ "$output_format" == "text" ]]; then
+    echo "" >&2
+    print_info "Step 4: Testing authentication (GET /api/auth/whoami)..." >&2
+fi
+
+jwt_token=$(get_jwt_token 2>/dev/null)
+if [ -z "$jwt_token" ]; then
+    add_result "Auth: JWT token available" "fail" "No JWT token found"
+    print_test_result "Auth: JWT token available" "fail" "No token"
+    all_passed=false
+
+    add_result "Auth: GET /api/auth/whoami" "skip" "No JWT token"
+    print_test_result "Auth: GET /api/auth/whoami" "skip" "No token"
+else
+    add_result "Auth: JWT token available" "pass" "Token found for $current_server:$current_tenant"
+    print_test_result "Auth: JWT token available" "pass" "Token found"
+
+    # Test whoami endpoint
+    response=$(curl -s --max-time 5 -H "Authorization: Bearer $jwt_token" "$base_url/api/auth/whoami" 2>/dev/null)
+    http_code=$(curl -s --max-time 5 -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $jwt_token" "$base_url/api/auth/whoami" 2>/dev/null)
+
+    if [ "$http_code" = "200" ]; then
+        user_name=$(echo "$response" | jq -r '.data.name // "unknown"' 2>/dev/null)
+        add_result "Auth: GET /api/auth/whoami" "pass" "Authenticated as: $user_name"
+        print_test_result "Auth: GET /api/auth/whoami" "pass" "Authenticated: $user_name"
+    else
+        add_result "Auth: GET /api/auth/whoami" "fail" "Authentication failed (HTTP $http_code)"
+        print_test_result "Auth: GET /api/auth/whoami" "fail" "HTTP $http_code"
+        all_passed=false
+    fi
+fi
+
+# Stop here if --fast mode
+if [ "$fast_mode" = "1" ]; then
+    if [[ "$output_format" == "text" ]]; then
+        echo "" >&2
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" >&2
+
+        if [ "$all_passed" = "true" ]; then
+            print_success "Essential health checks passed" >&2
+        else
+            print_error "Some health checks failed" >&2
+        fi
+
+        print_info "Use 'monk status --ping' for full diagnostics" >&2
+        echo "" >&2
+    else
+        final_result=$(jq -n \
+            --argjson results "$(printf '%s\n' "${results[@]}" | jq -s '.')" \
+            --arg success "$all_passed" \
+            '{success: ($success == "true"), results: $results}')
+        echo "$final_result"
+    fi
+
+    if [ "$all_passed" = "true" ]; then
+        exit 0
+    else
+        exit 1
+    fi
+fi
+
+# Step 5: API endpoints (full mode only)
+if [[ "$output_format" == "text" ]]; then
+    echo "" >&2
+    print_info "Step 5: Testing API endpoints..." >&2
+fi
+
+if [ -z "$jwt_token" ]; then
+    # Skip all API endpoint tests if not authenticated
+    if [ -n "$available_endpoints" ] && [ "$available_endpoints" != "{}" ]; then
+        for api_category in $(echo "$available_endpoints" | jq -r 'keys[]' 2>/dev/null); do
+            if [ "$api_category" != "home" ] && [ "$api_category" != "docs" ]; then
+                add_result "API: ${api_category^} API" "skip" "Not authenticated"
+                print_test_result "API: ${api_category^} API" "skip" "Not authenticated"
+            fi
+        done
+    fi
+else
+    if [ -z "$available_endpoints" ] || [ "$available_endpoints" = "{}" ]; then
+        add_result "API: Endpoints" "skip" "No endpoints discovered from root API"
+        print_test_result "API: Endpoints" "skip" "No endpoints discovered"
+    else
+        for api_category in $(echo "$available_endpoints" | jq -r 'keys[]' 2>/dev/null | sort); do
+            if [ "$api_category" = "home" ] || [ "$api_category" = "docs" ]; then
+                continue
+            fi
+
+            first_endpoint=$(echo "$available_endpoints" | jq -r ".$api_category[0]" 2>/dev/null)
+
+            if [ -z "$first_endpoint" ] || [ "$first_endpoint" = "null" ]; then
+                continue
+            fi
+
+            test_endpoint=$(echo "$first_endpoint" | sed 's|:[^/]*||g')
+
+            case "$api_category" in
+                "file")
+                    payload='{"path": "/"}'
+                    http_code=$(curl -s --max-time 5 -o /dev/null -w '%{http_code}' \
+                        -H "Authorization: Bearer $jwt_token" \
+                        -H "Content-Type: application/json" \
+                        -X POST -d "$payload" "$base_url$test_endpoint" 2>/dev/null)
+                    ;;
+                "bulk"|"find"|"aggregate")
+                    http_code=$(curl -s --max-time 5 -o /dev/null -w '%{http_code}' \
+                        -H "Authorization: Bearer $jwt_token" \
+                        -H "Content-Type: application/json" \
+                        -X POST "$base_url$test_endpoint" 2>/dev/null)
+                    ;;
+                *)
+                    http_code=$(curl -s --max-time 5 -o /dev/null -w '%{http_code}' \
+                        -H "Authorization: Bearer $jwt_token" \
+                        "$base_url$test_endpoint" 2>/dev/null)
+                    ;;
+            esac
+
+            if [ "$http_code" = "200" ] || [ "$http_code" = "400" ] || [ "$http_code" = "404" ]; then
+                add_result "API: ${api_category^} API" "pass" "Reachable (HTTP $http_code)"
+                print_test_result "API: ${api_category^} API" "pass" "Reachable"
+            elif [ "$api_category" = "sudo" ] && [ "$http_code" = "403" ]; then
+                add_result "API: ${api_category^} API" "pass" "Reachable (requires sudo token)"
+                print_test_result "API: ${api_category^} API" "pass" "Reachable (403)"
+            else
+                add_result "API: ${api_category^} API" "fail" "HTTP $http_code"
+                print_test_result "API: ${api_category^} API" "fail" "HTTP $http_code"
+                all_passed=false
+            fi
+        done
+    fi
+fi
+
+# Step 6: Documentation
+if [ -n "$available_documentation" ] && [ "$available_documentation" != "{}" ]; then
+    doc_count=$(echo "$available_documentation" | jq -r 'keys | length' 2>/dev/null)
+    add_result "Docs: Documentation" "pass" "Available ($doc_count areas)"
+    print_test_result "Docs: Documentation" "pass" "Available ($doc_count areas)"
+else
+    add_result "Docs: Documentation" "skip" "No documentation advertised"
+    print_test_result "Docs: Documentation" "skip" "Not advertised"
+fi
+
+# Build final result
+final_result=$(jq -n \
+    --argjson results "$(printf '%s\n' "${results[@]}" | jq -s '.')" \
+    --arg success "$all_passed" \
+    '{success: ($success == "true"), results: $results}')
+
+# Output results
+if [[ "$output_format" == "text" ]]; then
+    echo "" >&2
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" >&2
+
+    if [ "$all_passed" = "true" ]; then
+        print_success "All health checks passed" >&2
+    else
+        print_error "Some health checks failed" >&2
+    fi
+    echo "" >&2
+else
+    echo "$final_result"
+fi
+
+# Exit with appropriate code
+if [ "$all_passed" = "true" ]; then
+    exit 0
+else
+    exit 1
 fi
