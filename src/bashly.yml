@@ -18,7 +18,7 @@ help: |
     monk --select id,name data list users    # Extract specific fields
 
   For detailed help on a command, run: monk <command> --help
-version: 2.30.0
+version: 2.31.0
 
 environment_variables:
 - name: CLI_VERBOSE
@@ -119,8 +119,8 @@ commands:
     help: Remote server management
 
     commands:
-    - name: add
-      help: Register remote server
+    - name: set
+      help: Register or update remote server
       args:
       - name: name
         required: true
@@ -182,8 +182,8 @@ commands:
     help: Tenant registry management
 
     commands:
-    - name: add
-      help: Register new tenant
+    - name: set
+      help: Register or update tenant
       args:
       - name: name
         required: true
@@ -320,18 +320,25 @@ commands:
 
   commands:
   - name: list
-    help: List record(s) with flexible query support
+    help: List records with flexible query support
+    args:
+    - name: schema
+      required: true
+      help: Schema name
+    flags:
+    - long: --filter
+      arg: json
+      help: JSON filter for query parameters (limit, offset, order)
+
+  - name: get
+    help: Get a single record by ID
     args:
     - name: schema
       required: true
       help: Schema name
     - name: id
-      required: false
-      help: Record ID to retrieve (optional)
-    flags:
-    - long: --filter
-      arg: json
-      help: JSON filter for query parameters (limit, offset, order)
+      required: true
+      help: Record ID to retrieve
 
   - name: create
     help: Create record from stdin
@@ -389,8 +396,8 @@ commands:
   - name: list
     help: List all available schema names in the current tenant
 
-  - name: select
-    help: Select specific schema definition
+  - name: get
+    help: Get specific schema definition
     args:
     - name: schema
       required: true
@@ -802,11 +809,9 @@ commands:
     commands:
     - name: list
       help: List all users in current tenant
-      alias: ls
 
     - name: create
       help: Create new user
-      alias: add
       flags:
       - long: --name
         arg: name
@@ -821,9 +826,8 @@ commands:
         required: true
         help: "Access level: deny, read, edit, full, or root"
 
-    - name: show
-      help: Show user details
-      alias: info
+    - name: get
+      help: Get user details
       args:
       - name: id
         required: true
@@ -845,7 +849,6 @@ commands:
 
     - name: delete
       help: Delete user (soft delete)
-      alias: rm
       args:
       - name: id
         required: true
@@ -860,10 +863,9 @@ commands:
     commands:
     - name: list
       help: List all available templates
-      alias: ls
 
-    - name: show
-      help: Show template details
+    - name: get
+      help: Get template details
       args:
       - name: name
         required: true
@@ -875,7 +877,6 @@ commands:
     commands:
     - name: list
       help: List all sandboxes in current tenant
-      alias: ls
 
     - name: create
       help: Create new sandbox from template
@@ -891,8 +892,8 @@ commands:
         arg: days
         help: Days until expiration (default 7)
 
-    - name: show
-      help: Show sandbox details
+    - name: get
+      help: Get sandbox details
       args:
       - name: name
         required: true
@@ -900,7 +901,6 @@ commands:
 
     - name: delete
       help: Delete sandbox and its database
-      alias: rm
       args:
       - name: name
         required: true
@@ -927,7 +927,6 @@ commands:
     commands:
     - name: list
       help: List all snapshots for current tenant
-      alias: ls
 
     - name: create
       help: Create new snapshot (async operation)
@@ -946,8 +945,8 @@ commands:
         arg: days
         help: Days until expiration
 
-    - name: show
-      help: Show snapshot details and check status
+    - name: get
+      help: Get snapshot details and check status
       args:
       - name: name
         required: true
@@ -955,7 +954,6 @@ commands:
 
     - name: delete
       help: Delete snapshot and its database
-      alias: rm
       args:
       - name: name
         required: true
