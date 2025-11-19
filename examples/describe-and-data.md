@@ -63,7 +63,7 @@ echo '{
 
 ### View a Schema Definition
 ```bash
-monk describe select users
+monk describe get users
 ```
 
 ### Update a Schema
@@ -102,8 +102,8 @@ Once you have a schema defined, you can work with data.
 # List all users
 monk data list users
 
-# List a specific user by ID
-monk data list users user-123
+# Get a specific user by ID
+monk data get users user-123
 ```
 
 ### Create Records
@@ -207,7 +207,7 @@ echo '{
 ### Step 2: Verify the Schema
 ```bash
 monk describe list
-monk describe select products
+monk describe get products
 ```
 
 ### Step 3: Add Products
@@ -353,7 +353,7 @@ monk find users <<< '{"where": {"role": "admin"}}'
 ### Export Schema and Data
 ```bash
 # Export schema definition
-monk describe select users > users-schema.json
+monk describe get users > users-schema.json
 
 # Export all data
 monk data list users > users-data.json
@@ -379,16 +379,16 @@ cat users-data.json | monk data create users
 monk describe list
 
 # Check schema definition
-monk describe select users
+monk describe get users
 
 # Verify schema is valid JSON
-monk describe select users | jq .
+monk describe get users | jq .
 ```
 
 ### Data Issues
 ```bash
 # Verify data structure matches schema
-monk describe select users
+monk describe get users
 monk data list users | jq '.[0]'
 
 # Check for validation errors in output

@@ -715,7 +715,7 @@ echo '{"aggregate": {"total": {"$count": "*"}}}' | jq empty
 ```bash
 monk find <schema>              # Advanced search with filtering
 monk data list <schema>         # List records
-monk describe select <schema>   # View schema definition
+monk describe get <schema>      # View schema definition
 ```
 
 Master aggregations to unlock powerful data analytics and reporting capabilities!

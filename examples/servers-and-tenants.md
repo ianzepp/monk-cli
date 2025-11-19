@@ -30,9 +30,9 @@ Shows all registered servers with health status.
 
 ### Add a Server
 ```bash
-monk config server add dev localhost:9001 --description "Development server"
-monk config server add staging api.staging.example.com:443 --description "Staging"
-monk config server add prod api.example.com:443 --description "Production"
+monk config server set dev localhost:9001 --description "Development server"
+monk config server set staging api.staging.example.com:443 --description "Staging"
+monk config server set prod api.example.com:443 --description "Production"
 ```
 
 ### Switch Servers
@@ -91,7 +91,7 @@ This creates the tenant, user account, and authenticates you automatically.
 
 Alternatively, for manual tenant creation:
 ```bash
-monk config tenant add myproject "My Project"
+monk config tenant set myproject "My Project"
 ```
 
 ### Switch Tenants
@@ -110,9 +110,9 @@ monk config tenant delete old-project
 
 ```bash
 # Add all your servers
-monk config server add dev localhost:9001
-monk config server add staging api-staging.company.com:443
-monk config server add prod api.company.com:443
+monk config server set dev localhost:9001
+monk config server set staging api-staging.company.com:443
+monk config server set prod api.company.com:443
 
 # Switch to development
 monk config server use dev
@@ -226,9 +226,9 @@ monk describe list
 
 **Servers:**
 ```bash
-monk config server add dev ...       # Local development
-monk config server add staging ...   # Staging environment
-monk config server add prod ...      # Production
+monk config server set dev ...       # Local development
+monk config server set staging ...   # Staging environment
+monk config server set prod ...      # Production
 ```
 
 **Tenants:**
@@ -247,7 +247,7 @@ monk auth register prod-api admin
 ```bash
 # Always verify connection after switching
 monk config server use prod
-monk config server ping
+monk status --ping
 
 # Check status before operations
 monk status
@@ -293,7 +293,7 @@ monk config server info dev
 
 # Try re-adding server
 monk config server delete dev
-monk config server add dev localhost:9001
+monk config server set dev localhost:9001
 ```
 
 ### Authentication Issues
@@ -332,21 +332,22 @@ monk config server current
 ```bash
 # Server operations
 monk config server list                    # List all servers
-monk config server add <name> <host:port> # Add server
-monk config server use <name>             # Switch server
-monk config server delete <name>          # Remove server
-monk config server ping <name>            # Check health
+monk config server set <name> <host:port>  # Add/update server
+monk config server use <name>              # Switch server
+monk config server delete <name>           # Remove server
+monk config server ping <name>             # Check health
 
 # Tenant operations
-monk config tenant list                   # List tenants
-monk auth register <tenant> <user> # Create tenant + user
-monk config tenant use <name>             # Switch tenant
-monk config tenant delete <name>          # Remove tenant
+monk config tenant list                    # List tenants
+monk auth register <tenant> <user>         # Create tenant + user
+monk config tenant use <name>              # Switch tenant
+monk config tenant delete <name>           # Remove tenant
 
 # Status and info
-monk status                        # Complete status
-monk config server current                # Current server
-monk auth status                   # Auth details
+monk status                                # Quick connection status
+monk status --ping                         # Status with health checks
+monk config server current                 # Current server
+monk auth status                           # Auth details
 ```
 
 ## Next Steps

@@ -516,8 +516,8 @@ echo '{"where": {"name": "test"}}' | jq . | monk find users
 
 ```bash
 monk data list <schema>          # List all records
-monk data list <schema> <id>     # Get specific record
-monk describe select <schema>    # View schema definition
+monk data get <schema> <id>      # Get specific record
+monk describe get <schema>       # View schema definition
 monk describe list               # List all schemas
 ```
 

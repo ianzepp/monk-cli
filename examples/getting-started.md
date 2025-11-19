@@ -16,7 +16,7 @@ This creates the necessary configuration directories and files.
 
 ### 2. Add Your Server
 ```bash
-monk config server add dev localhost:3000 --description "Development server"
+monk config server set dev localhost:3000 --description "Development server"
 ```
 Replace `localhost:3000` with your actual server endpoint.
 
@@ -33,8 +33,7 @@ This creates both the tenant and user account, and automatically logs you in.
 
 ### 5. Verify Connection
 ```bash
-monk config server ping
-monk auth status
+monk status
 ```
 
 ## What This Sets Up
@@ -52,7 +51,7 @@ After running these commands, you'll have:
 $ monk init
 ✓ CLI configuration initialized
 
-$ monk config server add dev localhost:3000 --description "Development server"
+$ monk config server set dev localhost:3000 --description "Development server"
 ✓ Server 'dev' added successfully
 
 $ monk config server use dev
@@ -68,12 +67,19 @@ $ monk auth register myproject admin
 ℹ JWT token stored for server+tenant context
 ✓ Tenant added to local registry for server: dev
 
-$ monk config server ping
-✓ Server 'dev' is healthy
+$ monk status
 
-$ monk auth status
-Authenticated as: admin@myproject
-Token expires: 2024-12-31 23:59:59
+Connection Status
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Step 1: Checking current connection configuration...
+Connection: Server configured     ✓ Server: dev
+Connection: Tenant configured      ✓ Tenant: myproject
+Connection: Base URL resolved      ✓ http://localhost:3000
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+✓ Connection configured
+ℹ Use 'monk status --ping' for full health checks
 ```
 
 ## Troubleshooting
@@ -94,6 +100,9 @@ monk config server health dev
 ```bash
 # Check auth status
 monk auth status
+
+# Check full status including auth
+monk status --ping
 
 # Clear and re-authenticate
 monk auth logout

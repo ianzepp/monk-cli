@@ -192,7 +192,7 @@ monk docs data
 
 # Try the endpoints
 monk data list users
-monk data list users user-123
+monk data get users user-123
 ```
 
 ### Example 2: Understanding Authentication
@@ -218,7 +218,7 @@ monk docs describe
 monk describe list
 
 # View a schema definition
-monk describe select users
+monk describe get users
 ```
 
 ### Example 4: Advanced Querying
@@ -318,8 +318,8 @@ $ monk docs data
 ✗ Failed to fetch documentation
 ```
 
-**Solution:** 
-1. Verify server is running: `monk config server ping`
+**Solution:**
+1. Verify server is running: `monk status --ping`
 2. Check server info: `monk config server info`
 3. Ensure you're connected: `monk status`
 
@@ -353,10 +353,11 @@ brew install glow
 
 ```bash
 monk config server info        # View server capabilities
-monk status            # Check current connection
-monk --help            # CLI command reference
-monk describe list     # List available schemas
-monk data list <schema> # List records in a schema
+monk status                    # Check current connection
+monk status --ping             # Check connection with health checks
+monk --help                    # CLI command reference
+monk describe list             # List available schemas
+monk data list <schema>        # List records in a schema
 ```
 
 The `monk docs` command ensures you always have accurate, up-to-date documentation for the API you're working with!
