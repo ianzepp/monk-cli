@@ -4,8 +4,8 @@
 #
 # Usage:
 #   monk status              # Quick status overview
-#   monk status --ping       # Full progressive health checks
-#   monk status --ping --fast # Essential health checks only
+#   monk status --ping       # Essential health checks (fast)
+#   monk status --ping --full # Comprehensive health checks (all endpoints)
 
 # Check dependencies
 check_dependencies
@@ -22,12 +22,12 @@ fi
 
 # Get flags
 run_ping="${args[--ping]:-0}"
-fast_mode="${args[--fast]:-0}"
+full_mode="${args[--full]:-0}"
 
 # Validate flag usage
-if [ "$fast_mode" = "1" ] && [ "$run_ping" != "1" ]; then
-    print_error "The --fast flag requires --ping"
-    print_info "Usage: monk status --ping --fast"
+if [ "$full_mode" = "1" ] && [ "$run_ping" != "1" ]; then
+    print_error "The --full flag requires --ping"
+    print_info "Usage: monk status --ping --full"
     exit 1
 fi
 
@@ -77,7 +77,15 @@ print_test_result() {
             status_icon="$STATUS_FAIL"
         fi
 
-        printf "%-40s %s %s\n" "$test_name" "$status_icon" "$message" >&2
+        # For API endpoints, show: <icon> <route> <http_code>
+        # For other tests, show: <test_name> <icon> <message>
+        if [[ "$test_name" =~ ^API:\ / ]]; then
+            # Extract route from "API: /route"
+            local route="${test_name#API: }"
+            printf "%s %-60s %s\n" "$status_icon" "$route" "$message" >&2
+        else
+            printf "%-40s %s %s\n" "$test_name" "$status_icon" "$message" >&2
+        fi
     fi
 }
 
@@ -85,10 +93,10 @@ print_test_result() {
 if [[ "$output_format" == "text" ]]; then
     echo "" >&2
     if [ "$run_ping" = "1" ]; then
-        if [ "$fast_mode" = "1" ]; then
-            echo "Connection Status & Essential Health Checks" >&2
+        if [ "$full_mode" = "1" ]; then
+            echo "Connection Status & Comprehensive Health Checks" >&2
         else
-            echo "Connection Status & Progressive Health Checks" >&2
+            echo "Connection Status & Essential Health Checks" >&2
         fi
     else
         echo "Connection Status" >&2
@@ -279,8 +287,8 @@ else
     fi
 fi
 
-# Stop here if --fast mode
-if [ "$fast_mode" = "1" ]; then
+# Stop here if NOT in full mode (default ping behavior)
+if [ "$full_mode" != "1" ]; then
     if [[ "$output_format" == "text" ]]; then
         echo "" >&2
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" >&2
@@ -291,7 +299,7 @@ if [ "$fast_mode" = "1" ]; then
             print_error "Some health checks failed" >&2
         fi
 
-        print_info "Use 'monk status --ping' for full diagnostics" >&2
+        print_info "Use 'monk status --ping --full' for comprehensive diagnostics" >&2
         echo "" >&2
     else
         final_result=$(jq -n \

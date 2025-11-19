@@ -84,9 +84,9 @@ commands:
   group: Configuration & Utilities
   flags:
   - long: --ping
-    help: Run progressive health checks on connection and API endpoints
-  - long: --fast
-    help: Run only essential health checks (requires --ping)
+    help: Run essential health checks (connection, server, health, auth)
+  - long: --full
+    help: Run comprehensive health checks on all API endpoints (requires --ping)
 
 # Direct API testing with curl wrapper
 - name: curl
