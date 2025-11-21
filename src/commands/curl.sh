@@ -19,12 +19,10 @@ if [ -z "$base_url" ]; then
     exit 1
 fi
 
-# Get JWT token (this validates authentication)
-jwt_token=$(get_jwt_token)
+# Get JWT token if available (authentication is optional)
+jwt_token=$(get_jwt_token) || true
 if [ -z "$jwt_token" ]; then
-    print_error "No authentication token found"
-    print_info "Use 'monk auth login <tenant> <username>' to authenticate"
-    exit 1
+    print_info "No authentication token found - making unauthenticated request"
 fi
 
 # Construct full URL
@@ -61,15 +59,26 @@ fi
 # Make the request
 if [ -n "$request_body" ]; then
     # Request with body
-    response=$(curl -s -X "$method" "$full_url" \
-        -H "Content-Type: application/json" \
-        -H "Authorization: Bearer $jwt_token" \
-        -d "$request_body")
+    if [ -n "$jwt_token" ]; then
+        response=$(curl -s -X "$method" "$full_url" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $jwt_token" \
+            -d "$request_body")
+    else
+        response=$(curl -s -X "$method" "$full_url" \
+            -H "Content-Type: application/json" \
+            -d "$request_body")
+    fi
 else
     # Request without body (GET, DELETE without body, etc.)
-    response=$(curl -s -X "$method" "$full_url" \
-        -H "Content-Type: application/json" \
-        -H "Authorization: Bearer $jwt_token")
+    if [ -n "$jwt_token" ]; then
+        response=$(curl -s -X "$method" "$full_url" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $jwt_token")
+    else
+        response=$(curl -s -X "$method" "$full_url" \
+            -H "Content-Type: application/json")
+    fi
 fi
 
 # Check curl exit code
