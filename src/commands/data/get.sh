@@ -17,16 +17,9 @@ check_dependencies
 schema="${args[schema]}"
 id="${args[id]}"
 
-# Data commands only support JSON format
-if [[ "${args[--text]}" == "1" ]]; then
-    print_error "The --text option is not supported for data operations"
-    print_info "Data operations require JSON format for structured data handling"
-    exit 1
-fi
-
 validate_schema "$schema"
 
 # Get specific record by ID
 print_info "Getting record: $id"
 response=$(make_request_json "GET" "/api/data/$schema/$id" "")
-handle_response_json "$response" "get"
+echo "$response"

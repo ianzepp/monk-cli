@@ -6,7 +6,7 @@
 check_dependencies
 
 # Get arguments from bashly
-method="${args[method]}"
+method="${args[method]^^}"  # Uppercase the HTTP method
 path="${args[path]}"
 data_flag="${args[--data]}"
 raw_flag="${args[--raw]}"

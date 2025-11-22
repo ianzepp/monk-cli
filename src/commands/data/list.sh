@@ -30,13 +30,6 @@ check_dependencies
 schema="${args[schema]}"
 filter_json="${args[--filter]}"
 
-# Data commands only support JSON format
-if [[ "${args[--text]}" == "1" ]]; then
-    print_error "The --text option is not supported for data operations"
-    print_info "Data operations require JSON format for structured data handling"
-    exit 1
-fi
-
 validate_schema "$schema"
 
 if [ -n "$filter_json" ]; then
@@ -60,11 +53,11 @@ if [ -n "$filter_json" ]; then
     fi
 
     response=$(make_request_json "GET" "/api/data/$schema$query_string" "")
-    handle_response_json "$response" "list"
+    echo "$response"
 
 else
     # No filter - default listing
     print_info "Listing all records for schema: $schema"
     response=$(make_request_json "GET" "/api/data/$schema" "")
-    handle_response_json "$response" "list"
+    echo "$response"
 fi
