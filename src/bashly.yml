@@ -253,8 +253,8 @@ commands:
       required: true
       help: Tenant name for authentication
     - name: username
-      required: true
-      help: Username for authentication
+      required: false
+      help: Username for authentication (defaults to 'root')
 
   - name: logout
     help: Clear stored JWT token
@@ -731,9 +731,9 @@ commands:
   help: View API documentation from remote server
   group: Configuration & Utilities
   args:
-  - name: area
+  - name: path
     required: false
-    help: Documentation area to view (omit to list all available areas)
+    help: Documentation path to view (e.g., auth, api/data, api/describe/schema/GET). Omit to view root documentation.
 
 # Package management operations
 - name: package

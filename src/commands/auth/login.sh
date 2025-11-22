@@ -3,7 +3,7 @@ check_dependencies
 
 # Extract tenant and username from bashly args
 tenant="${args[tenant]}"
-username="${args[username]}"
+username="${args[username]:-root}"
 
 print_info "Authenticating with tenant: $tenant, username: $username"
 
