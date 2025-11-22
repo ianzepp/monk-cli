@@ -1,40 +1,31 @@
 #!/bin/bash
 
-# describe_update_command.sh - Update existing schema definition
+# describe_update_command.sh - Update existing schema or column definition
 #
-# This command updates an existing schema with a new JSON definition.
-# Changes are applied to both the schema definition and underlying database table structure.
-# Supports additive changes safely, but breaking changes may affect existing data.
+# This command updates an existing schema or column with a new JSON definition.
 #
 # Usage Examples:
-#   cat updated-schema.json | monk describe update users     # Update from file
-#   echo '{...}' | monk describe update products             # Update with inline JSON
+#   # Update schema
+#   echo '{"status":"active"}' | monk describe update users
+#
+#   # Update column
+#   echo '{"required":true,"description":"Updated"}' | monk describe update users name
 #
 # Input Format:
-#   - JSON schema definition via stdin
-#   - Must include 'title' field matching the schema name
-#   - Supports full JSON Schema specification
-#   - Additive changes (new fields) are generally safe
-#   - Breaking changes (removing required fields) may affect existing data
+#   - JSON definition via stdin
+#   - Schema: can update status, description, sudo, freeze, immutable
+#   - Column: can update any column properties
 #
-# Update Behavior:
-#   - Validates new schema definition
-#   - Compares with existing schema for compatibility
-#   - Updates PostgreSQL table structure (ADD/DROP columns as needed)
-#   - Preserves existing data where possible
-#   - System schemas cannot be modified
-#
-# API Endpoint:
-#   PUT /api/describe/:name (Content-Type: application/json)
+# API Endpoints:
+#   PUT /api/describe/:schema                 (update schema)
+#   PUT /api/describe/:schema/columns/:column (update column)
 
 # Check dependencies
 check_dependencies
 
 # Get arguments from bashly
 schema="${args[schema]}"
-
-# Determine output format from global flags
-output_format=$(get_output_format "text")
+column="${args[column]:-}"
 
 # Validate schema name
 if [ -z "$schema" ]; then
@@ -46,36 +37,39 @@ fi
 data=$(cat)
 
 if [ -z "$data" ]; then
-    print_error "No schema data provided on stdin"
-    print_info "Usage: cat schema.json | monk describe update <schema-name>"
-    print_info "       echo '{...}' | monk describe update <schema-name>"
+    print_error "No JSON data provided on stdin"
+    if [ -n "$column" ]; then
+        print_info "Usage: echo '{\"required\":true}' | monk describe update $schema $column"
+    else
+        print_info "Usage: echo '{\"status\":\"active\"}' | monk describe update $schema"
+    fi
     exit 1
 fi
 
 # Validate JSON input
 if ! echo "$data" | jq . >/dev/null 2>&1; then
     print_error "Invalid JSON input"
-    print_info "Describe update requires valid JSON schema definitions"
     exit 1
 fi
 
-# Validate that JSON has required title field and it matches the schema name
-json_title=$(echo "$data" | jq -r '.title // empty')
-if [ -z "$json_title" ]; then
-    print_error "JSON schema must have a 'title' field"
-    print_info "Example: {\"title\": \"$schema\", \"properties\": {...}}"
-    exit 1
+# Determine endpoint based on arguments
+if [ -n "$column" ]; then
+    # Column operation
+    print_info "Updating column '$column' in schema '$schema'"
+    if [ "$CLI_VERBOSE" = "true" ]; then
+        echo "$data" | jq . | sed 's/^/  /'
+    fi
+
+    response=$(make_request_json "PUT" "/api/describe/$schema/columns/$column" "$data")
+else
+    # Schema operation
+    print_info "Updating schema '$schema'"
+    if [ "$CLI_VERBOSE" = "true" ]; then
+        echo "$data" | jq . | sed 's/^/  /'
+    fi
+
+    response=$(make_request_json "PUT" "/api/describe/$schema" "$data")
 fi
 
-if [ "$json_title" != "$schema" ]; then
-    print_warning "JSON title '$json_title' does not match schema name '$schema'"
-    print_info "For safety, the JSON title should match the schema name being updated"
-fi
-
-print_info "Updating schema '$schema' with JSON data:"
-if [ "$CLI_VERBOSE" = "true" ]; then
-    echo "$data" | jq . | sed 's/^/  /'
-fi
-
-response=$(make_request_json "PUT" "/api/describe/$schema" "$data")
-handle_response_json "$response" "update"
+# Output response directly (API handles formatting)
+echo "$response"

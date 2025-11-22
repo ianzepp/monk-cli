@@ -395,33 +395,52 @@ commands:
   - name: list
     help: List all available schema names in the current tenant
 
+  - name: columns
+    help: List all columns in a schema
+    args:
+    - name: schema
+      required: true
+      help: Schema name to list columns for
+
   - name: get
-    help: Get specific schema definition
+    help: Get schema definition or column definition
     args:
     - name: schema
       required: true
       help: Schema name to retrieve
+    - name: column
+      required: false
+      help: Optional column name to retrieve (omit to get entire schema)
 
   - name: create
-    help: Create new schema from JSON definition
+    help: Create new schema or add column to schema from JSON definition
     args:
     - name: schema
       required: true
-      help: Schema name to create
+      help: Schema name to create or modify
+    - name: column
+      required: false
+      help: Optional column name to add (omit to create schema)
 
   - name: update
-    help: Update existing schema from JSON definition
+    help: Update existing schema or column from JSON definition
     args:
     - name: schema
       required: true
       help: Schema name to update
+    - name: column
+      required: false
+      help: Optional column name to update (omit to update schema)
 
   - name: delete
-    help: Delete schema definition (soft delete)
+    help: Delete schema or remove column from schema
     args:
     - name: schema
       required: true
       help: Schema name to delete
+    - name: column
+      required: false
+      help: Optional column name to remove (omit to delete entire schema)
 
 # Bulk operations for batch processing
 - name: bulk

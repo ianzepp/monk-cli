@@ -1,38 +1,31 @@
 #!/bin/bash
 
-# describe_create_command.sh - Create new schema from JSON definition
+# describe_create_command.sh - Create new schema or add column from JSON definition
 #
-# This command creates a new schema in the database from a JSON schema definition.
-# The schema definition includes JSON Schema validation rules and automatically
-# generates database DDL.
+# This command creates a new schema or adds a column to an existing schema.
 #
 # Usage Examples:
-#   cat schema.json | monk describe create products    # Create from file
-#   echo '{...}' | monk describe create users          # Create from inline JSON
+#   # Create schema
+#   echo '{"schema_name":"users","status":"pending"}' | monk describe create users
+#
+#   # Add column
+#   echo '{"type":"text","required":true}' | monk describe create users name
 #
 # Input Format:
-#   - JSON schema definition via stdin
-#   - Must include 'title' field for schema identification
-#   - Supports full JSON Schema specification (type, properties, required, etc.)
-#   - Optional metadata (description, examples)
+#   - JSON definition via stdin
+#   - Schema: requires schema_name field
+#   - Column: requires type field
 #
-# Schema Processing:
-#   - Validates JSON syntax and schema structure
-#   - Generates PostgreSQL table DDL automatically
-#   - Creates schema cache entry for performance
-#   - Prevents modification of system schemas
-#
-# API Endpoint:
-#   POST /api/describe/:name (Content-Type: application/json)
+# API Endpoints:
+#   POST /api/describe/:schema                 (create schema)
+#   POST /api/describe/:schema/columns/:column (add column)
 
 # Check dependencies
 check_dependencies
 
 # Get arguments from bashly
 schema="${args[schema]}"
-
-# Determine output format from global flags
-output_format=$(get_output_format "text")
+column="${args[column]:-}"
 
 # Validate schema name
 if [ -z "$schema" ]; then
@@ -44,30 +37,51 @@ fi
 data=$(cat)
 
 if [ -z "$data" ]; then
-    print_error "No schema data provided on stdin"
-    print_info "Usage: cat schema.json | monk describe create <schema-name>"
-    print_info "       echo '{...}' | monk describe create <schema-name>"
+    print_error "No JSON data provided on stdin"
+    if [ -n "$column" ]; then
+        print_info "Usage: echo '{\"type\":\"text\"}' | monk describe create $schema $column"
+    else
+        print_info "Usage: echo '{\"schema_name\":\"$schema\"}' | monk describe create $schema"
+    fi
     exit 1
 fi
 
 # Validate JSON input
 if ! echo "$data" | jq . >/dev/null 2>&1; then
     print_error "Invalid JSON input"
-    print_info "Describe create requires valid JSON schema definitions"
     exit 1
 fi
 
-# Validate that JSON has required title field
-if ! echo "$data" | jq -e '.title' >/dev/null 2>&1; then
-    print_error "JSON schema must have a 'title' field"
-    print_info "Example: {\"title\": \"$schema\", \"properties\": {...}}"
-    exit 1
+# Determine endpoint and validation based on arguments
+if [ -n "$column" ]; then
+    # Column operation - validate type field
+    if ! echo "$data" | jq -e '.type' >/dev/null 2>&1; then
+        print_error "Column definition must have a 'type' field"
+        print_info "Example: {\"type\": \"text\", \"required\": true}"
+        exit 1
+    fi
+
+    print_info "Adding column '$column' to schema '$schema'"
+    if [ "$CLI_VERBOSE" = "true" ]; then
+        echo "$data" | jq . | sed 's/^/  /'
+    fi
+
+    response=$(make_request_json "POST" "/api/describe/$schema/columns/$column" "$data")
+else
+    # Schema operation - validate schema_name field
+    if ! echo "$data" | jq -e '.schema_name' >/dev/null 2>&1; then
+        print_error "Schema definition must have a 'schema_name' field"
+        print_info "Example: {\"schema_name\": \"$schema\", \"status\": \"pending\"}"
+        exit 1
+    fi
+
+    print_info "Creating schema '$schema'"
+    if [ "$CLI_VERBOSE" = "true" ]; then
+        echo "$data" | jq . | sed 's/^/  /'
+    fi
+
+    response=$(make_request_json "POST" "/api/describe/$schema" "$data")
 fi
 
-print_info "Creating schema '$schema' with JSON data:"
-if [ "$CLI_VERBOSE" = "true" ]; then
-    echo "$data" | jq . | sed 's/^/  /'
-fi
-
-response=$(make_request_json "POST" "/api/describe/$schema" "$data")
-handle_response_json "$response" "create"
+# Output response directly (API handles formatting)
+echo "$response"

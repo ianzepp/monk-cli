@@ -1,30 +1,29 @@
 #!/bin/bash
 
-# describe_select_command.sh - Retrieve specific schema definition  
+# describe_get_command.sh - Retrieve schema or column definition
 #
-# This command retrieves the complete YAML schema definition for a named schema.
-# Returns the full schema specification including validation rules, properties, and metadata.
+# This command retrieves either a complete schema definition or a specific column definition.
 #
 # Usage Examples:
-#   monk describe select schema users           # Get users schema definition
-#   monk describe select schema products > products.yaml  # Save schema to file
+#   monk describe get users                    # Get complete schema definition
+#   monk describe get users name               # Get specific column definition
+#   monk describe get products > products.json # Save schema to file
 #
 # Output Format:
-#   - Returns complete YAML schema definition
-#   - Includes JSON Schema validation rules, properties, required fields
-#   - Contains metadata like title, description, and custom attributes
+#   - Returns JSON schema or column definition
+#   - Schema includes all columns and metadata
+#   - Column includes type, constraints, validation rules
 #
-# API Endpoint:
-#   GET /api/describe/:name (returns JSON schema content)
+# API Endpoints:
+#   GET /api/describe/:schema                 (get schema)
+#   GET /api/describe/:schema/columns/:column (get column)
 
 # Check dependencies
 check_dependencies
 
 # Get arguments from bashly
 schema="${args[schema]}"
-
-# Determine output format from global flags
-output_format=$(get_output_format "text")
+column="${args[column]:-}"
 
 # Validate schema name
 if [ -z "$schema" ]; then
@@ -32,19 +31,16 @@ if [ -z "$schema" ]; then
     exit 1
 fi
 
-print_info "Selecting schema: $schema"
-
-response=$(make_request_json "GET" "/api/describe/$schema" "")
-
-# Handle response based on output format
-if [[ "$output_format" == "json" ]]; then
-    # JSON format - use standard handler (compact output)
-    handle_response_json "$response" "select"
+# Determine endpoint based on arguments
+if [ -n "$column" ]; then
+    # Column operation
+    print_info "Getting column: $schema.$column"
+    response=$(make_request_json "GET" "/api/describe/$schema/columns/$column" "")
 else
-    # Text format - pretty-print the schema for readability
-    if echo "$response" | jq -e '.success == true' >/dev/null 2>&1; then
-        echo "$response" | jq -r '.data' | jq .
-    else
-        handle_response_json "$response" "select"
-    fi
+    # Schema operation
+    print_info "Getting schema: $schema"
+    response=$(make_request_json "GET" "/api/describe/$schema" "")
 fi
+
+# Output response directly (API handles formatting)
+echo "$response"
