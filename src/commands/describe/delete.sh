@@ -14,15 +14,15 @@
 #   - System schemas and columns cannot be deleted
 #
 # API Endpoints:
-#   DELETE /api/describe/:schema                 (delete schema)
-#   DELETE /api/describe/:schema/columns/:column (remove column)
+#   DELETE /api/describe/:model                 (delete model)
+#   DELETE /api/describe/:model/fields/:field   (remove field)
 
 # Check dependencies
 check_dependencies
 
 # Get arguments from bashly
-schema="${args[schema]}"
-column="${args[column]:-}"
+schema="${args[model]}"
+column="${args[field]:-}"
 
 # Validate schema name
 if [ -z "$schema" ]; then
@@ -32,12 +32,12 @@ fi
 
 # Determine endpoint based on arguments
 if [ -n "$column" ]; then
-    # Column operation
-    print_info "Removing column '$column' from schema '$schema'"
-    response=$(make_request_json "DELETE" "/api/describe/$schema/columns/$column" "")
+    # Field operation
+    print_info "Removing field '$column' from model '$schema'"
+    response=$(make_request_json "DELETE" "/api/describe/$schema/fields/$column" "")
 else
-    # Schema operation
-    print_info "Deleting schema '$schema'"
+    # Model operation
+    print_info "Deleting model '$schema'"
     response=$(make_request_json "DELETE" "/api/describe/$schema" "")
 fi
 

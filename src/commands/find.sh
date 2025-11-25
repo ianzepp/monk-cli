@@ -31,7 +31,7 @@
 check_dependencies
 
 # Get arguments from bashly
-schema="${args[schema]}"
+schema="${args[model]}"
 head_flag="${args[--head]}"
 tail_flag="${args[--tail]}"
 

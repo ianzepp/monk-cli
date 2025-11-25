@@ -312,18 +312,18 @@ commands:
       arg: reason
       help: Reason for privilege escalation (for audit trail)
 
-# Data operations on dynamic schemas
+# Data operations on dynamic models
 - name: data
-  help: Data operations on dynamic schemas
+  help: Data operations on dynamic models
   group: API Endpoints
 
   commands:
   - name: list
     help: List records with flexible query support
     args:
-    - name: schema
+    - name: model
       required: true
-      help: Schema name
+      help: Model name
     flags:
     - long: --filter
       arg: json
@@ -332,9 +332,9 @@ commands:
   - name: get
     help: Get a single record by ID
     args:
-    - name: schema
+    - name: model
       required: true
-      help: Schema name
+      help: Model name
     - name: id
       required: true
       help: Record ID to retrieve
@@ -342,16 +342,16 @@ commands:
   - name: create
     help: Create record from stdin
     args:
-    - name: schema
+    - name: model
       required: true
-      help: Schema name to create record in
+      help: Model name to create record in
 
   - name: update
     help: Update record(s) from stdin
     args:
-    - name: schema
+    - name: model
       required: true
-      help: Schema name
+      help: Model name
     - name: id
       required: false
       help: Record ID to update (optional if ID in JSON)
@@ -359,9 +359,9 @@ commands:
   - name: delete
     help: Delete record(s)
     args:
-    - name: schema
+    - name: model
       required: true
-      help: Schema name
+      help: Model name
     - name: id
       required: false
       help: Record ID to delete (optional if ID in JSON or using stdin)
@@ -369,9 +369,9 @@ commands:
   - name: export
     help: Export records to JSON files
     args:
-    - name: schema
+    - name: model
       required: true
-      help: Schema name to export
+      help: Model name to export
     - name: dir
       required: true
       help: Directory to export to
@@ -379,72 +379,72 @@ commands:
   - name: import
     help: Import JSON files as records
     args:
-    - name: schema
+    - name: model
       required: true
-      help: Schema name to import into
+      help: Model name to import into
     - name: dir
       required: true
       help: Directory to import from
 
-# Schema description and metadata management
+# Model description and metadata management
 - name: describe
-  help: Schema description and metadata management
+  help: Model description and metadata management
   group: API Endpoints
 
   commands:
   - name: list
-    help: List all available schema names in the current tenant
+    help: List all available model names in the current tenant
 
-  - name: columns
-    help: List all columns in a schema
+  - name: fields
+    help: List all fields in a model
     args:
-    - name: schema
+    - name: model
       required: true
-      help: Schema name to list columns for
+      help: Model name to list fields for
 
   - name: get
-    help: Get schema definition or column definition
+    help: Get model definition or field definition
     args:
-    - name: schema
+    - name: model
       required: true
-      help: Schema name to retrieve
-    - name: column
+      help: Model name to retrieve
+    - name: field
       required: false
-      help: Optional column name to retrieve (omit to get entire schema)
+      help: Optional field name to retrieve (omit to get entire model)
 
   - name: create
-    help: Create new schema or add column to schema from JSON definition
+    help: Create new model or add field to model from JSON definition
     args:
-    - name: schema
+    - name: model
       required: true
-      help: Schema name to create or modify
-    - name: column
+      help: Model name to create or modify
+    - name: field
       required: false
-      help: Optional column name to add (omit to create schema)
+      help: Optional field name to add (omit to create model)
 
   - name: update
-    help: Update existing schema or column from JSON definition
+    help: Update existing model or field from JSON definition
     args:
-    - name: schema
+    - name: model
       required: true
-      help: Schema name to update
-    - name: column
+      help: Model name to update
+    - name: field
       required: false
-      help: Optional column name to update (omit to update schema)
+      help: Optional field name to update (omit to update model)
 
   - name: delete
-    help: Delete schema or remove column from schema
+    help: Delete model or remove field from model
     args:
-    - name: schema
+    - name: model
       required: true
-      help: Schema name to delete
-    - name: column
+      help: Model name to delete
+    - name: field
       required: false
-      help: Optional column name to remove (omit to delete entire schema)
+      help: Optional field name to remove (omit to delete entire model)
 
 # Bulk operations for batch processing
 - name: bulk
-  help: Execute multiple operations across schemas in a single transaction via JSON input
+  help: Execute multiple operations across models in a single transaction via JSON input
   group: API Endpoints
 
 # Filesystem-like operations for API data exploration
@@ -614,9 +614,9 @@ commands:
   help: Advanced search with enterprise Filter DSL via JSON input
   group: API Endpoints
   args:
-  - name: schema
+  - name: model
     required: true
-    help: Schema to search
+    help: Model to search
   flags:
   - long: --head
     short: -H
@@ -630,21 +630,106 @@ commands:
   help: Perform aggregation queries with GROUP BY and statistics via JSON input
   group: API Endpoints
   args:
-  - name: schema
+  - name: model
     required: true
-    help: Schema to aggregate
+    help: Model to aggregate
 
 # Get record metadata without fetching full data
 - name: stat
   help: Get record metadata without fetching full record data
   group: API Endpoints
   args:
-  - name: schema
+  - name: model
     required: true
-    help: Schema name
+    help: Model name
   - name: id
     required: true
     help: Record ID to retrieve metadata for
+
+# History API - audit trail and change tracking
+- name: history
+  help: Access audit trails and change history for tracked fields
+  group: API Endpoints
+
+  commands:
+  - name: list
+    help: List all history entries for a record (newest first)
+    args:
+    - name: model
+      required: true
+      help: Model name
+    - name: id
+      required: true
+      help: Record ID to retrieve history for
+    flags:
+    - long: --limit
+      arg: count
+      help: Maximum number of history entries to return
+    - long: --offset
+      arg: count
+      help: Skip first N entries (for pagination)
+
+  - name: get
+    help: Get a specific history entry by change ID
+    args:
+    - name: model
+      required: true
+      help: Model name
+    - name: id
+      required: true
+      help: Record ID
+    - name: change_id
+      required: true
+      help: Change ID (auto-incrementing sequence number)
+
+# ACLs API - record-level access control management
+- name: acls
+  help: Manage record-level access control lists (ACLs)
+  group: API Endpoints
+
+  commands:
+  - name: get
+    help: Get current ACL arrays for a record
+    args:
+    - name: model
+      required: true
+      help: Model name
+    - name: id
+      required: true
+      help: Record ID
+
+  - name: set
+    help: Replace all ACL arrays for a record (PUT)
+    args:
+    - name: model
+      required: true
+      help: Model name
+    - name: id
+      required: true
+      help: Record ID
+
+  - name: add
+    help: Merge user IDs into existing ACL arrays (POST)
+    args:
+    - name: model
+      required: true
+      help: Model name
+    - name: id
+      required: true
+      help: Record ID
+
+  - name: clear
+    help: Reset all ACL arrays to empty (DELETE)
+    args:
+    - name: model
+      required: true
+      help: Model name
+    - name: id
+      required: true
+      help: Record ID
+    flags:
+    - long: --force
+      help: Skip confirmation prompt
 
 # Data synchronization between tenants and servers
 - name: sync
@@ -799,21 +884,21 @@ commands:
     - long: --force
       help: Force uninstall without confirmation
     - long: --keep-data
-      help: Keep data when uninstalling (remove schema only)
+      help: Keep data when uninstalling (remove model only)
 
   - name: describe
-    help: Manage schema definitions in the package
+    help: Manage model definitions in the package
 
     commands:
     - name: add
-      help: Add a schema definition from current tenant to package
+      help: Add a model definition from current tenant to package
       args:
-      - name: schema
+      - name: model
         required: true
-        help: Schema name to add from current tenant
+        help: Model name to add from current tenant
       flags:
       - long: --force
-        help: Overwrite if schema file already exists
+        help: Overwrite if model file already exists
 
 # Administrative operations requiring sudo token
 - name: sudo

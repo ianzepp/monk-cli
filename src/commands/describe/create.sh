@@ -17,15 +17,15 @@
 #   - Column: requires type field
 #
 # API Endpoints:
-#   POST /api/describe/:schema                 (create schema)
-#   POST /api/describe/:schema/columns/:column (add column)
+#   POST /api/describe/:model                 (create model)
+#   POST /api/describe/:model/fields/:field   (add field)
 
 # Check dependencies
 check_dependencies
 
 # Get arguments from bashly
-schema="${args[schema]}"
-column="${args[column]:-}"
+schema="${args[model]}"
+column="${args[field]:-}"
 
 # Validate schema name
 if [ -z "$schema" ]; then
@@ -54,28 +54,28 @@ fi
 
 # Determine endpoint and validation based on arguments
 if [ -n "$column" ]; then
-    # Column operation - validate type field
+    # Field operation - validate type field
     if ! echo "$data" | jq -e '.type' >/dev/null 2>&1; then
-        print_error "Column definition must have a 'type' field"
+        print_error "Field definition must have a 'type' field"
         print_info "Example: {\"type\": \"text\", \"required\": true}"
         exit 1
     fi
 
-    print_info "Adding column '$column' to schema '$schema'"
+    print_info "Adding field '$column' to model '$schema'"
     if [ "$CLI_VERBOSE" = "true" ]; then
         echo "$data" | jq . | sed 's/^/  /'
     fi
 
-    response=$(make_request_json "POST" "/api/describe/$schema/columns/$column" "$data")
+    response=$(make_request_json "POST" "/api/describe/$schema/fields/$column" "$data")
 else
-    # Schema operation - validate schema_name field
-    if ! echo "$data" | jq -e '.schema_name' >/dev/null 2>&1; then
-        print_error "Schema definition must have a 'schema_name' field"
-        print_info "Example: {\"schema_name\": \"$schema\", \"status\": \"pending\"}"
+    # Model operation - validate model_name field
+    if ! echo "$data" | jq -e '.model_name' >/dev/null 2>&1; then
+        print_error "Model definition must have a 'model_name' field"
+        print_info "Example: {\"model_name\": \"$schema\", \"status\": \"pending\"}"
         exit 1
     fi
 
-    print_info "Creating schema '$schema'"
+    print_info "Creating model '$schema'"
     if [ "$CLI_VERBOSE" = "true" ]; then
         echo "$data" | jq . | sed 's/^/  /'
     fi

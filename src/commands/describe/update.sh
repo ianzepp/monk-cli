@@ -17,15 +17,15 @@
 #   - Column: can update any column properties
 #
 # API Endpoints:
-#   PUT /api/describe/:schema                 (update schema)
-#   PUT /api/describe/:schema/columns/:column (update column)
+#   PUT /api/describe/:model                 (update model)
+#   PUT /api/describe/:model/fields/:field   (update field)
 
 # Check dependencies
 check_dependencies
 
 # Get arguments from bashly
-schema="${args[schema]}"
-column="${args[column]:-}"
+schema="${args[model]}"
+column="${args[field]:-}"
 
 # Validate schema name
 if [ -z "$schema" ]; then
@@ -54,16 +54,16 @@ fi
 
 # Determine endpoint based on arguments
 if [ -n "$column" ]; then
-    # Column operation
-    print_info "Updating column '$column' in schema '$schema'"
+    # Field operation
+    print_info "Updating field '$column' in model '$schema'"
     if [ "$CLI_VERBOSE" = "true" ]; then
         echo "$data" | jq . | sed 's/^/  /'
     fi
 
-    response=$(make_request_json "PUT" "/api/describe/$schema/columns/$column" "$data")
+    response=$(make_request_json "PUT" "/api/describe/$schema/fields/$column" "$data")
 else
-    # Schema operation
-    print_info "Updating schema '$schema'"
+    # Model operation
+    print_info "Updating model '$schema'"
     if [ "$CLI_VERBOSE" = "true" ]; then
         echo "$data" | jq . | sed 's/^/  /'
     fi

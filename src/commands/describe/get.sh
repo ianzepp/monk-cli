@@ -15,15 +15,15 @@
 #   - Column includes type, constraints, validation rules
 #
 # API Endpoints:
-#   GET /api/describe/:schema                 (get schema)
-#   GET /api/describe/:schema/columns/:column (get column)
+#   GET /api/describe/:model                 (get model)
+#   GET /api/describe/:model/fields/:field   (get field)
 
 # Check dependencies
 check_dependencies
 
 # Get arguments from bashly
-schema="${args[schema]}"
-column="${args[column]:-}"
+schema="${args[model]}"
+column="${args[field]:-}"
 
 # Validate schema name
 if [ -z "$schema" ]; then
@@ -33,9 +33,9 @@ fi
 
 # Determine endpoint based on arguments
 if [ -n "$column" ]; then
-    # Column operation
-    print_info "Getting column: $schema.$column"
-    response=$(make_request_json "GET" "/api/describe/$schema/columns/$column" "")
+    # Field operation
+    print_info "Getting field: $schema.$column"
+    response=$(make_request_json "GET" "/api/describe/$schema/fields/$column" "")
 else
     # Schema operation
     print_info "Getting schema: $schema"

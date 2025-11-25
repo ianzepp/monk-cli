@@ -22,7 +22,7 @@
 check_dependencies
 
 # Get arguments from bashly
-schema="${args[schema]}"
+schema="${args[model]}"
 
 validate_schema "$schema"
 

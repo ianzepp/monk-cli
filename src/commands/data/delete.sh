@@ -28,7 +28,7 @@
 check_dependencies
 
 # Get arguments from bashly
-schema="${args[schema]}"
+schema="${args[model]}"
 id="${args[id]}"
 
 # Data commands only support JSON format

@@ -26,7 +26,7 @@
 check_dependencies
 
 # Get arguments from bashly
-schema="${args[schema]}"
+schema="${args[model]}"
 force="${args[--force]:-false}"
 
 # Determine output format
