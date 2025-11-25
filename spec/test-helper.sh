@@ -254,26 +254,25 @@ print_test_summary() {
     echo -e "${CYAN}───────────────────────────────────────────────────────────${NC}"
 }
 
-# Exit handler for test files (not used by test-all.sh)
+# Exit handler for test files
 cleanup_test_file() {
     local exit_code=$?
 
-    # Only print summary if we're a test file, not the runner
+    # Print summary for individual test files (not the runner itself)
     if [[ "$IS_TEST_RUNNER" != "true" ]]; then
         print_test_summary
+    fi
 
-        if [[ $TEST_FAILED -gt 0 ]]; then
-            exit 1
-        fi
+    # Exit with failure if any assertions failed
+    if [[ $TEST_FAILED -gt 0 ]]; then
+        exit 1
     fi
 
     exit $exit_code
 }
 
-# Set up exit trap for test files (test-all.sh will override this)
-if [[ "$IS_TEST_RUNNER" != "true" ]]; then
-    trap cleanup_test_file EXIT
-fi
+# Set up exit trap for all test files (including when run from test-all.sh)
+trap cleanup_test_file EXIT
 
 # ===========================
 # CLI Execution Functions
