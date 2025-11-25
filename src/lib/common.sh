@@ -3,19 +3,20 @@
 # Common functions for bashly CLI commands
 # Clean rewrite to eliminate syntax errors and improve maintainability
 
-# Clean separation of concerns:
-# - server.json: Infrastructure endpoints  
-# - auth.json: Authentication sessions per server+tenant
-# - env.json: Current working context (server+tenant selection)
+# Session-based configuration:
+# - sessions.json: All session data (server URLs, tenants, users, JWT tokens)
+#   Each session has an alias (key) and contains server URL, tenant, user, and JWT
+#   current_session points to the active session alias
 
-# CLI configuration files  
+# CLI configuration files
 CLI_CONFIG_DIR="${MONK_CLI_CONFIG_DIR:-${HOME}/.config/monk/cli}"
+SESSIONS_CONFIG="${CLI_CONFIG_DIR}/sessions.json"
+
+# Legacy config files (for migration)
 SERVER_CONFIG="${CLI_CONFIG_DIR}/server.json"
 TENANT_CONFIG="${CLI_CONFIG_DIR}/tenant.json"
 AUTH_CONFIG="${CLI_CONFIG_DIR}/auth.json"
 ENV_CONFIG="${CLI_CONFIG_DIR}/env.json"
-
-# Legacy config file (for migration)
 LEGACY_SERVERS_CONFIG="${HOME}/.config/monk/servers.json"
 
 # Default configuration
@@ -59,187 +60,189 @@ print_warning() {
 init_cli_configs() {
     # Ensure CLI config directory exists
     mkdir -p "$CLI_CONFIG_DIR"
-    
-    # Initialize individual config files
-    init_server_config
-    init_tenant_config
-    init_auth_config  
-    init_env_config
+
+    # Migrate legacy config if needed
+    migrate_legacy_configs
+
+    # Initialize sessions config if it doesn't exist
+    init_sessions_config
 }
 
-# Initialize server config if it doesn't exist
-init_server_config() {
-    if [ ! -f "$SERVER_CONFIG" ]; then
-        mkdir -p "$(dirname "$SERVER_CONFIG")"
-        cat > "$SERVER_CONFIG" << 'EOF'
+# Initialize sessions config if it doesn't exist
+init_sessions_config() {
+    if [ ! -f "$SESSIONS_CONFIG" ]; then
+        mkdir -p "$(dirname "$SESSIONS_CONFIG")"
+        cat > "$SESSIONS_CONFIG" << 'EOF'
 {
-  "servers": {}
-}
-EOF
-    fi
-}
-
-# Initialize tenant config if it doesn't exist
-init_tenant_config() {
-    if [ ! -f "$TENANT_CONFIG" ]; then
-        mkdir -p "$(dirname "$TENANT_CONFIG")"
-        cat > "$TENANT_CONFIG" << 'EOF'
-{
-  "tenants": {}
-}
-EOF
-    fi
-}
-
-# Initialize auth config if it doesn't exist  
-init_auth_config() {
-    if [ ! -f "$AUTH_CONFIG" ]; then
-        mkdir -p "$(dirname "$AUTH_CONFIG")"
-        cat > "$AUTH_CONFIG" << 'EOF'
-{
+  "current_session": null,
   "sessions": {}
 }
 EOF
+        chmod 600 "$SESSIONS_CONFIG"
     fi
 }
 
-# Initialize env config if it doesn't exist
-init_env_config() {
-    if [ ! -f "$ENV_CONFIG" ]; then
-        mkdir -p "$(dirname "$ENV_CONFIG")"
-        cat > "$ENV_CONFIG" << 'EOF'
-{
-  "current_server": null,
-  "current_tenant": null,
-  "current_user": null,
-  "recents": []
-}
-EOF
+# Migrate from legacy config files to sessions.json
+migrate_legacy_configs() {
+    # Skip if sessions.json already exists
+    if [ -f "$SESSIONS_CONFIG" ]; then
+        return 0
     fi
+
+    # Check if there's anything to migrate
+    if [ ! -f "$AUTH_CONFIG" ] && [ ! -f "$ENV_CONFIG" ]; then
+        return 0
+    fi
+
+    print_info "Migrating legacy configuration to sessions.json..."
+
+    # Start with empty sessions structure
+    local sessions_json='{"current_session": null, "sessions": {}}'
+
+    # Get current context from env.json
+    local current_server="" current_tenant="" current_user=""
+    if [ -f "$ENV_CONFIG" ]; then
+        current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
+        current_tenant=$(jq -r '.current_tenant // empty' "$ENV_CONFIG" 2>/dev/null)
+        current_user=$(jq -r '.current_user // empty' "$ENV_CONFIG" 2>/dev/null)
+    fi
+
+    # Migrate sessions from auth.json
+    if [ -f "$AUTH_CONFIG" ]; then
+        # Read all sessions and convert them
+        local session_keys
+        session_keys=$(jq -r '.sessions | keys[]' "$AUTH_CONFIG" 2>/dev/null)
+
+        for old_key in $session_keys; do
+            # Old key format: "server_name:tenant"
+            local jwt_token tenant user server_name created_at
+            jwt_token=$(jq -r ".sessions.\"$old_key\".jwt_token // empty" "$AUTH_CONFIG" 2>/dev/null)
+            tenant=$(jq -r ".sessions.\"$old_key\".tenant // empty" "$AUTH_CONFIG" 2>/dev/null)
+            user=$(jq -r ".sessions.\"$old_key\".user // empty" "$AUTH_CONFIG" 2>/dev/null)
+            server_name=$(jq -r ".sessions.\"$old_key\".server // empty" "$AUTH_CONFIG" 2>/dev/null)
+            created_at=$(jq -r ".sessions.\"$old_key\".created_at // empty" "$AUTH_CONFIG" 2>/dev/null)
+
+            # Skip if no token
+            [ -z "$jwt_token" ] && continue
+
+            # Get server URL from server.json
+            local server_url=""
+            if [ -f "$SERVER_CONFIG" ] && [ -n "$server_name" ]; then
+                local hostname port protocol
+                hostname=$(jq -r ".servers.\"$server_name\".hostname // empty" "$SERVER_CONFIG" 2>/dev/null)
+                port=$(jq -r ".servers.\"$server_name\".port // empty" "$SERVER_CONFIG" 2>/dev/null)
+                protocol=$(jq -r ".servers.\"$server_name\".protocol // \"http\"" "$SERVER_CONFIG" 2>/dev/null)
+                if [ -n "$hostname" ] && [ -n "$port" ]; then
+                    server_url="${protocol}://${hostname}:${port}"
+                fi
+            fi
+
+            # Use tenant as the session alias (simpler)
+            local alias="$tenant"
+
+            # Add session to sessions_json
+            sessions_json=$(echo "$sessions_json" | jq \
+                --arg alias "$alias" \
+                --arg server "$server_url" \
+                --arg tenant "$tenant" \
+                --arg user "$user" \
+                --arg jwt_token "$jwt_token" \
+                --arg created_at "$created_at" \
+                '.sessions[$alias] = {
+                    "server": $server,
+                    "tenant": $tenant,
+                    "user": $user,
+                    "jwt_token": $jwt_token,
+                    "created_at": $created_at
+                }')
+
+            # Set current session if this matches the current context
+            if [ "$server_name" = "$current_server" ] && [ "$tenant" = "$current_tenant" ]; then
+                sessions_json=$(echo "$sessions_json" | jq --arg alias "$alias" '.current_session = $alias')
+            fi
+        done
+    fi
+
+    # Write sessions.json
+    echo "$sessions_json" > "$SESSIONS_CONFIG"
+    chmod 600 "$SESSIONS_CONFIG"
+
+    print_success "Migrated to sessions.json"
+    print_info "Legacy config files preserved (can be deleted manually)"
 }
 
-# Migrate from legacy servers.json to new CLI config structure
-migrate_legacy_config() {
-    # Only migrate if legacy file exists and new structure doesn't
-    if [[ -f "$LEGACY_SERVERS_CONFIG" && ! -f "$SERVER_CONFIG" ]]; then
-        print_info "Migrating legacy configuration to new CLI structure..."
-        
-        # Ensure new config directory exists
-        mkdir -p "$CLI_CONFIG_DIR"
-        
-        # Extract server info and current server from legacy config
-        local servers_data current_server
-        servers_data=$(jq '.servers' "$LEGACY_SERVERS_CONFIG" 2>/dev/null)
-        current_server=$(jq -r '.current_server // empty' "$LEGACY_SERVERS_CONFIG" 2>/dev/null)
-        
-        # Create new server.json (infrastructure only)
-        echo "{\"servers\": $servers_data}" > "$SERVER_CONFIG"
-        
-        # Create env.json with current server selection
-        cat > "$ENV_CONFIG" << EOF
-{
-  "current_server": "$current_server",
-  "current_tenant": null,
-  "current_user": null,
-  "recents": []
-}
-EOF
-        
-        # Create empty auth.json (tokens will be re-established)
-        cat > "$AUTH_CONFIG" << 'EOF'
-{
-  "sessions": {}
-}
-EOF
-        
-        print_success "Configuration migrated to ~/.config/monk/cli/"
-        print_warning "JWT tokens were not migrated - please re-authenticate with 'monk auth login'"
-    fi
-}
+# Legacy compatibility - these functions now delegate to sessions.json
+init_server_config() { :; }
+init_tenant_config() { :; }
+init_auth_config() { :; }
+init_env_config() { :; }
 
-# Get base URL from server config - fail if not configured
+# Get base URL from current session
 get_base_url() {
-    migrate_legacy_config
-    
+    init_cli_configs
+
     # Check if jq is available
     if ! command -v jq >/dev/null 2>&1; then
-        echo "Error: jq is required for server configuration" >&2
-        echo "Install jq to use server configuration" >&2
+        echo "Error: jq is required for configuration" >&2
         exit 1
     fi
-    
-    # Check if config file exists
-    if [[ ! -f "$SERVER_CONFIG" ]]; then
-        echo "Error: No server configuration found" >&2
-        echo "Use 'monk config server add <name> <hostname:port>' to add a server" >&2
+
+    # Get current session
+    local current_session
+    current_session=$(jq -r '.current_session // empty' "$SESSIONS_CONFIG" 2>/dev/null)
+
+    if [[ -z "$current_session" || "$current_session" == "null" ]]; then
+        echo "Error: No current session" >&2
+        echo "Use 'monk auth login <tenant> --server <url>' to create a session" >&2
         exit 1
     fi
-    
-    # Get current server from env config
-    init_env_config
-    local current_server
-    current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
-    
-    if [[ -z "$current_server" || "$current_server" == "null" ]]; then
-        echo "Error: No current server selected" >&2
-        echo "Use 'monk config server use <name>' to select a server" >&2
+
+    # Get server URL from current session
+    local server_url
+    server_url=$(jq -r ".sessions.\"$current_session\".server // empty" "$SESSIONS_CONFIG" 2>/dev/null)
+
+    if [[ -z "$server_url" || "$server_url" == "null" ]]; then
+        echo "Error: Session '$current_session' has no server URL" >&2
         exit 1
     fi
-    
-    # Get server info from server config
-    local server_info
-    server_info=$(jq -r ".servers.\"$current_server\"" "$SERVER_CONFIG" 2>/dev/null)
-    
-    if [[ "$server_info" == "null" ]]; then
-        echo "Error: Current server '$current_server' not found in configuration" >&2
-        echo "Use 'monk config server list' to see available servers" >&2
-        exit 1
-    fi
-    
-    # Extract connection details
-    local hostname=$(echo "$server_info" | jq -r '.hostname')
-    local port=$(echo "$server_info" | jq -r '.port')
-    local protocol=$(echo "$server_info" | jq -r '.protocol')
-    
-    # Validate required fields
-    if [[ "$hostname" == "null" || "$port" == "null" || "$protocol" == "null" ]]; then
-        echo "Error: Invalid server configuration for '$current_server'" >&2
-        echo "Server configuration is missing required fields (hostname, port, protocol)" >&2
-        exit 1
-    fi
-    
-    echo "$protocol://$hostname:$port"
+
+    echo "$server_url"
 }
 
-# Get stored JWT token for current server+tenant context
+# Get base URL for a specific server (used when --server flag is provided)
+get_base_url_for_server() {
+    local server_url="$1"
+
+    # If it looks like a URL, use it directly
+    if [[ "$server_url" =~ ^https?:// ]]; then
+        echo "$server_url"
+        return 0
+    fi
+
+    # Otherwise, assume it's host:port and add http://
+    echo "http://$server_url"
+}
+
+# Get stored JWT token for current session
 get_jwt_token() {
     init_cli_configs
-    
+
     if ! command -v jq >/dev/null 2>&1; then
-        echo "Error: jq is required for JWT token management" >&2
         return 1
     fi
-    
-    # Get current context
-    local current_server current_tenant
-    current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
-    current_tenant=$(jq -r '.current_tenant // empty' "$ENV_CONFIG" 2>/dev/null)
-    
-    if [ -z "$current_server" ] || [ "$current_server" = "null" ]; then
-        # No current server selected
+
+    # Get current session
+    local current_session
+    current_session=$(jq -r '.current_session // empty' "$SESSIONS_CONFIG" 2>/dev/null)
+
+    if [ -z "$current_session" ] || [ "$current_session" = "null" ]; then
         return 1
     fi
-    
-    if [ -z "$current_tenant" ] || [ "$current_tenant" = "null" ]; then
-        # No current tenant selected
-        return 1
-    fi
-    
-    # Get session-specific token using server:tenant key
-    local session_key="${current_server}:${current_tenant}"
+
+    # Get token from current session
     local token
-    token=$(jq -r ".sessions.\"$session_key\".jwt_token // empty" "$AUTH_CONFIG" 2>/dev/null)
-    
+    token=$(jq -r ".sessions.\"$current_session\".jwt_token // empty" "$SESSIONS_CONFIG" 2>/dev/null)
+
     if [ -n "$token" ] && [ "$token" != "null" ]; then
         echo "$token"
     else
@@ -247,235 +250,266 @@ get_jwt_token() {
     fi
 }
 
-# Store JWT token for current server+tenant context
+# Get current session info
+get_current_session() {
+    init_cli_configs
+
+    local current_session
+    current_session=$(jq -r '.current_session // empty' "$SESSIONS_CONFIG" 2>/dev/null)
+
+    if [ -z "$current_session" ] || [ "$current_session" = "null" ]; then
+        return 1
+    fi
+
+    echo "$current_session"
+}
+
+# Get session details by alias
+get_session_info() {
+    local alias="$1"
+    local field="$2"
+
+    jq -r ".sessions.\"$alias\".$field // empty" "$SESSIONS_CONFIG" 2>/dev/null
+}
+
+# Store session (new unified function)
+# Usage: store_session <alias> <server_url> <tenant> <user> <jwt_token>
+store_session() {
+    local alias="$1"
+    local server_url="$2"
+    local tenant="$3"
+    local user="$4"
+    local jwt_token="$5"
+
+    init_cli_configs
+
+    if ! command -v jq >/dev/null 2>&1; then
+        echo "Error: jq is required for session management" >&2
+        return 1
+    fi
+
+    local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    local temp_file=$(mktemp)
+
+    jq --arg alias "$alias" \
+       --arg server "$server_url" \
+       --arg tenant "$tenant" \
+       --arg user "$user" \
+       --arg jwt_token "$jwt_token" \
+       --arg timestamp "$timestamp" \
+       '.sessions[$alias] = {
+           "server": $server,
+           "tenant": $tenant,
+           "user": $user,
+           "jwt_token": $jwt_token,
+           "created_at": $timestamp
+       } | .current_session = $alias' \
+       "$SESSIONS_CONFIG" > "$temp_file" && mv "$temp_file" "$SESSIONS_CONFIG"
+
+    chmod 600 "$SESSIONS_CONFIG"
+}
+
+# Legacy compatibility wrapper - store_token now uses store_session
+# This maintains backwards compatibility with existing command implementations
 store_token() {
     local token="$1"
     local tenant="$2"
     local user="$3"
-    
+    local server_url="${4:-}"  # Optional: new parameter for explicit server URL
+    local alias="${5:-$tenant}"  # Optional: new parameter for session alias, defaults to tenant
+
     init_cli_configs
-    
+
     if ! command -v jq >/dev/null 2>&1; then
-        echo "Error: jq is required for JWT token management" >&2
+        echo "Error: jq is required for session management" >&2
         return 1
     fi
-    
-    # Get current server from env config
-    local current_server
-    current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
-    
-    if [ -z "$current_server" ] || [ "$current_server" = "null" ]; then
-        echo "Error: No current server selected. Use 'monk config server use <name>' first" >&2
+
+    # If no server URL provided, try to get from current session
+    if [ -z "$server_url" ]; then
+        local current_session
+        current_session=$(jq -r '.current_session // empty' "$SESSIONS_CONFIG" 2>/dev/null)
+        if [ -n "$current_session" ] && [ "$current_session" != "null" ]; then
+            server_url=$(jq -r ".sessions.\"$current_session\".server // empty" "$SESSIONS_CONFIG" 2>/dev/null)
+        fi
+    fi
+
+    if [ -z "$server_url" ]; then
+        echo "Error: No server URL available. Use --server flag or set up a session first." >&2
         return 1
     fi
-    
-    # Update env config with current tenant and user
-    local temp_file=$(mktemp)
-    jq --arg tenant "$tenant" \
-       --arg user "$user" \
-       '.current_tenant = $tenant | .current_user = $user' \
-       "$ENV_CONFIG" > "$temp_file" && mv "$temp_file" "$ENV_CONFIG"
-    
-    # Store token in auth config using server:tenant key
-    local session_key="${current_server}:${tenant}"
-    local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-    
-    temp_file=$(mktemp)
-    jq --arg session_key "$session_key" \
-       --arg token "$token" \
-       --arg tenant "$tenant" \
-       --arg user "$user" \
-       --arg server "$current_server" \
-       --arg timestamp "$timestamp" \
-       '.sessions[$session_key] = {
-           "jwt_token": $token,
-           "tenant": $tenant,
-           "user": $user, 
-           "server": $server,
-           "created_at": $timestamp
-       }' "$AUTH_CONFIG" > "$temp_file" && mv "$temp_file" "$AUTH_CONFIG"
-    
-    # Set secure permissions on auth file
-    chmod 600 "$AUTH_CONFIG"
+
+    store_session "$alias" "$server_url" "$tenant" "$user" "$token"
 }
 
-# Remove stored JWT token for current server+tenant context
+# Switch to a session by alias
+switch_session() {
+    local alias="$1"
+
+    init_cli_configs
+
+    # Check if session exists
+    local session_exists
+    session_exists=$(jq -e ".sessions.\"$alias\"" "$SESSIONS_CONFIG" 2>/dev/null)
+
+    if [ $? -ne 0 ]; then
+        # Try to find by tenant name
+        local found_alias
+        found_alias=$(jq -r ".sessions | to_entries[] | select(.value.tenant == \"$alias\") | .key" "$SESSIONS_CONFIG" 2>/dev/null | head -1)
+
+        if [ -n "$found_alias" ]; then
+            alias="$found_alias"
+        else
+            echo "Error: Session '$alias' not found" >&2
+            return 1
+        fi
+    fi
+
+    # Update current session
+    local temp_file=$(mktemp)
+    jq --arg alias "$alias" '.current_session = $alias' "$SESSIONS_CONFIG" > "$temp_file" && mv "$temp_file" "$SESSIONS_CONFIG"
+
+    print_success "Switched to session: $alias"
+}
+
+# Remove a session by alias
+remove_session() {
+    local alias="$1"
+
+    init_cli_configs
+
+    # Check if this is the current session
+    local current_session
+    current_session=$(jq -r '.current_session // empty' "$SESSIONS_CONFIG" 2>/dev/null)
+
+    local temp_file=$(mktemp)
+
+    if [ "$current_session" = "$alias" ]; then
+        # Remove session and clear current
+        jq --arg alias "$alias" 'del(.sessions[$alias]) | .current_session = null' "$SESSIONS_CONFIG" > "$temp_file" && mv "$temp_file" "$SESSIONS_CONFIG"
+    else
+        # Just remove the session
+        jq --arg alias "$alias" 'del(.sessions[$alias])' "$SESSIONS_CONFIG" > "$temp_file" && mv "$temp_file" "$SESSIONS_CONFIG"
+    fi
+}
+
+# List all sessions
+list_sessions() {
+    init_cli_configs
+    jq -r '.sessions | keys[]' "$SESSIONS_CONFIG" 2>/dev/null
+}
+
+# Legacy compatibility: remove_stored_token delegates to remove_session
 remove_stored_token() {
-    init_cli_configs
-    
-    if ! command -v jq >/dev/null 2>&1; then
-        echo "Error: jq is required for JWT token management" >&2
+    local current_session
+    current_session=$(get_current_session)
+
+    if [ -z "$current_session" ]; then
+        echo "Error: No current session" >&2
         return 1
     fi
-    
-    # Get current context
-    local current_server current_tenant
-    current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
-    current_tenant=$(jq -r '.current_tenant // empty' "$ENV_CONFIG" 2>/dev/null)
-    
-    if [ -z "$current_server" ] || [ "$current_server" = "null" ]; then
-        echo "Error: No current server selected" >&2
-        return 1
-    fi
-    
-    if [ -z "$current_tenant" ] || [ "$current_tenant" = "null" ]; then
-        # Clear all tenant info from env
-        local temp_file=$(mktemp)
-        jq '.current_tenant = null | .current_user = null' \
-           "$ENV_CONFIG" > "$temp_file" && mv "$temp_file" "$ENV_CONFIG"
-        return 0
-    fi
-    
-    # Remove session from auth config
-    local session_key="${current_server}:${current_tenant}"
-    local temp_file=$(mktemp)
-    jq --arg session_key "$session_key" \
-       'del(.sessions[$session_key])' \
-       "$AUTH_CONFIG" > "$temp_file" && mv "$temp_file" "$AUTH_CONFIG"
-    
-    # Clear current tenant from env config
-    temp_file=$(mktemp)
-    jq '.current_tenant = null | .current_user = null' \
-       "$ENV_CONFIG" > "$temp_file" && mv "$temp_file" "$ENV_CONFIG"
+
+    remove_session "$current_session"
 }
 
-# Get sudo token for current server+tenant context
+# Get sudo token for current session
 get_sudo_token() {
     init_cli_configs
-    
+
     if ! command -v jq >/dev/null 2>&1; then
-        echo "Error: jq is required for sudo token management" >&2
         return 1
     fi
-    
-    # Get current context
-    local current_server current_tenant
-    current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
-    current_tenant=$(jq -r '.current_tenant // empty' "$ENV_CONFIG" 2>/dev/null)
-    
-    if [ -z "$current_server" ] || [ "$current_server" = "null" ]; then
+
+    local current_session
+    current_session=$(get_current_session)
+
+    if [ -z "$current_session" ]; then
         return 1
     fi
-    
-    if [ -z "$current_tenant" ] || [ "$current_tenant" = "null" ]; then
-        return 1
-    fi
-    
-    # Get session-specific sudo token using server:tenant key
-    local session_key="${current_server}:${current_tenant}"
+
     local sudo_token expires_at
-    sudo_token=$(jq -r ".sessions.\"$session_key\".sudo_token // empty" "$AUTH_CONFIG" 2>/dev/null)
-    expires_at=$(jq -r ".sessions.\"$session_key\".sudo_expires_at // empty" "$AUTH_CONFIG" 2>/dev/null)
-    
+    sudo_token=$(jq -r ".sessions.\"$current_session\".sudo_token // empty" "$SESSIONS_CONFIG" 2>/dev/null)
+    expires_at=$(jq -r ".sessions.\"$current_session\".sudo_expires_at // empty" "$SESSIONS_CONFIG" 2>/dev/null)
+
     if [ -z "$sudo_token" ] || [ "$sudo_token" = "null" ]; then
         return 1
     fi
-    
+
     # Check if token is expired
     if [ -n "$expires_at" ] && [ "$expires_at" != "null" ]; then
         local current_time=$(date +%s)
         if [ "$current_time" -ge "$expires_at" ]; then
-            # Token expired, clear it
             clear_sudo_token
             return 1
         fi
     fi
-    
+
     echo "$sudo_token"
 }
 
-# Store sudo token for current server+tenant context
+# Store sudo token for current session
 store_sudo_token() {
     local sudo_token="$1"
     local reason="${2:-}"
-    
+
     init_cli_configs
-    
-    if ! command -v jq >/dev/null 2>&1; then
-        echo "Error: jq is required for sudo token management" >&2
+
+    local current_session
+    current_session=$(get_current_session)
+
+    if [ -z "$current_session" ]; then
+        echo "Error: No current session" >&2
         return 1
     fi
-    
-    # Get current context
-    local current_server current_tenant
-    current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
-    current_tenant=$(jq -r '.current_tenant // empty' "$ENV_CONFIG" 2>/dev/null)
-    
-    if [ -z "$current_server" ] || [ "$current_server" = "null" ]; then
-        echo "Error: No current server selected" >&2
-        return 1
-    fi
-    
-    if [ -z "$current_tenant" ] || [ "$current_tenant" = "null" ]; then
-        echo "Error: No current tenant selected" >&2
-        return 1
-    fi
-    
+
     # Calculate expiration time (15 minutes from now)
     local expires_at=$(($(date +%s) + 900))
     local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-    
-    # Store sudo token in auth config
-    local session_key="${current_server}:${current_tenant}"
     local temp_file=$(mktemp)
-    
+
     if [ -n "$reason" ]; then
-        jq --arg session_key "$session_key" \
+        jq --arg session "$current_session" \
            --arg sudo_token "$sudo_token" \
            --arg expires_at "$expires_at" \
            --arg timestamp "$timestamp" \
            --arg reason "$reason" \
-           '.sessions[$session_key].sudo_token = $sudo_token |
-            .sessions[$session_key].sudo_expires_at = ($expires_at | tonumber) |
-            .sessions[$session_key].sudo_created_at = $timestamp |
-            .sessions[$session_key].sudo_reason = $reason' \
-           "$AUTH_CONFIG" > "$temp_file" && mv "$temp_file" "$AUTH_CONFIG"
+           '.sessions[$session].sudo_token = $sudo_token |
+            .sessions[$session].sudo_expires_at = ($expires_at | tonumber) |
+            .sessions[$session].sudo_created_at = $timestamp |
+            .sessions[$session].sudo_reason = $reason' \
+           "$SESSIONS_CONFIG" > "$temp_file" && mv "$temp_file" "$SESSIONS_CONFIG"
     else
-        jq --arg session_key "$session_key" \
+        jq --arg session "$current_session" \
            --arg sudo_token "$sudo_token" \
            --arg expires_at "$expires_at" \
            --arg timestamp "$timestamp" \
-           '.sessions[$session_key].sudo_token = $sudo_token |
-            .sessions[$session_key].sudo_expires_at = ($expires_at | tonumber) |
-            .sessions[$session_key].sudo_created_at = $timestamp' \
-           "$AUTH_CONFIG" > "$temp_file" && mv "$temp_file" "$AUTH_CONFIG"
+           '.sessions[$session].sudo_token = $sudo_token |
+            .sessions[$session].sudo_expires_at = ($expires_at | tonumber) |
+            .sessions[$session].sudo_created_at = $timestamp' \
+           "$SESSIONS_CONFIG" > "$temp_file" && mv "$temp_file" "$SESSIONS_CONFIG"
     fi
-    
-    # Set secure permissions on auth file
-    chmod 600 "$AUTH_CONFIG"
+
+    chmod 600 "$SESSIONS_CONFIG"
 }
 
-# Clear sudo token for current server+tenant context
+# Clear sudo token for current session
 clear_sudo_token() {
     init_cli_configs
-    
-    if ! command -v jq >/dev/null 2>&1; then
-        echo "Error: jq is required for sudo token management" >&2
+
+    local current_session
+    current_session=$(get_current_session)
+
+    if [ -z "$current_session" ]; then
         return 1
     fi
-    
-    # Get current context
-    local current_server current_tenant
-    current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
-    current_tenant=$(jq -r '.current_tenant // empty' "$ENV_CONFIG" 2>/dev/null)
-    
-    if [ -z "$current_server" ] || [ "$current_server" = "null" ]; then
-        return 1
-    fi
-    
-    if [ -z "$current_tenant" ] || [ "$current_tenant" = "null" ]; then
-        return 1
-    fi
-    
-    # Remove sudo token fields from session
-    local session_key="${current_server}:${current_tenant}"
+
     local temp_file=$(mktemp)
-    jq --arg session_key "$session_key" \
-       'del(.sessions[$session_key].sudo_token) |
-        del(.sessions[$session_key].sudo_expires_at) |
-        del(.sessions[$session_key].sudo_created_at) |
-        del(.sessions[$session_key].sudo_reason)' \
-       "$AUTH_CONFIG" > "$temp_file" && mv "$temp_file" "$AUTH_CONFIG"
+    jq --arg session "$current_session" \
+       'del(.sessions[$session].sudo_token) |
+        del(.sessions[$session].sudo_expires_at) |
+        del(.sessions[$session].sudo_created_at) |
+        del(.sessions[$session].sudo_reason)' \
+       "$SESSIONS_CONFIG" > "$temp_file" && mv "$temp_file" "$SESSIONS_CONFIG"
 }
 
 # Check if sudo token is expired
@@ -1124,102 +1158,76 @@ parse_tenant_path() {
     fi
 }
 
-# Get current session key (server:tenant)
+# Get current session alias (for backwards compatibility, returns session alias)
 current_session_key() {
-    local current_server current_tenant
-    current_server=$(jq -r '.current_server' "$ENV_CONFIG" 2>/dev/null)
-    current_tenant=$(jq -r '.current_tenant' "$ENV_CONFIG" 2>/dev/null)
-    
-    if [ -n "$current_server" ] && [ "$current_server" != "null" ] && 
-       [ -n "$current_tenant" ] && [ "$current_tenant" != "null" ]; then
-        echo "${current_server}:${current_tenant}"
-    else
-        return 1
-    fi
+    get_current_session
 }
 
-# Resolve session key from server and tenant specifications
+# Resolve session from alias or tenant name
+# Returns the session alias if found
 resolve_session() {
-    local server="$1"
-    local tenant="$2" 
-    
-    # Handle "current" values
-    if [ "$server" = "current" ]; then
-        server=$(jq -r '.current_server' "$ENV_CONFIG" 2>/dev/null)
+    local alias_or_tenant="$1"
+
+    init_cli_configs
+
+    # If empty, return current session
+    if [ -z "$alias_or_tenant" ]; then
+        get_current_session
+        return $?
     fi
-    if [ "$tenant" = "current" ]; then
-        tenant=$(jq -r '.current_tenant' "$ENV_CONFIG" 2>/dev/null)
+
+    # Check if it's an exact alias match
+    if jq -e ".sessions.\"$alias_or_tenant\"" "$SESSIONS_CONFIG" >/dev/null 2>&1; then
+        echo "$alias_or_tenant"
+        return 0
     fi
-    
-    # Validate inputs
-    if [ -z "$server" ] || [ "$server" = "null" ]; then
-        print_error "No server specified and no current server selected"
-        return 1
+
+    # Try to find by tenant name
+    local found_alias
+    found_alias=$(jq -r ".sessions | to_entries[] | select(.value.tenant == \"$alias_or_tenant\") | .key" "$SESSIONS_CONFIG" 2>/dev/null | head -1)
+
+    if [ -n "$found_alias" ]; then
+        echo "$found_alias"
+        return 0
     fi
-    if [ -z "$tenant" ] || [ "$tenant" = "null" ]; then
-        print_error "No tenant specified and no current tenant selected"  
-        return 1
-    fi
-    
-    # Build and validate session key
-    local session_key="${server}:${tenant}"
-    
-    if jq -e ".sessions.\"$session_key\"" "$AUTH_CONFIG" >/dev/null 2>&1; then
-        echo "$session_key"
-    else
-        print_error "No authentication found for $session_key"
-        print_info_always "Use 'monk auth login $tenant <username>' on server '$server' to authenticate"
-        return 1
-    fi
+
+    print_error "No session found for '$alias_or_tenant'"
+    print_info_always "Use 'monk auth login $alias_or_tenant --server <url>' to create a session"
+    return 1
 }
 
 # Temporarily switch context for single operation
 with_tenant_context() {
-    local target_session_key="$1"
+    local target_alias="$1"
     local operation_func="$2"
     shift 2
     local args=("$@")
-    
-    # Save current context
-    local original_server original_tenant original_user
-    original_server=$(jq -r '.current_server' "$ENV_CONFIG" 2>/dev/null)
-    original_tenant=$(jq -r '.current_tenant' "$ENV_CONFIG" 2>/dev/null)  
-    original_user=$(jq -r '.current_user' "$ENV_CONFIG" 2>/dev/null)
-    
-    # Parse target session
-    local target_server target_tenant
-    target_server=$(echo "$target_session_key" | cut -d':' -f1)
-    target_tenant=$(echo "$target_session_key" | cut -d':' -f2)
-    
-    # Get user from session
-    local target_user
-    target_user=$(jq -r ".sessions.\"$target_session_key\".user" "$AUTH_CONFIG" 2>/dev/null)
-    
-    print_info "Switching to context: $target_session_key (user: $target_user)"
-    
-    # Temporarily update env context
+
+    # Save current session
+    local original_session
+    original_session=$(get_current_session)
+
+    print_info "Switching to session: $target_alias"
+
+    # Temporarily switch
     local temp_file=$(mktemp)
-    jq --arg server "$target_server" \
-       --arg tenant "$target_tenant" \
-       --arg user "$target_user" \
-       '.current_server = $server | .current_tenant = $tenant | .current_user = $user' \
-       "$ENV_CONFIG" > "$temp_file" && mv "$temp_file" "$ENV_CONFIG"
-    
+    jq --arg alias "$target_alias" '.current_session = $alias' "$SESSIONS_CONFIG" > "$temp_file" && mv "$temp_file" "$SESSIONS_CONFIG"
+
     # Execute operation with new context
     local result exit_code
     result=$("$operation_func" "${args[@]}")
     exit_code=$?
-    
-    # Restore original context  
+
+    # Restore original session
     temp_file=$(mktemp)
-    jq --arg server "$original_server" \
-       --arg tenant "$original_tenant" \
-       --arg user "$original_user" \
-       '.current_server = $server | .current_tenant = $tenant | .current_user = $user' \
-       "$ENV_CONFIG" > "$temp_file" && mv "$temp_file" "$ENV_CONFIG"
-       
-    print_info "Restored context: $original_server:$original_tenant"
-    
+    if [ -n "$original_session" ]; then
+        jq --arg alias "$original_session" '.current_session = $alias' "$SESSIONS_CONFIG" > "$temp_file" && mv "$temp_file" "$SESSIONS_CONFIG"
+    else
+        jq '.current_session = null' "$SESSIONS_CONFIG" > "$temp_file" && mv "$temp_file" "$SESSIONS_CONFIG"
+    fi
+
+    print_info "Restored session: ${original_session:-<none>}"
+
     echo "$result"
     return $exit_code
 }
@@ -1284,15 +1292,15 @@ make_file_request_with_routing() {
 
 # Validate session exists and has valid authentication
 validate_session() {
-    local session_key="$1"
-    
-    if [ -z "$session_key" ]; then
+    local session_alias="$1"
+
+    if [ -z "$session_alias" ]; then
         return 1
     fi
-    
+
     local jwt_token
-    jwt_token=$(jq -r ".sessions.\"$session_key\".jwt_token" "$AUTH_CONFIG" 2>/dev/null)
-    
+    jwt_token=$(jq -r ".sessions.\"$session_alias\".jwt_token" "$SESSIONS_CONFIG" 2>/dev/null)
+
     if [ -n "$jwt_token" ] && [ "$jwt_token" != "null" ]; then
         return 0
     else

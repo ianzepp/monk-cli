@@ -1,7 +1,5 @@
 # Check dependencies
 check_dependencies
-
-# Initialize CLI configs
 init_cli_configs
 
 if ! command -v jq >/dev/null 2>&1; then
@@ -9,12 +7,34 @@ if ! command -v jq >/dev/null 2>&1; then
     exit 1
 fi
 
-# Extract tenant and username from bashly args
+# Extract args and flags
 tenant="${args[tenant]}"
-username="${args[username]}"
-template="${args[--template]}"
-database="${args[--database]}"
-description="${args[--description]}"
+username="${args[username]:-}"
+template="${args[--template]:-}"
+database="${args[--database]:-}"
+description="${args[--description]:-}"
+server_flag="${args[--server]:-}"
+alias_flag="${args[--alias]:-}"
+
+# Determine server URL
+if [ -n "$server_flag" ]; then
+    server_url=$(get_base_url_for_server "$server_flag")
+else
+    # Try to get from current session
+    current_session=$(get_current_session)
+    if [ -n "$current_session" ]; then
+        server_url=$(get_session_info "$current_session" "server")
+    fi
+fi
+
+if [ -z "$server_url" ]; then
+    print_error "No server specified and no current session"
+    print_info "Usage: monk auth register <tenant> --server <url>"
+    exit 1
+fi
+
+# Determine session alias
+session_alias="${alias_flag:-$tenant}"
 
 # Build registration request JSON
 register_data="{\"tenant\": \"$tenant\""
@@ -45,80 +65,40 @@ if [ -n "$description" ]; then
 fi
 
 register_data+="}"
-base_url=$(get_base_url)
 
-print_info "Sending registration request to: ${base_url}/auth/register"
+print_info "Server: $server_url"
+print_info "Sending registration request to: ${server_url}/auth/register"
 
-# Make registration request
-if response=$(make_request_json "POST" "/auth/register" "$register_data"); then
-    # Extract token and registration details from response
-    token=""
-    database=""
-    created_tenant=""
-    created_username=""
-    expires_in=""
-    
-    if [ "$JSON_PARSER" = "jq" ]; then
-        token=$(echo "$response" | jq -r '.data.token' 2>/dev/null)
-        database=$(echo "$response" | jq -r '.data.database' 2>/dev/null)
-        created_tenant=$(echo "$response" | jq -r '.data.tenant' 2>/dev/null)
-        created_username=$(echo "$response" | jq -r '.data.username' 2>/dev/null)
-        expires_in=$(echo "$response" | jq -r '.data.expires_in' 2>/dev/null)
-    elif [ "$JSON_PARSER" = "jshon" ]; then
-        token=$(echo "$response" | jshon -e data -e token -u 2>/dev/null)
-        database=$(echo "$response" | jshon -e data -e database -u 2>/dev/null)
-        created_tenant=$(echo "$response" | jshon -e data -e tenant -u 2>/dev/null)
-        created_username=$(echo "$response" | jshon -e data -e username -u 2>/dev/null)
-        expires_in=$(echo "$response" | jshon -e data -e expires_in -u 2>/dev/null)
-    else
-        # Fallback: extract fields manually
-        token=$(echo "$response" | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
-        database=$(echo "$response" | grep -o '"database":"[^"]*"' | cut -d'"' -f4)
-        created_tenant=$(echo "$response" | grep -o '"tenant":"[^"]*"' | cut -d'"' -f4)
-        created_username=$(echo "$response" | grep -o '"username":"[^"]*"' | cut -d'"' -f4)
-        expires_in=$(echo "$response" | grep -o '"expires_in":[^,]*' | cut -d':' -f2)
-    fi
-    
-    if [ -n "$token" ] && [ "$token" != "null" ]; then
-        # Get current server for tenant registration
-        current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
-        if [ -z "$current_server" ] || [ "$current_server" = "null" ]; then
-            print_error "No current server selected"
-            print_info "Use 'monk server use <name>' to select a server first"
-            exit 1
-        fi
-        
-        # Add tenant to tenant registry (similar to tenant add command)
-        timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-        temp_file=$(mktemp)
-        jq --arg name "$created_tenant" \
-           --arg display_name "$created_tenant" \
-           --arg description "Auto-created via auth register" \
-           --arg server "$current_server" \
-           --arg timestamp "$timestamp" \
-           '.tenants[$name] = {
-               "display_name": $display_name,
-               "description": $description,
-               "server": $server,
-               "added_at": $timestamp
-           }' "$TENANT_CONFIG" > "$temp_file" && mv "$temp_file" "$TENANT_CONFIG"
-        
-        # Store token with tenant and username
-        store_token "$token" "$created_tenant" "$created_username"
-        
-        print_success "Registration successful"
-        print_info_always "Tenant: $created_tenant"
-        print_info_always "Database: $database"
-        print_info_always "Username: $created_username"
-        print_info_always "Token expires in: ${expires_in} seconds"
-        print_info_always "JWT token stored for server+tenant context"
-        print_info_always "Tenant added to local registry for server: $current_server"
-    else
-        print_error "Failed to extract registration data from response"
-        print_info "Response: $response"
-        exit 1
-    fi
+# Make direct curl request (bypass get_base_url which requires current session)
+response=$(curl -s -X POST "${server_url}/auth/register" \
+    -H "Content-Type: application/json" \
+    -d "$register_data" 2>&1)
+
+# Extract token and registration details from response
+token=$(echo "$response" | jq -r '.data.token // empty' 2>/dev/null)
+db_name=$(echo "$response" | jq -r '.data.database // empty' 2>/dev/null)
+created_tenant=$(echo "$response" | jq -r '.data.tenant // empty' 2>/dev/null)
+created_username=$(echo "$response" | jq -r '.data.username // empty' 2>/dev/null)
+expires_in=$(echo "$response" | jq -r '.data.expires_in // empty' 2>/dev/null)
+
+if [ -n "$token" ] && [ "$token" != "null" ]; then
+    # Use created_tenant if different from requested (API may normalize)
+    [ -n "$created_tenant" ] && tenant="$created_tenant"
+    [ -n "$created_username" ] && username="$created_username"
+    [ -z "$username" ] && username="root"
+
+    # Store session
+    store_session "$session_alias" "$server_url" "$tenant" "$username" "$token"
+
+    print_success "Registration successful"
+    print_info_always "Session: $session_alias"
+    print_info_always "Server: $server_url"
+    print_info_always "Tenant: $tenant"
+    print_info_always "Database: $db_name"
+    print_info_always "Username: $username"
+    [ -n "$expires_in" ] && print_info_always "Token expires in: ${expires_in} seconds"
 else
-    print_error "Registration failed"
+    error_msg=$(echo "$response" | jq -r '.error // .message // "Unknown error"' 2>/dev/null)
+    print_error "Registration failed: $error_msg"
     exit 1
 fi

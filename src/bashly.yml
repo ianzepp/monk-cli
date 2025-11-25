@@ -58,15 +58,12 @@ commands:
 
 # Quick context switching
 - name: use
-  help: Switch server context (and optionally tenant), or show current context
+  help: Switch to a session, or show current session info
   group: Configuration & Utilities
   args:
-  - name: server
+  - name: session
     required: false
-    help: Server name to switch to (use '.' for current server, omit to show current context)
-  - name: tenant
-    required: false
-    help: Optional tenant name to switch to
+    help: Session alias or tenant name to switch to (omit to show current session)
 
 # Usage examples and getting started guide (recommended for new users)
 - name: examples
@@ -223,7 +220,7 @@ commands:
 
   commands:
   - name: list
-    help: List all stored JWT tokens and sessions
+    help: List all stored sessions
 
   - name: register
     help: Register new tenant and user (creates both and stores JWT)
@@ -244,22 +241,43 @@ commands:
     - long: --description
       arg: description
       help: Human-readable description of the tenant
+    - long: --server
+      arg: url
+      help: Server URL (e.g., http://localhost:9001). Required if no current session.
+    - long: --alias
+      arg: name
+      help: Session alias for easy reference (defaults to tenant name)
 
   - name: login
-    help: Authenticate with tenant and username
+    help: Authenticate with tenant and username (no args = re-login current session)
     args:
     - name: tenant
-      required: true
-      help: Tenant name for authentication
+      required: false
+      help: Tenant name for authentication (omit to re-login current session)
     - name: username
       required: false
       help: Username for authentication (defaults to 'root')
+    flags:
+    - long: --server
+      arg: url
+      help: Server URL (e.g., http://localhost:9001). Required if no current session.
+    - long: --alias
+      arg: name
+      help: Session alias for easy reference (defaults to tenant name)
+
+  - name: use
+    help: Switch to a different session
+    args:
+    - name: session
+      required: true
+      help: Session alias or tenant name to switch to
 
   - name: logout
     help: Clear stored JWT token
 
   - name: status
     help: Show authentication status
+    default: force
 
   - name: token
     help: Display current JWT token

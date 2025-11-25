@@ -1,105 +1,74 @@
-# monk use - Convenience command to switch server and optionally tenant
+# monk use - Switch to a session or show current session info
 #
-# With no arguments: Shows current server and tenant context
-# With server: Delegates to monk config server use <server>
-# With server and tenant: Delegates to both server and tenant use commands
+# With no arguments: Shows current session info
+# With session: Switch to that session (by alias or tenant name)
 #
-# This avoids duplicating logic and ensures consistent behavior
-
-# Get arguments from bashly
-server="${args[server]:-}"
-tenant="${args[tenant]:-}"
+# Examples:
+#   monk use              Show current session
+#   monk use dev-work     Switch to session "dev-work"
+#   monk use my-tenant    Switch to session for tenant "my-tenant"
 
 # Check dependencies
 check_dependencies
 init_cli_configs
 
-# If no server specified, show current context
-if [ -z "$server" ]; then
-    current_server=$(jq -r '.current_server // empty' "$ENV_CONFIG" 2>/dev/null)
-    current_tenant=$(jq -r '.current_tenant // empty' "$ENV_CONFIG" 2>/dev/null)
+session="${args[session]:-}"
+
+# If no session specified, show current context
+if [ -z "$session" ]; then
+    current_session=$(get_current_session)
 
     echo
-    echo "Current Context"
+    echo "Current Session"
     echo "==============="
     echo
 
-    if [ -n "$current_server" ] && [ "$current_server" != "null" ]; then
-        # Get server details
-        server_info=$(jq -r ".servers.\"$current_server\"" "$SERVER_CONFIG" 2>/dev/null)
-        if [ -n "$server_info" ] && [ "$server_info" != "null" ]; then
-            hostname=$(echo "$server_info" | jq -r '.hostname')
-            port=$(echo "$server_info" | jq -r '.port')
-            protocol=$(echo "$server_info" | jq -r '.protocol')
-            endpoint="$protocol://$hostname:$port"
+    if [ -n "$current_session" ]; then
+        server=$(get_session_info "$current_session" "server")
+        tenant=$(get_session_info "$current_session" "tenant")
+        user=$(get_session_info "$current_session" "user")
+        created_at=$(get_session_info "$current_session" "created_at")
 
-            echo "Server: $current_server"
-            echo "  Endpoint: $endpoint"
-        else
-            echo "Server: $current_server (configuration missing)"
-        fi
+        echo "Session: $current_session"
+        echo "  Server: $server"
+        echo "  Tenant: $tenant"
+        echo "  User: $user"
+        [ -n "$created_at" ] && echo "  Created: $created_at"
     else
-        echo "Server: None selected"
-        print_info "Use 'monk use <server>' to select a server"
+        echo "No current session"
+        echo
+        print_info "Use 'monk auth login <tenant> --server <url>' to create a session"
+        print_info "Or 'monk auth register <tenant> --server <url>' to register a new tenant"
     fi
 
     echo
 
-    if [ -n "$current_tenant" ] && [ "$current_tenant" != "null" ]; then
-        # Get tenant details
-        tenant_info=$(jq -r ".tenants.\"$current_tenant\"" "$TENANT_CONFIG" 2>/dev/null)
-        if [ -n "$tenant_info" ] && [ "$tenant_info" != "null" ]; then
-            display_name=$(echo "$tenant_info" | jq -r '.display_name')
-            echo "Tenant: $current_tenant"
-            echo "  Display Name: $display_name"
-        else
-            echo "Tenant: $current_tenant (configuration missing)"
-        fi
-    else
-        echo "Tenant: None selected"
-        if [ -n "$current_server" ] && [ "$current_server" != "null" ]; then
-            print_info "Use 'monk use $current_server <tenant>' to select a tenant"
-        fi
+    # List other available sessions
+    other_sessions=$(jq -r ".sessions | keys[] | select(. != \"$current_session\")" "$SESSIONS_CONFIG" 2>/dev/null)
+    if [ -n "$other_sessions" ]; then
+        echo "Other Sessions"
+        echo "--------------"
+        for s in $other_sessions; do
+            tenant=$(get_session_info "$s" "tenant")
+            server=$(get_session_info "$s" "server")
+            echo "  $s -> $tenant @ $server"
+        done
+        echo
     fi
 
-    echo
     exit 0
 fi
 
-# Determine the monk binary path
-# During development, this is ./monk; when installed, it's in PATH
-if [ -x "./monk" ]; then
-    MONK_CMD="./monk"
-elif command -v monk >/dev/null 2>&1; then
-    MONK_CMD="monk"
+# Switch to specified session
+if switch_session "$session"; then
+    # Show new session info
+    server=$(get_session_info "$session" "server")
+    tenant=$(get_session_info "$session" "tenant")
+    user=$(get_session_info "$session" "user")
+
+    print_info_always "Server: $server"
+    print_info_always "Tenant: $tenant"
+    print_info_always "User: $user"
 else
-    print_error "Cannot find monk binary"
     exit 1
-fi
-
-# Handle '.' as current server - for tenant-only switching
-if [ "$server" = "." ]; then
-    if [ -z "$tenant" ]; then
-        print_error "Must specify tenant when using '.' for current server"
-        print_info "Usage: monk use . <tenant>"
-        exit 1
-    fi
-
-    # Only switch tenant (current server remains)
-    $MONK_CMD config tenant use "$tenant"
-    exit $?
-fi
-
-# Switch server context
-$MONK_CMD config server use "$server"
-server_exit=$?
-
-if [ $server_exit -ne 0 ]; then
-    exit $server_exit
-fi
-
-# If tenant specified, switch to it
-if [ -n "$tenant" ]; then
-    $MONK_CMD config tenant use "$tenant"
-    exit $?
 fi
