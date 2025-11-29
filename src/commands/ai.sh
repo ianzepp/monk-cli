@@ -49,7 +49,12 @@ if [[ "${args[--stream]}" ]]; then
                 fi
                 ;;
             text)
-                echo "$line" | jq -r '.content'
+                content=$(echo "$line" | jq -r '.content')
+                if command -v glow >/dev/null 2>&1; then
+                    echo "$content" | glow -
+                else
+                    echo "$content"
+                fi
                 ;;
             done)
                 success=$(echo "$line" | jq -r '.success')
@@ -74,18 +79,27 @@ fi
 # Non-streaming: make standard request
 response=$(make_request_json "POST" "/api/agent" "$json_data")
 
+# Helper to render markdown via glow if available
+render_markdown() {
+    if command -v glow >/dev/null 2>&1; then
+        glow -
+    else
+        cat
+    fi
+}
+
 # Handle output based on flags
 if [[ "${args[--raw]}" ]]; then
     # Full JSON response
     echo "$response" | jq '.'
 elif [[ "${args[--tools]}" ]]; then
     # Response text + tool calls summary
-    echo "$response" | jq -r '.data.response'
+    echo "$response" | jq -r '.data.response' | render_markdown
     echo
     echo "---"
     echo "Tool calls:"
     echo "$response" | jq -r '.data.toolCalls[] | "  \(.name): \(.input.command // .input | tostring | .[0:60])"'
 else
     # Default: just the response text
-    echo "$response" | jq -r '.data.response'
+    echo "$response" | jq -r '.data.response' | render_markdown
 fi
