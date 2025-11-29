@@ -632,12 +632,15 @@ commands:
   help: Send a prompt to the AI agent for natural language queries
   group: API Endpoints
   flags:
+  - long: --stream
+    short: -s
+    help: Stream output in real-time (shows tool calls as they execute)
   - long: --raw
     short: -r
-    help: Output full JSON response including tool calls (default shows just the response text)
+    help: Output full JSON response including tool calls
   - long: --tools
     short: -t
-    help: Include tool calls in output (shows what commands the agent ran)
+    help: Include tool calls summary after response
   catch_all:
     label: prompt
     required: true
