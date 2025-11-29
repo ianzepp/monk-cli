@@ -21,5 +21,11 @@ validate_schema "$schema"
 
 # Get specific record by ID
 print_info "Getting record: $id"
-response=$(make_request_json "GET" "/api/data/$schema/$id" "")
-echo "$response"
+
+# For binary formats (sqlite, msgpack, etc.), stream directly to stdout
+if is_binary_format; then
+    make_request_raw "GET" "/api/data/$schema/$id" ""
+else
+    response=$(make_request_json "GET" "/api/data/$schema/$id" "")
+    printf '%s' "$response"
+fi

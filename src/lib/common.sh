@@ -47,6 +47,19 @@ print_info() {
     fi
 }
 
+# Check if a format is binary (cannot be safely captured in a shell variable)
+is_binary_format() {
+    local format="${1:-${args[--format]:-}}"
+    case "$format" in
+        sqlite|msgpack|cbor|protobuf|avro|parquet|bson)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
 print_info_always() {
     # Always print info messages (ignores CLI_VERBOSE)
     echo -e "${YELLOW}ℹ $1${NC}" >&2
@@ -622,6 +635,51 @@ handle_response_json() {
 
     # Pass through response directly - API handles all formatting
     echo "$response"
+}
+
+# Make HTTP request and stream directly to stdout (for binary formats)
+# This avoids shell variable capture which corrupts binary data
+make_request_raw() {
+    local method="$1"
+    local url="$2"
+    local data="$3"
+    local base_url=$(get_base_url)
+
+    # Build query string with format and pick parameters
+    local query_string=$(build_api_query_string)
+    local full_url="${base_url}${url}${query_string}"
+
+    print_info "Making $method request to: $full_url (binary mode)"
+
+    local curl_args=(-s -X "$method" -H "Content-Type: application/json")
+
+    # Add Accept header based on format parameter
+    local accept_header=$(get_accept_header)
+    curl_args+=(-H "Accept: $accept_header")
+
+    # Add JWT token if available (unless it's an auth request)
+    if [[ "$url" != "/auth/"* ]]; then
+        local jwt_token
+        jwt_token=$(get_jwt_token)
+        if [ -n "$jwt_token" ]; then
+            curl_args+=(-H "Authorization: Bearer $jwt_token")
+            print_info "Using stored JWT token"
+        fi
+    fi
+
+    if [ -n "$data" ]; then
+        curl_args+=(-d "$data")
+    fi
+
+    # Stream directly to stdout - no variable capture
+    # Use -f to fail on HTTP errors (4xx, 5xx)
+    curl -f "${curl_args[@]}" "$full_url"
+    local curl_exit=$?
+
+    if [ $curl_exit -ne 0 ]; then
+        print_error "Request failed (curl exit code: $curl_exit)"
+        exit 1
+    fi
 }
 
 # Validate required arguments

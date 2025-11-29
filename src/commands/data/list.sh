@@ -32,6 +32,8 @@ filter_json="${args[--filter]}"
 
 validate_schema "$schema"
 
+# Build query string from filter if provided
+query_string=""
 if [ -n "$filter_json" ]; then
     # Filter provided - parse and build query string
     print_info "Processing query filter for schema: $schema"
@@ -51,13 +53,14 @@ if [ -n "$filter_json" ]; then
     else
         print_info "No valid query parameters found, using default listing"
     fi
-
-    response=$(make_request_json "GET" "/api/data/$schema$query_string" "")
-    echo "$response"
-
 else
-    # No filter - default listing
     print_info "Listing all records for schema: $schema"
-    response=$(make_request_json "GET" "/api/data/$schema" "")
-    echo "$response"
+fi
+
+# For binary formats (sqlite, msgpack, etc.), stream directly to stdout
+if is_binary_format; then
+    make_request_raw "GET" "/api/data/$schema$query_string" ""
+else
+    response=$(make_request_json "GET" "/api/data/$schema$query_string" "")
+    printf '%s' "$response"
 fi

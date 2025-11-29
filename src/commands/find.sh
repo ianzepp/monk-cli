@@ -40,7 +40,17 @@ validate_schema "$schema"
 # Read and validate JSON input (Filter DSL)
 json_data=$(read_and_validate_json_input "searching" "$schema")
 
-# Make the find request
+# For binary formats (sqlite, msgpack, etc.), stream directly to stdout
+# Note: --head and --tail options are ignored for binary formats
+if is_binary_format; then
+    if [ "$head_flag" = "true" ] || [ "$tail_flag" = "true" ]; then
+        print_info "Note: --head/--tail options ignored for binary formats"
+    fi
+    make_request_raw "POST" "/api/find/$schema" "$json_data"
+    exit 0
+fi
+
+# Make the find request (text formats)
 response=$(make_request_json "POST" "/api/find/$schema" "$json_data")
 
 # Process response with head/tail support

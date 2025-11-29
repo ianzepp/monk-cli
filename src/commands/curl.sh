@@ -11,6 +11,25 @@ path="${args[path]}"
 data_flag="${args[--data]}"
 raw_flag="${args[--raw]}"
 
+# Check if the requested format is binary (cannot be captured in a shell variable)
+format="${args[--format]:-}"
+is_binary_format() {
+    case "$1" in
+        sqlite|msgpack|cbor|protobuf|avro|parquet|bson)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+binary_mode=false
+if is_binary_format "$format"; then
+    binary_mode=true
+    print_info "Binary format detected ($format) - streaming directly to stdout"
+fi
+
 # Get base URL (this validates server config exists)
 base_url=$(get_base_url)
 if [ -z "$base_url" ]; then
@@ -56,32 +75,28 @@ else
     request_body=""
 fi
 
-# Make the request
+# Build curl arguments
+curl_args=(-s -X "$method" -H "Content-Type: application/json")
+if [ -n "$jwt_token" ]; then
+    curl_args+=(-H "Authorization: Bearer $jwt_token")
+fi
 if [ -n "$request_body" ]; then
-    # Request with body
-    if [ -n "$jwt_token" ]; then
-        response=$(curl -s -X "$method" "$full_url" \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer $jwt_token" \
-            -d "$request_body")
-    else
-        response=$(curl -s -X "$method" "$full_url" \
-            -H "Content-Type: application/json" \
-            -d "$request_body")
-    fi
-else
-    # Request without body (GET, DELETE without body, etc.)
-    if [ -n "$jwt_token" ]; then
-        response=$(curl -s -X "$method" "$full_url" \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer $jwt_token")
-    else
-        response=$(curl -s -X "$method" "$full_url" \
-            -H "Content-Type: application/json")
-    fi
+    curl_args+=(-d "$request_body")
 fi
 
-# Check curl exit code
+# For binary formats, stream directly to stdout to preserve binary data
+if [ "$binary_mode" = "true" ]; then
+    curl "${curl_args[@]}" "$full_url"
+    curl_exit=$?
+    if [ $curl_exit -ne 0 ]; then
+        print_error "curl failed with exit code: $curl_exit"
+        exit 1
+    fi
+    exit 0
+fi
+
+# For text formats, capture response to variable
+response=$(curl "${curl_args[@]}" "$full_url")
 curl_exit=$?
 if [ $curl_exit -ne 0 ]; then
     print_error "curl failed with exit code: $curl_exit"
@@ -90,8 +105,8 @@ fi
 
 # Output response
 if [ "$raw_flag" = "1" ]; then
-    # Raw output
-    echo "$response"
+    # Raw output - use printf to avoid adding trailing newline
+    printf '%s' "$response"
 else
     # Pretty-print JSON
     if echo "$response" | jq . >/dev/null 2>&1; then
@@ -108,6 +123,6 @@ else
         fi
     else
         # Not JSON, output as-is
-        echo "$response"
+        printf '%s' "$response"
     fi
 fi
