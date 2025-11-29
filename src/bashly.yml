@@ -18,7 +18,7 @@ help: |
     monk --select id,name data list users    # Extract specific fields
 
   For detailed help on a command, run: monk <command> --help
-version: 2.35.0
+version: 2.36.0
 
 environment_variables:
 - name: CLI_VERBOSE
@@ -626,6 +626,22 @@ commands:
       short: -t
       arg: tenant
       help: Target tenant (tenant-name or server:tenant-name)
+
+# AI agent operations
+- name: ai
+  help: Send a prompt to the AI agent for natural language queries
+  group: API Endpoints
+  flags:
+  - long: --raw
+    short: -r
+    help: Output full JSON response including tool calls (default shows just the response text)
+  - long: --tools
+    short: -t
+    help: Include tool calls in output (shows what commands the agent ran)
+  catch_all:
+    label: prompt
+    required: true
+    help: The prompt text to send to the AI agent (e.g., count users by access level)
 
 # Advanced search with filter DSL
 - name: find
