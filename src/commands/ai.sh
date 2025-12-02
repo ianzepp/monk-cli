@@ -40,10 +40,29 @@ if [[ "${args[--stream]}" ]]; then
                 if [[ "$exit_code" != "0" ]]; then
                     output=$(echo "$line" | jq -r '.output // empty')
                     if [[ -n "$output" ]]; then
-                        line_count=$(echo "$output" | wc -l | tr -d ' ')
-                        echo "$output" | head -10 | sed 's/^/  /'
-                        if [[ $line_count -gt 10 ]]; then
-                            echo -e "  ${BLUE}... ($((line_count - 10)) more lines)${NC}"
+                        # Check if this is an API error with JSON - extract key fields
+                        if echo "$output" | grep -q "API error:"; then
+                            # Extract HTTP code and JSON from "command: API error: NNN {...}"
+                            http_code=$(echo "$output" | grep -o 'API error: [0-9]*' | head -1 | grep -o '[0-9]*')
+                            json_part=$(echo "$output" | grep -o '{.*}' | head -1)
+                            if [[ -n "$json_part" ]]; then
+                                err_msg=$(echo "$json_part" | jq -r '.error // empty' 2>/dev/null)
+                                err_code=$(echo "$json_part" | jq -r '.error_code // empty' 2>/dev/null)
+                                if [[ -n "$err_msg" ]]; then
+                                    echo -e "  ${RED}Error ${http_code}: ${err_msg} [${err_code}]${NC}"
+                                else
+                                    echo -e "  ${RED}Error ${http_code}${NC}"
+                                fi
+                            else
+                                echo -e "  ${RED}API error: ${http_code}${NC}"
+                            fi
+                        else
+                            # Not an API error - show truncated output
+                            line_count=$(echo "$output" | wc -l | tr -d ' ')
+                            echo "$output" | head -10 | sed 's/^/  /'
+                            if [[ $line_count -gt 10 ]]; then
+                                echo -e "  ${BLUE}... ($((line_count - 10)) more lines)${NC}"
+                            fi
                         fi
                     fi
                 fi
