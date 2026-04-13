@@ -23,7 +23,7 @@ curl -fsSL https://raw.githubusercontent.com/ianzepp/monk-cli/main/scripts/insta
 To pin a version:
 
 ```bash
-MONK_CLI_VERSION=v0.1.0 \
+MONK_CLI_VERSION=v0.2.0 \
   curl -fsSL https://raw.githubusercontent.com/ianzepp/monk-cli/main/scripts/install.sh | bash
 ```
 
