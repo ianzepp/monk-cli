@@ -38,7 +38,7 @@ const APP_AFTER_HELP: &str = include_str!("../docs/help/app-after-help.md");
 #[derive(Parser, Debug)]
 #[command(
     name = "monk",
-    about = "CLI for the Monk API",
+    about = "CLI for the Monk API at https://monk-api.com",
     long_about = CLI_LONG_ABOUT,
     after_help = CLI_AFTER_HELP,
 )]

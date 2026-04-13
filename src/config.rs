@@ -127,11 +127,21 @@ impl Default for MonkConfig {
 
 impl MonkConfig {
     fn default_base_url() -> String {
-        "http://localhost:9001".to_string()
+        "https://monk-api.com".to_string()
     }
 
     fn default_output_format() -> OutputFormat {
         OutputFormat::Json
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::MonkConfig;
+
+    #[test]
+    fn default_base_url_points_to_public_api() {
+        assert_eq!(MonkConfig::default().base_url, "https://monk-api.com");
     }
 }
 

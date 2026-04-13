@@ -1,6 +1,7 @@
 # Monk CLI
 
 `monk` is the command-line client for the Monk API.
+By default it talks to the public API at `https://monk-api.com`.
 
 It is organized as a command tree with a small set of root surfaces and a
 larger set of resource-specific branches:
@@ -18,10 +19,11 @@ larger set of resource-specific branches:
 
 For first-time use, the shortest onboarding path is usually:
 
-1. `monk auth register` or `monk auth login`
-2. `monk public llms` or `monk docs root`
-3. `monk describe list` or `monk data list <model>`
-4. `monk health`
+1. `monk auth register --tenant <tenant> --username <user>`
+2. `monk auth login --tenant <tenant>`
+3. `monk public llms` or `monk docs root`
+4. `monk describe list` or `monk data list <model>`
+5. `monk health`
 
 The CLI prefers structured output and explicit subcommands so it can be driven by
 scripts or agents without guessing hidden state.

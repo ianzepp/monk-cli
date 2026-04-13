@@ -1,5 +1,7 @@
 # Root-level usage notes
 
+By default, `monk` talks to the public Monk API at `https://monk-api.com`.
+
 Examples:
 
 ```bash
@@ -15,7 +17,7 @@ monk bulk export
 monk fs get /docs/README.md
 ```
 
-Useful onboarding sequence:
+Useful onboarding sequence for new users:
 
 ```bash
 monk auth register --tenant acme --username alice

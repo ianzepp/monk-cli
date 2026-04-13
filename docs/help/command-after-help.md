@@ -3,6 +3,9 @@
 The root command splits into focused branches instead of flattening everything
 into one long list.
 
+If you are new to Monk, start with `monk auth register` to create a tenant and
+local session, then use `monk auth login` on later runs.
+
 Use this rough map when navigating the CLI:
 
 - `public` for root documents and agent-facing discovery
