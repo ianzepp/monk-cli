@@ -119,7 +119,7 @@ async fn auth(
             print_json(&response)?;
         }
         crate::cli::AuthSubcommand::Tenants => {
-            print_json(&client.get_json::<Value>("/auth/tenants").await?)?;
+            print_json(&client.auth_tenants().await?)?;
         }
     }
     Ok(())

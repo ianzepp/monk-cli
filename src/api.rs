@@ -92,6 +92,13 @@ pub struct SudoData {
     pub reason: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct TenantSummary {
+    pub name: String,
+    pub description: Option<String>,
+    pub users: Vec<String>,
+}
+
 impl ApiClient {
     pub fn new(config: MonkConfig) -> Result<Self, MonkError> {
         let base_url = config.base_url()?;
@@ -286,6 +293,10 @@ impl ApiClient {
         }
 
         self.post_json("/api/user/sudo", &Body { reason }).await
+    }
+
+    pub async fn auth_tenants(&self) -> Result<ApiEnvelope<Vec<TenantSummary>>, MonkError> {
+        self.get_json("/auth/tenants").await
     }
 
     fn request_builder(
