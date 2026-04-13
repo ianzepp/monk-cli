@@ -60,7 +60,7 @@ impl MonkConfig {
         }
 
         if let Ok(format) = env::var("MONK_API_FORMAT") {
-            self.output_format = OutputFormat::from_str(&format).unwrap_or_default();
+            self.output_format = format.parse().unwrap_or_default();
         }
     }
 
@@ -143,13 +143,17 @@ impl OutputFormat {
             OutputFormat::Yaml => "yaml",
         }
     }
+}
 
-    pub fn from_str(value: &str) -> Option<Self> {
+impl std::str::FromStr for OutputFormat {
+    type Err = ();
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value.to_ascii_lowercase().as_str() {
-            "json" => Some(OutputFormat::Json),
-            "toon" => Some(OutputFormat::Toon),
-            "yaml" => Some(OutputFormat::Yaml),
-            _ => None,
+            "json" => Ok(OutputFormat::Json),
+            "toon" => Ok(OutputFormat::Toon),
+            "yaml" => Ok(OutputFormat::Yaml),
+            _ => Err(()),
         }
     }
 }

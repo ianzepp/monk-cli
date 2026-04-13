@@ -1,4 +1,7 @@
-use std::{fs, io::{self, IsTerminal, Read}};
+use std::{
+    fs,
+    io::{self, IsTerminal, Read},
+};
 
 use reqwest::Method;
 use serde_json::{json, Map, Value};
@@ -6,12 +9,11 @@ use serde_json::{json, Map, Value};
 use crate::{
     api::{ApiClient, LoginRequest, RefreshRequest, RegisterRequest},
     cli::{
-        AclsCommand, AggregateCommand, AggregateOptions, AppCommand, AuthCommand, BulkCommand, BulkOptions, Cli, Command,
-        FsOptions,
-        CronCommand, DataCommand, DescribeCommand, DocsCommand, FindCommand, FindOptions,
-        FsCommand, PublicCommand, StatCommand, TrackedCommand, TrashedCommand, UserCommand,
-        UserCreateCommand, UserKeysCommand, UserKeysCreateCommand, UserKeysSubcommand,
-        UserListCommand, UserPasswordCommand, UserSubcommand,
+        AclsCommand, AggregateCommand, AggregateOptions, AppCommand, AuthCommand, BulkCommand,
+        BulkOptions, Cli, Command, CronCommand, DataCommand, DescribeCommand, DocsCommand,
+        FindCommand, FindOptions, FsCommand, FsOptions, PublicCommand, StatCommand, TrackedCommand,
+        TrashedCommand, UserCommand, UserCreateCommand, UserKeysCommand, UserKeysCreateCommand,
+        UserKeysSubcommand, UserListCommand, UserPasswordCommand, UserSubcommand,
     },
     config::MonkConfig,
     data,
@@ -27,7 +29,7 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
         config.token = Some(token);
     }
     if let Some(format) = cli.globals.format {
-        config.output_format = crate::config::OutputFormat::from_str(&format).unwrap_or_default();
+        config.output_format = format.parse().unwrap_or_default();
     }
 
     let client = ApiClient::new(config.clone())?;
@@ -426,7 +428,10 @@ async fn aggregate(command: AggregateCommand, client: &ApiClient) -> anyhow::Res
             let query = aggregate_query(&command.options)?;
             print_json(
                 &client
-                    .get_json_with_query::<_, Value>(&format!("/api/aggregate/{}", arg.model), &query)
+                    .get_json_with_query::<_, Value>(
+                        &format!("/api/aggregate/{}", arg.model),
+                        &query,
+                    )
                     .await?,
             )?
         }
@@ -445,7 +450,10 @@ async fn aggregate(command: AggregateCommand, client: &ApiClient) -> anyhow::Res
 async fn bulk(command: BulkCommand, client: &ApiClient) -> anyhow::Result<()> {
     match command.command {
         crate::cli::BulkSubcommand::Run => {
-            let body = read_json_source_or_default(command.options.body.as_deref(), json!({"operations": []}))?;
+            let body = read_json_source_or_default(
+                command.options.body.as_deref(),
+                json!({"operations": []}),
+            )?;
             let body = bulk_body(body)?;
             print_json(&client.post_json::<_, Value>("/api/bulk", &body).await?)?
         }
@@ -558,12 +566,14 @@ async fn trashed(command: TrashedCommand, client: &ApiClient) -> anyhow::Result<
 
 async fn user(command: UserCommand, client: &ApiClient) -> anyhow::Result<()> {
     match command.command {
-        UserSubcommand::Me => {
-            print_json(&client.get_json::<Value>("/api/user/me").await?)?
-        }
+        UserSubcommand::Me => print_json(&client.get_json::<Value>("/api/user/me").await?)?,
         UserSubcommand::List(args) => {
             let query = user_list_query(&args);
-            print_json(&client.get_json_with_query::<_, Value>("/api/user", &query).await?)?
+            print_json(
+                &client
+                    .get_json_with_query::<_, Value>("/api/user", &query)
+                    .await?,
+            )?
         }
         UserSubcommand::Create(args) => {
             let body = user_create_body(args)?;
@@ -589,7 +599,11 @@ async fn user(command: UserCommand, client: &ApiClient) -> anyhow::Result<()> {
             });
             print_json::<Value>(
                 &client
-                    .request_json(Method::DELETE, &format!("/api/user/{}", args.id), Some(&body))
+                    .request_json(
+                        Method::DELETE,
+                        &format!("/api/user/{}", args.id),
+                        Some(&body),
+                    )
                     .await?,
             )?;
         }
@@ -608,7 +622,11 @@ async fn user(command: UserCommand, client: &ApiClient) -> anyhow::Result<()> {
                 "user_id": args.user_id,
                 "username": args.username,
             });
-            print_json::<Value>(&client.post_json::<_, Value>("/api/user/fake", &body).await?)?
+            print_json::<Value>(
+                &client
+                    .post_json::<_, Value>("/api/user/fake", &body)
+                    .await?,
+            )?
         }
     }
     Ok(())
@@ -666,7 +684,11 @@ async fn fs(command: FsCommand, client: &ApiClient) -> anyhow::Result<()> {
     match command.command {
         crate::cli::FsSubcommand::Get(arg) => {
             if command.options.stat {
-                print_json(&client.get_json::<Value>(&format!("/fs/{}?stat=true", arg.path)).await?)?
+                print_json(
+                    &client
+                        .get_json::<Value>(&format!("/fs/{}?stat=true", arg.path))
+                        .await?,
+                )?
             } else {
                 print_text(&client.get_text(&format!("/fs/{}", arg.path)).await?)?
             }
@@ -689,7 +711,7 @@ async fn fs(command: FsCommand, client: &ApiClient) -> anyhow::Result<()> {
 }
 
 async fn app(command: AppCommand, client: &ApiClient) -> anyhow::Result<()> {
-    let path = command.path.unwrap_or_else(|| "".to_string());
+    let path = command.path.unwrap_or_default();
     let full_path = if path.is_empty() {
         format!("/app/{}", command.app_name)
     } else {
@@ -757,7 +779,7 @@ fn read_json_source(source: &str) -> anyhow::Result<Value> {
 
 fn fs_body_text(options: &FsOptions) -> anyhow::Result<String> {
     match options.body.as_deref() {
-        Some(source) if source == "-" => read_stdin_or_empty(),
+        Some("-") => read_stdin_or_empty(),
         Some(source) if source.starts_with('@') => Ok(fs::read_to_string(&source[1..])?),
         Some(source) => Ok(source.to_string()),
         None => read_stdin_or_empty(),
@@ -770,10 +792,14 @@ fn bulk_body(body: Value) -> anyhow::Result<Value> {
             if map.contains_key("operations") {
                 Ok(Value::Object(map))
             } else {
-                Err(anyhow::anyhow!("bulk body must contain an operations array"))
+                Err(anyhow::anyhow!(
+                    "bulk body must contain an operations array"
+                ))
             }
         }
-        other => Err(anyhow::anyhow!("bulk body must be a JSON object, got {other}")),
+        other => Err(anyhow::anyhow!(
+            "bulk body must be a JSON object, got {other}"
+        )),
     }
 }
 
@@ -989,9 +1015,11 @@ fn user_password_body(args: UserPasswordCommand) -> anyhow::Result<PasswordBody>
 
 async fn user_keys(command: UserKeysCommand, client: &ApiClient) -> anyhow::Result<()> {
     match command.command {
-        UserKeysSubcommand::List(arg) => {
-            print_json(&client.get_json::<Value>(&format!("/api/user/{}/keys", arg.id)).await?)?
-        }
+        UserKeysSubcommand::List(arg) => print_json(
+            &client
+                .get_json::<Value>(&format!("/api/user/{}/keys", arg.id))
+                .await?,
+        )?,
         UserKeysSubcommand::Create(args) => {
             let body = user_keys_create_body(args)?;
             print_json(
@@ -1025,7 +1053,10 @@ fn user_keys_create_body(args: UserKeysCreateCommand) -> anyhow::Result<UserKeys
         object.insert("environment".to_string(), Value::String(environment));
     }
     if let Some(permissions) = args.permissions {
-        object.insert("permissions".to_string(), serde_json::from_str(&permissions)?);
+        object.insert(
+            "permissions".to_string(),
+            serde_json::from_str(&permissions)?,
+        );
     }
     if let Some(expires_at) = args.expires_at {
         object.insert("expires_at".to_string(), Value::String(expires_at));
