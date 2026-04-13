@@ -1,0 +1,10 @@
+# User Delete
+
+Manage user accounts, keys, and sudo flows.
+
+Common uses:
+
+- `monk user me`
+- `monk user list`
+
+This branch is intentionally concise; use the command itself for the full flag list.

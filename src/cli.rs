@@ -1,8 +1,47 @@
 use clap::{Args, Parser, Subcommand};
 
+const CLI_LONG_ABOUT: &str = include_str!("../docs/help/cli-long-about.md");
+const CLI_AFTER_HELP: &str = include_str!("../docs/help/cli-after-help.md");
+const COMMAND_AFTER_HELP: &str = include_str!("../docs/help/command-after-help.md");
+const PUBLIC_AFTER_HELP: &str = include_str!("../docs/help/public-after-help.md");
+const AUTH_AFTER_HELP: &str = include_str!("../docs/help/auth-after-help.md");
+const AUTH_LOGIN_AFTER_HELP: &str = include_str!("../docs/help/auth-login-after-help.md");
+const AUTH_REGISTER_AFTER_HELP: &str = include_str!("../docs/help/auth-register-after-help.md");
+const AUTH_REFRESH_AFTER_HELP: &str = include_str!("../docs/help/auth-refresh-after-help.md");
+const DOCS_AFTER_HELP: &str = include_str!("../docs/help/docs-after-help.md");
+const DESCRIBE_AFTER_HELP: &str = include_str!("../docs/help/describe-after-help.md");
+const DESCRIBE_FIELDS_AFTER_HELP: &str = include_str!("../docs/help/describe-fields-after-help.md");
+const DATA_AFTER_HELP: &str = include_str!("../docs/help/data-after-help.md");
+const DATA_RELATIONSHIP_AFTER_HELP: &str = include_str!("../docs/help/data-relationship-after-help.md");
+const DATA_RELATIONSHIP_CHILD_AFTER_HELP: &str = include_str!("../docs/help/data-relationship-child-after-help.md");
+const FIND_AFTER_HELP: &str = include_str!("../docs/help/find-after-help.md");
+const AGGREGATE_AFTER_HELP: &str = include_str!("../docs/help/aggregate-after-help.md");
+const BULK_AFTER_HELP: &str = include_str!("../docs/help/bulk-after-help.md");
+const ACLS_AFTER_HELP: &str = include_str!("../docs/help/acls-after-help.md");
+const STAT_AFTER_HELP: &str = include_str!("../docs/help/stat-after-help.md");
+const TRACKED_AFTER_HELP: &str = include_str!("../docs/help/tracked-after-help.md");
+const TRASHED_AFTER_HELP: &str = include_str!("../docs/help/trashed-after-help.md");
+const USER_AFTER_HELP: &str = include_str!("../docs/help/user-after-help.md");
+const USER_LIST_AFTER_HELP: &str = include_str!("../docs/help/user-list-after-help.md");
+const USER_CREATE_AFTER_HELP: &str = include_str!("../docs/help/user-create-after-help.md");
+const USER_DELETE_AFTER_HELP: &str = include_str!("../docs/help/user-delete-after-help.md");
+const USER_PASSWORD_AFTER_HELP: &str = include_str!("../docs/help/user-password-after-help.md");
+const USER_KEYS_AFTER_HELP: &str = include_str!("../docs/help/user-keys-after-help.md");
+const USER_KEYS_CREATE_AFTER_HELP: &str = include_str!("../docs/help/user-keys-create-after-help.md");
+const USER_KEYS_DELETE_AFTER_HELP: &str = include_str!("../docs/help/user-keys-delete-after-help.md");
+const USER_SUDO_AFTER_HELP: &str = include_str!("../docs/help/user-sudo-after-help.md");
+const USER_FAKE_AFTER_HELP: &str = include_str!("../docs/help/user-fake-after-help.md");
+const CRON_AFTER_HELP: &str = include_str!("../docs/help/cron-after-help.md");
+const FS_AFTER_HELP: &str = include_str!("../docs/help/fs-after-help.md");
+const APP_AFTER_HELP: &str = include_str!("../docs/help/app-after-help.md");
+
 #[derive(Parser, Debug)]
-#[command(name = "monk")]
-#[command(about = "CLI for the Monk API")]
+#[command(
+    name = "monk",
+    about = "CLI for the Monk API",
+    long_about = CLI_LONG_ABOUT,
+    after_help = CLI_AFTER_HELP,
+)]
 pub struct Cli {
     #[command(flatten)]
     pub globals: GlobalOptions,
@@ -27,6 +66,7 @@ pub struct GlobalOptions {
 }
 
 #[derive(Subcommand, Debug)]
+#[command(after_long_help = COMMAND_AFTER_HELP)]
 pub enum Command {
     /// Public surfaces and discovery
     Public(PublicCommand),
@@ -65,12 +105,14 @@ pub enum Command {
 }
 
 #[derive(Args, Debug)]
+#[command(after_long_help = PUBLIC_AFTER_HELP)]
 pub struct PublicCommand {
     #[command(subcommand)]
     pub command: PublicSubcommand,
 }
 
 #[derive(Subcommand, Debug)]
+#[command(after_long_help = PUBLIC_AFTER_HELP)]
 pub enum PublicSubcommand {
     /// Open the human-facing root document
     Root,
@@ -79,12 +121,14 @@ pub enum PublicSubcommand {
 }
 
 #[derive(Args, Debug)]
+#[command(after_long_help = AUTH_AFTER_HELP)]
 pub struct AuthCommand {
     #[command(subcommand)]
     pub command: AuthSubcommand,
 }
 
 #[derive(Subcommand, Debug)]
+#[command(after_long_help = AUTH_AFTER_HELP)]
 pub enum AuthSubcommand {
     /// Log in to an existing tenant
     Login(AuthLoginCommand),
@@ -97,6 +141,7 @@ pub enum AuthSubcommand {
 }
 
 #[derive(Args, Debug)]
+#[command(after_long_help = AUTH_LOGIN_AFTER_HELP)]
 pub struct AuthLoginCommand {
     /// Tenant name to authenticate against
     #[arg(long)]
@@ -116,6 +161,7 @@ pub struct AuthLoginCommand {
 }
 
 #[derive(Args, Debug)]
+#[command(after_long_help = AUTH_REGISTER_AFTER_HELP)]
 pub struct AuthRegisterCommand {
     /// Tenant name to register
     #[arg(long)]
@@ -139,6 +185,7 @@ pub struct AuthRegisterCommand {
 }
 
 #[derive(Args, Debug)]
+#[command(after_long_help = AUTH_REFRESH_AFTER_HELP)]
 pub struct AuthRefreshCommand {
     /// Refresh token to exchange; defaults to the saved token
     #[arg(long)]
@@ -146,12 +193,14 @@ pub struct AuthRefreshCommand {
 }
 
 #[derive(Args, Debug)]
+#[command(after_long_help = DOCS_AFTER_HELP)]
 pub struct DocsCommand {
     #[command(subcommand)]
     pub command: DocsSubcommand,
 }
 
 #[derive(Subcommand, Debug)]
+#[command(after_long_help = DOCS_AFTER_HELP)]
 pub enum DocsSubcommand {
     /// Open the API overview
     Root,
@@ -160,12 +209,14 @@ pub enum DocsSubcommand {
 }
 
 #[derive(Args, Debug)]
+#[command(after_long_help = DESCRIBE_AFTER_HELP)]
 pub struct DescribeCommand {
     #[command(subcommand)]
     pub command: DescribeSubcommand,
 }
 
 #[derive(Subcommand, Debug)]
+#[command(after_long_help = DESCRIBE_AFTER_HELP)]
 pub enum DescribeSubcommand {
     List,
     Get(ModelArg),
@@ -176,12 +227,14 @@ pub enum DescribeSubcommand {
 }
 
 #[derive(Args, Debug)]
+#[command(after_long_help = DESCRIBE_FIELDS_AFTER_HELP)]
 pub struct DescribeFieldsCommand {
     #[command(subcommand)]
     pub command: DescribeFieldsSubcommand,
 }
 
 #[derive(Subcommand, Debug)]
+#[command(after_long_help = DESCRIBE_FIELDS_AFTER_HELP)]
 pub enum DescribeFieldsSubcommand {
     List(ModelArg),
     BulkCreate(ModelArg),
@@ -232,6 +285,7 @@ pub struct DataOptions {
 }
 
 #[derive(Args, Debug)]
+#[command(after_long_help = DATA_AFTER_HELP)]
 pub struct DataCommand {
     #[command(flatten)]
     pub options: DataOptions,
@@ -241,6 +295,7 @@ pub struct DataCommand {
 }
 
 #[derive(Subcommand, Debug)]
+#[command(after_long_help = DATA_AFTER_HELP)]
 pub enum DataSubcommand {
     /// List records for a model via GET /api/data/:model
     List(ModelArg),
@@ -266,6 +321,7 @@ pub enum DataSubcommand {
 }
 
 #[derive(Args, Debug)]
+#[command(after_long_help = DATA_RELATIONSHIP_AFTER_HELP)]
 pub struct RelationshipArg {
     pub model: String,
     pub id: String,
@@ -275,6 +331,7 @@ pub struct RelationshipArg {
 }
 
 #[derive(Subcommand, Debug)]
+#[command(after_long_help = DATA_RELATIONSHIP_AFTER_HELP)]
 pub enum RelationshipSubcommand {
     /// List child records via GET /api/data/:model/:id/:relationship
     Get,
@@ -289,6 +346,7 @@ pub enum RelationshipSubcommand {
 }
 
 #[derive(Args, Debug)]
+#[command(after_long_help = DATA_RELATIONSHIP_CHILD_AFTER_HELP)]
 pub struct RelationshipChildCommand {
     pub child: String,
     #[command(subcommand)]
@@ -296,6 +354,7 @@ pub struct RelationshipChildCommand {
 }
 
 #[derive(Subcommand, Debug)]
+#[command(after_long_help = DATA_RELATIONSHIP_CHILD_AFTER_HELP)]
 pub enum RelationshipChildSubcommand {
     /// Fetch a nested child record via GET /api/data/:model/:id/:relationship/:child
     Get,
@@ -331,6 +390,7 @@ pub struct FindOptions {
 }
 
 #[derive(Args, Debug)]
+#[command(after_long_help = FIND_AFTER_HELP)]
 pub struct FindCommand {
     #[command(flatten)]
     pub options: FindOptions,
@@ -340,6 +400,7 @@ pub struct FindCommand {
 }
 
 #[derive(Subcommand, Debug)]
+#[command(after_long_help = FIND_AFTER_HELP)]
 pub enum FindSubcommand {
     Query(ModelArg),
     Saved(FindSavedArg),
@@ -383,6 +444,7 @@ pub struct AggregateOptions {
 }
 
 #[derive(Args, Debug)]
+#[command(after_long_help = AGGREGATE_AFTER_HELP)]
 pub struct AggregateCommand {
     #[command(flatten)]
     pub options: AggregateOptions,
@@ -392,6 +454,7 @@ pub struct AggregateCommand {
 }
 
 #[derive(Subcommand, Debug)]
+#[command(after_long_help = AGGREGATE_AFTER_HELP)]
 pub enum AggregateSubcommand {
     Get(ModelArg),
     Run(ModelArg),
@@ -405,6 +468,7 @@ pub struct BulkOptions {
 }
 
 #[derive(Args, Debug)]
+#[command(after_long_help = BULK_AFTER_HELP)]
 pub struct BulkCommand {
     #[command(flatten)]
     pub options: BulkOptions,
@@ -414,6 +478,7 @@ pub struct BulkCommand {
 }
 
 #[derive(Subcommand, Debug)]
+#[command(after_long_help = BULK_AFTER_HELP)]
 pub enum BulkSubcommand {
     /// Execute an arbitrary bulk payload
     Run,
@@ -428,12 +493,14 @@ pub enum BulkSubcommand {
 }
 
 #[derive(Args, Debug)]
+#[command(after_long_help = ACLS_AFTER_HELP)]
 pub struct AclsCommand {
     #[command(subcommand)]
     pub command: AclsSubcommand,
 }
 
 #[derive(Subcommand, Debug)]
+#[command(after_long_help = ACLS_AFTER_HELP)]
 pub enum AclsSubcommand {
     Get(RecordArg),
     Create(RecordArg),
@@ -442,35 +509,41 @@ pub enum AclsSubcommand {
 }
 
 #[derive(Args, Debug)]
+#[command(after_long_help = STAT_AFTER_HELP)]
 pub struct StatCommand {
     #[command(subcommand)]
     pub command: StatSubcommand,
 }
 
 #[derive(Subcommand, Debug)]
+#[command(after_long_help = STAT_AFTER_HELP)]
 pub enum StatSubcommand {
     Get(RecordArg),
 }
 
 #[derive(Args, Debug)]
+#[command(after_long_help = TRACKED_AFTER_HELP)]
 pub struct TrackedCommand {
     #[command(subcommand)]
     pub command: TrackedSubcommand,
 }
 
 #[derive(Subcommand, Debug)]
+#[command(after_long_help = TRACKED_AFTER_HELP)]
 pub enum TrackedSubcommand {
     List(RecordArg),
     Get(TrackedRecordArg),
 }
 
 #[derive(Args, Debug)]
+#[command(after_long_help = TRASHED_AFTER_HELP)]
 pub struct TrashedCommand {
     #[command(subcommand)]
     pub command: TrashedSubcommand,
 }
 
 #[derive(Subcommand, Debug)]
+#[command(after_long_help = TRASHED_AFTER_HELP)]
 pub enum TrashedSubcommand {
     List,
     Model(TrashedModelArg),
@@ -478,12 +551,14 @@ pub enum TrashedSubcommand {
 }
 
 #[derive(Args, Debug)]
+#[command(after_long_help = USER_AFTER_HELP)]
 pub struct UserCommand {
     #[command(subcommand)]
     pub command: UserSubcommand,
 }
 
 #[derive(Subcommand, Debug)]
+#[command(after_long_help = USER_AFTER_HELP)]
 pub enum UserSubcommand {
     Me,
     List(UserListCommand),
@@ -498,6 +573,7 @@ pub enum UserSubcommand {
 }
 
 #[derive(Args, Debug, Default)]
+#[command(after_long_help = USER_LIST_AFTER_HELP)]
 pub struct UserListCommand {
     /// Maximum number of records to return
     #[arg(long)]
@@ -509,6 +585,7 @@ pub struct UserListCommand {
 }
 
 #[derive(Args, Debug)]
+#[command(after_long_help = USER_CREATE_AFTER_HELP)]
 pub struct UserCreateCommand {
     /// JSON body from stdin or use --body to inline it
     #[arg(long)]
@@ -528,6 +605,7 @@ pub struct UserCreateCommand {
 }
 
 #[derive(Args, Debug)]
+#[command(after_long_help = USER_DELETE_AFTER_HELP)]
 pub struct UserDeleteCommand {
     pub id: String,
 
@@ -541,6 +619,7 @@ pub struct UserDeleteCommand {
 }
 
 #[derive(Args, Debug)]
+#[command(after_long_help = USER_PASSWORD_AFTER_HELP)]
 pub struct UserPasswordCommand {
     pub id: String,
 
@@ -554,12 +633,14 @@ pub struct UserPasswordCommand {
 }
 
 #[derive(Args, Debug)]
+#[command(after_long_help = USER_KEYS_AFTER_HELP)]
 pub struct UserKeysCommand {
     #[command(subcommand)]
     pub command: UserKeysSubcommand,
 }
 
 #[derive(Subcommand, Debug)]
+#[command(after_long_help = USER_KEYS_AFTER_HELP)]
 pub enum UserKeysSubcommand {
     List(UserIdArg),
     Create(UserKeysCreateCommand),
@@ -567,6 +648,7 @@ pub enum UserKeysSubcommand {
 }
 
 #[derive(Args, Debug)]
+#[command(after_long_help = USER_KEYS_CREATE_AFTER_HELP)]
 pub struct UserKeysCreateCommand {
     pub id: String,
 
@@ -588,12 +670,14 @@ pub struct UserKeysCreateCommand {
 }
 
 #[derive(Args, Debug)]
+#[command(after_long_help = USER_KEYS_DELETE_AFTER_HELP)]
 pub struct UserKeyDeleteCommand {
     pub id: String,
     pub key_id: String,
 }
 
 #[derive(Args, Debug)]
+#[command(after_long_help = USER_SUDO_AFTER_HELP)]
 pub struct UserSudoCommand {
     /// Audit-trail reason for the elevation
     #[arg(long)]
@@ -601,6 +685,7 @@ pub struct UserSudoCommand {
 }
 
 #[derive(Args, Debug)]
+#[command(after_long_help = USER_FAKE_AFTER_HELP)]
 pub struct UserFakeCommand {
     /// Target user ID to impersonate
     #[arg(long = "user-id")]
@@ -612,12 +697,14 @@ pub struct UserFakeCommand {
 }
 
 #[derive(Args, Debug)]
+#[command(after_long_help = CRON_AFTER_HELP)]
 pub struct CronCommand {
     #[command(subcommand)]
     pub command: CronSubcommand,
 }
 
 #[derive(Subcommand, Debug)]
+#[command(after_long_help = CRON_AFTER_HELP)]
 pub enum CronSubcommand {
     List,
     Create,
@@ -629,6 +716,7 @@ pub enum CronSubcommand {
 }
 
 #[derive(Args, Debug, Default, Clone)]
+#[command(after_long_help = FS_AFTER_HELP)]
 pub struct FsOptions {
     /// Return filesystem metadata as JSON instead of file content
     #[arg(long)]
@@ -640,6 +728,7 @@ pub struct FsOptions {
 }
 
 #[derive(Args, Debug)]
+#[command(after_long_help = FS_AFTER_HELP)]
 pub struct FsCommand {
     #[command(flatten)]
     pub options: FsOptions,
@@ -649,6 +738,7 @@ pub struct FsCommand {
 }
 
 #[derive(Subcommand, Debug)]
+#[command(after_long_help = FS_AFTER_HELP)]
 pub enum FsSubcommand {
     Get(PathArg),
     Put(PathArg),
@@ -656,6 +746,7 @@ pub enum FsSubcommand {
 }
 
 #[derive(Args, Debug)]
+#[command(after_long_help = APP_AFTER_HELP)]
 pub struct AppCommand {
     pub app_name: String,
     pub path: Option<String>,
