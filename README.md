@@ -36,4 +36,4 @@ MONK_CLI_INSTALL_DIR="$HOME/bin" \
 
 ## Current state
 
-The CLI now has a shared API helper layer plus command-family dispatch wired up to Monk routes. Several commands still use placeholder request bodies and will be refined in follow-up phases as endpoint-specific payloads are filled in.
+The CLI now has a shared API helper layer plus command-family dispatch wired up to Monk routes. The `data` family is aligned to Monk's model, record, relationship, and nested-child route shapes, with query flags threaded through the request helpers.

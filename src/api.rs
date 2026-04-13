@@ -106,6 +106,12 @@ pub struct HealthData {
     pub uptime: f64,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RecordRequest {
+    #[serde(flatten)]
+    pub fields: serde_json::Value,
+}
+
 impl ApiClient {
     pub fn new(config: MonkConfig) -> Result<Self, MonkError> {
         let base_url = config.base_url()?;
@@ -165,6 +171,15 @@ impl ApiClient {
             .await
     }
 
+    pub async fn get_json_with_query<Q, T>(&self, path: &str, query: &Q) -> Result<T, MonkError>
+    where
+        Q: Serialize + ?Sized,
+        T: DeserializeOwned,
+    {
+        self.request_json_with_query(Method::GET, path, Some(query), Option::<&()>::None)
+            .await
+    }
+
     pub async fn get_text(&self, path: &str) -> Result<String, MonkError> {
         self.request_text(Method::GET, path, Option::<&()>::None)
             .await
@@ -172,6 +187,15 @@ impl ApiClient {
 
     pub async fn delete_json<T: DeserializeOwned>(&self, path: &str) -> Result<T, MonkError> {
         self.request_json(Method::DELETE, path, Option::<&()>::None)
+            .await
+    }
+
+    pub async fn delete_json_with_query<Q, T>(&self, path: &str, query: &Q) -> Result<T, MonkError>
+    where
+        Q: Serialize + ?Sized,
+        T: DeserializeOwned,
+    {
+        self.request_json_with_query(Method::DELETE, path, Some(query), Option::<&()>::None)
             .await
     }
 
@@ -183,6 +207,21 @@ impl ApiClient {
         self.request_json(Method::POST, path, Some(body)).await
     }
 
+    pub async fn post_json_with_query<B, Q, T>(
+        &self,
+        path: &str,
+        query: &Q,
+        body: &B,
+    ) -> Result<T, MonkError>
+    where
+        B: Serialize + ?Sized,
+        Q: Serialize + ?Sized,
+        T: DeserializeOwned,
+    {
+        self.request_json_with_query(Method::POST, path, Some(query), Some(body))
+            .await
+    }
+
     pub async fn put_json<B, T>(&self, path: &str, body: &B) -> Result<T, MonkError>
     where
         B: Serialize + ?Sized,
@@ -191,12 +230,42 @@ impl ApiClient {
         self.request_json(Method::PUT, path, Some(body)).await
     }
 
+    pub async fn put_json_with_query<B, Q, T>(
+        &self,
+        path: &str,
+        query: &Q,
+        body: &B,
+    ) -> Result<T, MonkError>
+    where
+        B: Serialize + ?Sized,
+        Q: Serialize + ?Sized,
+        T: DeserializeOwned,
+    {
+        self.request_json_with_query(Method::PUT, path, Some(query), Some(body))
+            .await
+    }
+
     pub async fn patch_json<B, T>(&self, path: &str, body: &B) -> Result<T, MonkError>
     where
         B: Serialize + ?Sized,
         T: DeserializeOwned,
     {
         self.request_json(Method::PATCH, path, Some(body)).await
+    }
+
+    pub async fn patch_json_with_query<B, Q, T>(
+        &self,
+        path: &str,
+        query: &Q,
+        body: &B,
+    ) -> Result<T, MonkError>
+    where
+        B: Serialize + ?Sized,
+        Q: Serialize + ?Sized,
+        T: DeserializeOwned,
+    {
+        self.request_json_with_query(Method::PATCH, path, Some(query), Some(body))
+            .await
     }
 
     pub async fn request_json<B, T>(
@@ -209,8 +278,29 @@ impl ApiClient {
         B: Serialize + ?Sized,
         T: DeserializeOwned,
     {
+        self.request_json_with_query(method, path, Option::<&()>::None, body)
+            .await
+    }
+
+    pub async fn request_json_with_query<B, Q, T>(
+        &self,
+        method: Method,
+        path: &str,
+        query: Option<&Q>,
+        body: Option<&B>,
+    ) -> Result<T, MonkError>
+    where
+        B: Serialize + ?Sized,
+        Q: Serialize + ?Sized,
+        T: DeserializeOwned,
+    {
         let url = self.endpoint(path)?;
         let request = self.request_builder(method.clone(), url.clone())?;
+        let request = if let Some(query) = query {
+            request.query(query)
+        } else {
+            request
+        };
         let request = if let Some(body) = body {
             request.json(body)
         } else {
@@ -235,8 +325,28 @@ impl ApiClient {
     where
         B: Serialize + ?Sized,
     {
+        self.request_text_with_query(method, path, Option::<&()>::None, body)
+            .await
+    }
+
+    pub async fn request_text_with_query<B, Q>(
+        &self,
+        method: Method,
+        path: &str,
+        query: Option<&Q>,
+        body: Option<&B>,
+    ) -> Result<String, MonkError>
+    where
+        B: Serialize + ?Sized,
+        Q: Serialize + ?Sized,
+    {
         let url = self.endpoint(path)?;
         let request = self.request_builder(method.clone(), url.clone())?;
+        let request = if let Some(query) = query {
+            request.query(query)
+        } else {
+            request
+        };
         let request = if let Some(body) = body {
             request.json(body)
         } else {
