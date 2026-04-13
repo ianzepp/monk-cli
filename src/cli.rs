@@ -1,0 +1,401 @@
+use clap::{Args, Parser, Subcommand};
+
+#[derive(Parser, Debug)]
+#[command(name = "monk")]
+#[command(about = "CLI for the Monk API")]
+pub struct Cli {
+    #[command(flatten)]
+    pub globals: GlobalOptions,
+
+    #[command(subcommand)]
+    pub command: Command,
+}
+
+#[derive(Args, Debug, Default)]
+pub struct GlobalOptions {
+    /// Override the Monk API base URL
+    #[arg(long = "base-url")]
+    pub base_url: Option<String>,
+
+    /// Override the stored bearer token
+    #[arg(long)]
+    pub token: Option<String>,
+
+    /// Override the preferred response format
+    #[arg(long)]
+    pub format: Option<String>,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum Command {
+    /// Public surfaces and discovery
+    Public(PublicCommand),
+    /// Authentication and tenant bootstrap
+    Auth(AuthCommand),
+    /// Health checks
+    Health,
+    /// API documentation helpers
+    Docs(DocsCommand),
+    /// Model metadata and schema management
+    Describe(DescribeCommand),
+    /// Model data operations
+    Data(DataCommand),
+    /// Advanced query operations
+    Find(FindCommand),
+    /// Aggregate operations
+    Aggregate(AggregateCommand),
+    /// Multi-operation transactions
+    Bulk(BulkCommand),
+    /// Record ACL management
+    Acls(AclsCommand),
+    /// Record metadata
+    Stat(StatCommand),
+    /// Change tracking
+    Tracked(TrackedCommand),
+    /// Soft-delete and restore workflows
+    Trashed(TrashedCommand),
+    /// User and sudo workflows
+    User(UserCommand),
+    /// Scheduled process workflows
+    Cron(CronCommand),
+    /// Tenant filesystem workflows
+    Fs(FsCommand),
+    /// Dynamic app packages
+    App(AppCommand),
+}
+
+#[derive(Args, Debug)]
+pub struct PublicCommand {
+    #[command(subcommand)]
+    pub command: PublicSubcommand,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum PublicSubcommand {
+    /// Open the human-facing root document
+    Root,
+    /// Open the agent-facing root document
+    Llms,
+}
+
+#[derive(Args, Debug)]
+pub struct AuthCommand {
+    #[command(subcommand)]
+    pub command: AuthSubcommand,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum AuthSubcommand {
+    /// Log in to an existing tenant
+    Login(AuthLoginCommand),
+    /// Register a new tenant
+    Register(AuthRegisterCommand),
+    /// Refresh a token
+    Refresh(AuthRefreshCommand),
+    /// List tenants available for login
+    Tenants,
+}
+
+#[derive(Args, Debug)]
+pub struct AuthLoginCommand {
+    pub tenant: Option<String>,
+    pub tenant_id: Option<String>,
+    pub username: Option<String>,
+    pub format: Option<String>,
+}
+
+#[derive(Args, Debug)]
+pub struct AuthRegisterCommand {
+    pub tenant: Option<String>,
+    pub username: Option<String>,
+    pub database: Option<String>,
+    pub description: Option<String>,
+    pub adapter: Option<String>,
+}
+
+#[derive(Args, Debug)]
+pub struct AuthRefreshCommand {
+    pub token: Option<String>,
+}
+
+#[derive(Args, Debug)]
+pub struct DocsCommand {
+    #[command(subcommand)]
+    pub command: DocsSubcommand,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum DocsSubcommand {
+    /// Open the API overview
+    Root,
+    /// Open a docs path directly
+    Path { path: Option<String> },
+}
+
+#[derive(Args, Debug)]
+pub struct DescribeCommand {
+    #[command(subcommand)]
+    pub command: DescribeSubcommand,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum DescribeSubcommand {
+    List,
+    Get(ModelArg),
+    Create(ModelArg),
+    Update(ModelArg),
+    Delete(ModelArg),
+    Fields(DescribeFieldsCommand),
+}
+
+#[derive(Args, Debug)]
+pub struct DescribeFieldsCommand {
+    #[command(subcommand)]
+    pub command: DescribeFieldsSubcommand,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum DescribeFieldsSubcommand {
+    List(ModelArg),
+    BulkCreate(ModelArg),
+    BulkUpdate(ModelArg),
+    Get(FieldArg),
+    Create(FieldArg),
+    Update(FieldArg),
+    Delete(FieldArg),
+}
+
+#[derive(Args, Debug)]
+pub struct DataCommand {
+    #[command(subcommand)]
+    pub command: DataSubcommand,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum DataSubcommand {
+    List(ModelArg),
+    Create(ModelArg),
+    Update(ModelArg),
+    Patch(ModelArg),
+    Delete(ModelArg),
+    Get(RecordArg),
+    Put(RecordArg),
+    DeleteRecord(RecordArg),
+    Relationship(RelationshipArg),
+}
+
+#[derive(Args, Debug)]
+pub struct RelationshipArg {
+    pub model: String,
+    pub id: String,
+    pub relationship: String,
+    #[command(subcommand)]
+    pub command: RelationshipSubcommand,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum RelationshipSubcommand {
+    Get,
+    Create,
+    Update,
+    Delete,
+    Child(RelationshipChildArg),
+}
+
+#[derive(Args, Debug)]
+pub struct RelationshipChildArg {
+    pub child: String,
+}
+
+#[derive(Args, Debug)]
+pub struct FindCommand {
+    #[command(subcommand)]
+    pub command: FindSubcommand,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum FindSubcommand {
+    Query(ModelArg),
+    Saved(FindSavedArg),
+}
+
+#[derive(Args, Debug)]
+pub struct FindSavedArg {
+    pub model: String,
+    pub target: String,
+}
+
+#[derive(Args, Debug)]
+pub struct AggregateCommand {
+    #[command(subcommand)]
+    pub command: AggregateSubcommand,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum AggregateSubcommand {
+    Get(ModelArg),
+    Run(ModelArg),
+}
+
+#[derive(Args, Debug)]
+pub struct BulkCommand {
+    #[command(subcommand)]
+    pub command: BulkSubcommand,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum BulkSubcommand {
+    Run,
+    Export,
+    Import,
+}
+
+#[derive(Args, Debug)]
+pub struct AclsCommand {
+    #[command(subcommand)]
+    pub command: AclsSubcommand,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum AclsSubcommand {
+    Get(RecordArg),
+    Create(RecordArg),
+    Update(RecordArg),
+    Delete(RecordArg),
+}
+
+#[derive(Args, Debug)]
+pub struct StatCommand {
+    #[command(subcommand)]
+    pub command: StatSubcommand,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum StatSubcommand {
+    Get(RecordArg),
+}
+
+#[derive(Args, Debug)]
+pub struct TrackedCommand {
+    #[command(subcommand)]
+    pub command: TrackedSubcommand,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum TrackedSubcommand {
+    List(RecordArg),
+    Get(TrackedRecordArg),
+}
+
+#[derive(Args, Debug)]
+pub struct TrashedCommand {
+    #[command(subcommand)]
+    pub command: TrashedSubcommand,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum TrashedSubcommand {
+    List,
+    Model(TrashedModelArg),
+    Record(RecordArg),
+}
+
+#[derive(Args, Debug)]
+pub struct UserCommand {
+    #[command(subcommand)]
+    pub command: UserSubcommand,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum UserSubcommand {
+    Me,
+    List,
+    Create,
+    Get(UserIdArg),
+    Update(UserIdArg),
+    Delete(UserIdArg),
+    Password(UserIdArg),
+    Keys(UserIdArg),
+    Sudo,
+    Fake,
+}
+
+#[derive(Args, Debug)]
+pub struct CronCommand {
+    #[command(subcommand)]
+    pub command: CronSubcommand,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum CronSubcommand {
+    List,
+    Create,
+    Get(CronIdArg),
+    Update(CronIdArg),
+    Delete(CronIdArg),
+    Enable(CronIdArg),
+    Disable(CronIdArg),
+}
+
+#[derive(Args, Debug)]
+pub struct FsCommand {
+    #[command(subcommand)]
+    pub command: FsSubcommand,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum FsSubcommand {
+    Get(PathArg),
+    Put(PathArg),
+    Delete(PathArg),
+}
+
+#[derive(Args, Debug)]
+pub struct AppCommand {
+    pub app_name: String,
+    pub path: Option<String>,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct ModelArg {
+    pub model: String,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct FieldArg {
+    pub model: String,
+    pub field: String,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct RecordArg {
+    pub model: String,
+    pub id: String,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct TrackedRecordArg {
+    pub model: String,
+    pub id: String,
+    pub change: String,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct TrashedModelArg {
+    pub model: String,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct UserIdArg {
+    pub id: String,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct CronIdArg {
+    pub pid: String,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct PathArg {
+    pub path: String,
+}
