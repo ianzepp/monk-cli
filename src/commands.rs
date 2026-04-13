@@ -36,7 +36,7 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
                 config.save()?;
             }
         }
-        Command::Health => print_json(&client.get_json::<Value>("/health").await?)?,
+        Command::Health => print_json(&client.health().await?)?,
         Command::Docs(command) => docs(command, &client).await?,
         Command::Describe(command) => describe(command, &client).await?,
         Command::Data(command) => data(command, &client).await?,

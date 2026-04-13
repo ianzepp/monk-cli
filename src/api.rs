@@ -99,6 +99,13 @@ pub struct TenantSummary {
     pub users: Vec<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HealthData {
+    pub status: String,
+    pub timestamp: String,
+    pub uptime: f64,
+}
+
 impl ApiClient {
     pub fn new(config: MonkConfig) -> Result<Self, MonkError> {
         let base_url = config.base_url()?;
@@ -297,6 +304,10 @@ impl ApiClient {
 
     pub async fn auth_tenants(&self) -> Result<ApiEnvelope<Vec<TenantSummary>>, MonkError> {
         self.get_json("/auth/tenants").await
+    }
+
+    pub async fn health(&self) -> Result<ApiEnvelope<HealthData>, MonkError> {
+        self.get_json("/health").await
     }
 
     fn request_builder(
