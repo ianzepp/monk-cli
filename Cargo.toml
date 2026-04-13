@@ -19,3 +19,11 @@ serde_json = "1"
 thiserror = "2"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 url = { version = "2", features = ["serde"] }
+
+[profile.dev]
+debug = 0
+incremental = true
+codegen-units = 256
+
+[profile.dev.package."*"]
+debug = 0

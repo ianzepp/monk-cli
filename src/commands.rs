@@ -1,7 +1,7 @@
 use std::io::{self, IsTerminal, Read};
 
 use reqwest::Method;
-use serde_json::{json, Value};
+use serde_json::{json, Map, Value};
 
 use crate::{
     api::{ApiClient, LoginRequest, RefreshRequest, RegisterRequest},
@@ -9,6 +9,8 @@ use crate::{
         AclsCommand, AggregateCommand, AppCommand, AuthCommand, BulkCommand, Cli, Command,
         CronCommand, DataCommand, DescribeCommand, DocsCommand, FindCommand, FsCommand,
         PublicCommand, StatCommand, TrackedCommand, TrashedCommand, UserCommand,
+        UserCreateCommand, UserKeysCommand, UserKeysCreateCommand, UserKeysSubcommand,
+        UserListCommand, UserPasswordCommand, UserSubcommand,
     },
     config::MonkConfig,
     data,
@@ -543,23 +545,23 @@ async fn trashed(command: TrashedCommand, client: &ApiClient) -> anyhow::Result<
 
 async fn user(command: UserCommand, client: &ApiClient) -> anyhow::Result<()> {
     match command.command {
-        crate::cli::UserSubcommand::Me => {
+        UserSubcommand::Me => {
             print_json(&client.get_json::<Value>("/api/user/me").await?)?
         }
-        crate::cli::UserSubcommand::List => {
-            print_json(&client.get_json::<Value>("/api/user").await?)?
+        UserSubcommand::List(args) => {
+            let query = user_list_query(&args);
+            print_json(&client.get_json_with_query::<_, Value>("/api/user", &query).await?)?
         }
-        crate::cli::UserSubcommand::Create => print_json(
-            &client
-                .post_json::<_, Value>("/api/user", &read_json_body_or_default(json!({}))?)
-                .await?,
-        )?,
-        crate::cli::UserSubcommand::Get(arg) => print_json(
+        UserSubcommand::Create(args) => {
+            let body = user_create_body(args)?;
+            print_json(&client.post_json::<_, Value>("/api/user", &body).await?)?
+        }
+        UserSubcommand::Get(arg) => print_json(
             &client
                 .get_json::<Value>(&format!("/api/user/{}", arg.id))
                 .await?,
         )?,
-        crate::cli::UserSubcommand::Update(arg) => print_json(
+        UserSubcommand::Update(arg) => print_json(
             &client
                 .put_json::<_, Value>(
                     &format!("/api/user/{}", arg.id),
@@ -567,33 +569,34 @@ async fn user(command: UserCommand, client: &ApiClient) -> anyhow::Result<()> {
                 )
                 .await?,
         )?,
-        crate::cli::UserSubcommand::Delete(arg) => print_json(
-            &client
-                .delete_json::<Value>(&format!("/api/user/{}", arg.id))
-                .await?,
-        )?,
-        crate::cli::UserSubcommand::Password(arg) => print_json(
-            &client
-                .post_json::<_, Value>(
-                    &format!("/api/user/{}/password", arg.id),
-                    &read_json_body_or_default(json!({}))?,
-                )
-                .await?,
-        )?,
-        crate::cli::UserSubcommand::Keys(arg) => print_json(
-            &client
-                .post_json::<_, Value>(
-                    &format!("/api/user/{}/keys", arg.id),
-                    &read_json_body_or_default(json!({}))?,
-                )
-                .await?,
-        )?,
-        crate::cli::UserSubcommand::Sudo => print_json(&client.auth_sudo(None).await?)?,
-        crate::cli::UserSubcommand::Fake => print_json(
-            &client
-                .post_json::<_, Value>("/api/user/fake", &read_json_body_or_default(json!({}))?)
-                .await?,
-        )?,
+        UserSubcommand::Delete(args) => {
+            let body = json!({
+                "confirm": args.confirm,
+                "reason": args.reason,
+            });
+            print_json::<Value>(
+                &client
+                    .request_json(Method::DELETE, &format!("/api/user/{}", args.id), Some(&body))
+                    .await?,
+            )?;
+        }
+        UserSubcommand::Password(args) => {
+            let body = user_password_body(args)?;
+            print_json::<Value>(
+                &client
+                    .post_json::<_, Value>(&format!("/api/user/{}/password", body.id), &body.body)
+                    .await?,
+            )?;
+        }
+        UserSubcommand::Keys(command) => user_keys(command, client).await?,
+        UserSubcommand::Sudo(args) => print_json(&client.auth_sudo(args.reason.as_deref()).await?)?,
+        UserSubcommand::Fake(args) => {
+            let body = json!({
+                "user_id": args.user_id,
+                "username": args.username,
+            });
+            print_json::<Value>(&client.post_json::<_, Value>("/api/user/fake", &body).await?)?
+        }
     }
     Ok(())
 }
@@ -710,4 +713,118 @@ fn read_json_body_or_default(default: Value) -> anyhow::Result<Value> {
     }
 
     Ok(serde_json::from_str(&raw)?)
+}
+
+fn user_list_query(args: &UserListCommand) -> Vec<(String, String)> {
+    let mut query = Vec::new();
+    if let Some(limit) = args.limit {
+        query.push(("limit".to_string(), limit.to_string()));
+    }
+    if let Some(offset) = args.offset {
+        query.push(("offset".to_string(), offset.to_string()));
+    }
+    query
+}
+
+fn user_create_body(args: UserCreateCommand) -> anyhow::Result<Value> {
+    if let Some(body) = args.body {
+        return Ok(serde_json::from_str(&body)?);
+    }
+
+    let mut object = Map::new();
+    if let Some(name) = args.name {
+        object.insert("name".to_string(), Value::String(name));
+    }
+    if let Some(auth) = args.auth {
+        object.insert("auth".to_string(), Value::String(auth));
+    }
+    if let Some(access) = args.access {
+        object.insert("access".to_string(), Value::String(access));
+    }
+
+    if object.is_empty() {
+        return read_json_body_or_default(json!({}));
+    }
+
+    Ok(Value::Object(object))
+}
+
+struct PasswordBody {
+    id: String,
+    body: Value,
+}
+
+fn user_password_body(args: UserPasswordCommand) -> anyhow::Result<PasswordBody> {
+    let mut object = Map::new();
+    if let Some(current_password) = args.current_password {
+        object.insert(
+            "current_password".to_string(),
+            Value::String(current_password),
+        );
+    }
+    if let Some(new_password) = args.new_password {
+        object.insert("new_password".to_string(), Value::String(new_password));
+    }
+
+    if object.is_empty() {
+        return Ok(PasswordBody {
+            id: args.id,
+            body: read_json_body_or_default(json!({}))?,
+        });
+    }
+
+    Ok(PasswordBody {
+        id: args.id,
+        body: Value::Object(object),
+    })
+}
+
+async fn user_keys(command: UserKeysCommand, client: &ApiClient) -> anyhow::Result<()> {
+    match command.command {
+        UserKeysSubcommand::List(arg) => {
+            print_json(&client.get_json::<Value>(&format!("/api/user/{}/keys", arg.id)).await?)?
+        }
+        UserKeysSubcommand::Create(args) => {
+            let body = user_keys_create_body(args)?;
+            print_json(
+                &client
+                    .post_json::<_, Value>(&format!("/api/user/{}/keys", body.id), &body.body)
+                    .await?,
+            )?;
+        }
+        UserKeysSubcommand::Delete(arg) => {
+            print_json(
+                &client
+                    .delete_json::<Value>(&format!("/api/user/{}/keys/{}", arg.id, arg.key_id))
+                    .await?,
+            )?;
+        }
+    }
+    Ok(())
+}
+
+struct UserKeysCreateBody {
+    id: String,
+    body: Value,
+}
+
+fn user_keys_create_body(args: UserKeysCreateCommand) -> anyhow::Result<UserKeysCreateBody> {
+    let mut object = Map::new();
+    if let Some(name) = args.name {
+        object.insert("name".to_string(), Value::String(name));
+    }
+    if let Some(environment) = args.environment {
+        object.insert("environment".to_string(), Value::String(environment));
+    }
+    if let Some(permissions) = args.permissions {
+        object.insert("permissions".to_string(), serde_json::from_str(&permissions)?);
+    }
+    if let Some(expires_at) = args.expires_at {
+        object.insert("expires_at".to_string(), Value::String(expires_at));
+    }
+
+    Ok(UserKeysCreateBody {
+        id: args.id,
+        body: Value::Object(object),
+    })
 }

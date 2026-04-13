@@ -98,23 +98,50 @@ pub enum AuthSubcommand {
 
 #[derive(Args, Debug)]
 pub struct AuthLoginCommand {
+    /// Tenant name to authenticate against
+    #[arg(long)]
     pub tenant: Option<String>,
+
+    /// Tenant ID to authenticate against
+    #[arg(long = "tenant-id")]
     pub tenant_id: Option<String>,
+
+    /// Username or email for the local bootstrap login
+    #[arg(long)]
     pub username: Option<String>,
+
+    /// Override the requested response format
+    #[arg(long)]
     pub format: Option<String>,
 }
 
 #[derive(Args, Debug)]
 pub struct AuthRegisterCommand {
+    /// Tenant name to register
+    #[arg(long)]
     pub tenant: Option<String>,
+
+    /// Username or email for the tenant owner
+    #[arg(long)]
     pub username: Option<String>,
+
+    /// Optional database name to provision
+    #[arg(long)]
     pub database: Option<String>,
+
+    /// Optional tenant description
+    #[arg(long)]
     pub description: Option<String>,
+
+    /// Optional database adapter
+    #[arg(long)]
     pub adapter: Option<String>,
 }
 
 #[derive(Args, Debug)]
 pub struct AuthRefreshCommand {
+    /// Refresh token to exchange; defaults to the saved token
+    #[arg(long)]
     pub token: Option<String>,
 }
 
@@ -230,7 +257,7 @@ pub enum DataSubcommand {
     /// Update a single record via PUT /api/data/:model/:id
     Put(RecordArg),
     /// Patch a single record via PATCH /api/data/:model/:id
-    #[command(name = "patch")]
+    #[command(name = "patch-record")]
     PatchRecord(RecordArg),
     /// Soft delete a single record via DELETE /api/data/:model/:id
     DeleteRecord(RecordArg),
@@ -382,15 +409,129 @@ pub struct UserCommand {
 #[derive(Subcommand, Debug)]
 pub enum UserSubcommand {
     Me,
-    List,
-    Create,
+    List(UserListCommand),
+    Create(UserCreateCommand),
     Get(UserIdArg),
     Update(UserIdArg),
-    Delete(UserIdArg),
-    Password(UserIdArg),
-    Keys(UserIdArg),
-    Sudo,
-    Fake,
+    Delete(UserDeleteCommand),
+    Password(UserPasswordCommand),
+    Keys(UserKeysCommand),
+    Sudo(UserSudoCommand),
+    Fake(UserFakeCommand),
+}
+
+#[derive(Args, Debug, Default)]
+pub struct UserListCommand {
+    /// Maximum number of records to return
+    #[arg(long)]
+    pub limit: Option<u32>,
+
+    /// Number of records to skip
+    #[arg(long)]
+    pub offset: Option<u32>,
+}
+
+#[derive(Args, Debug)]
+pub struct UserCreateCommand {
+    /// JSON body from stdin or use --body to inline it
+    #[arg(long)]
+    pub body: Option<String>,
+
+    /// Optional name
+    #[arg(long)]
+    pub name: Option<String>,
+
+    /// Optional auth identifier
+    #[arg(long)]
+    pub auth: Option<String>,
+
+    /// Optional access level
+    #[arg(long)]
+    pub access: Option<String>,
+}
+
+#[derive(Args, Debug)]
+pub struct UserDeleteCommand {
+    pub id: String,
+
+    /// Explicitly confirm self-deactivation
+    #[arg(long)]
+    pub confirm: bool,
+
+    /// Optional audit-trail reason
+    #[arg(long)]
+    pub reason: Option<String>,
+}
+
+#[derive(Args, Debug)]
+pub struct UserPasswordCommand {
+    pub id: String,
+
+    /// Current password when changing your own password
+    #[arg(long = "current-password")]
+    pub current_password: Option<String>,
+
+    /// New password to set
+    #[arg(long = "new-password")]
+    pub new_password: Option<String>,
+}
+
+#[derive(Args, Debug)]
+pub struct UserKeysCommand {
+    #[command(subcommand)]
+    pub command: UserKeysSubcommand,
+}
+
+#[derive(Subcommand, Debug)]
+pub enum UserKeysSubcommand {
+    List(UserIdArg),
+    Create(UserKeysCreateCommand),
+    Delete(UserKeyDeleteCommand),
+}
+
+#[derive(Args, Debug)]
+pub struct UserKeysCreateCommand {
+    pub id: String,
+
+    /// Friendly name for the API key
+    #[arg(long)]
+    pub name: Option<String>,
+
+    /// Environment to generate the key for
+    #[arg(long)]
+    pub environment: Option<String>,
+
+    /// Raw JSON permissions object
+    #[arg(long)]
+    pub permissions: Option<String>,
+
+    /// ISO 8601 expiration timestamp
+    #[arg(long = "expires-at")]
+    pub expires_at: Option<String>,
+}
+
+#[derive(Args, Debug)]
+pub struct UserKeyDeleteCommand {
+    pub id: String,
+    pub key_id: String,
+}
+
+#[derive(Args, Debug)]
+pub struct UserSudoCommand {
+    /// Audit-trail reason for the elevation
+    #[arg(long)]
+    pub reason: Option<String>,
+}
+
+#[derive(Args, Debug)]
+pub struct UserFakeCommand {
+    /// Target user ID to impersonate
+    #[arg(long = "user-id")]
+    pub user_id: Option<String>,
+
+    /// Target username to impersonate
+    #[arg(long)]
+    pub username: Option<String>,
 }
 
 #[derive(Args, Debug)]

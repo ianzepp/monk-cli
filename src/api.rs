@@ -69,7 +69,8 @@ pub struct LoginData {
 pub struct RegisterData {
     pub tenant_id: String,
     pub tenant: String,
-    pub database: String,
+    #[serde(default)]
+    pub database: Option<String>,
     pub username: String,
     pub token: String,
     pub expires_in: u64,
