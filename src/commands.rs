@@ -1,4 +1,4 @@
-use std::io::{self, Read};
+use std::io::{self, IsTerminal, Read};
 
 use reqwest::Method;
 use serde_json::{json, Value};
@@ -148,12 +148,18 @@ async fn describe(command: DescribeCommand, client: &ApiClient) -> anyhow::Resul
         )?,
         crate::cli::DescribeSubcommand::Create(arg) => print_json(
             &client
-                .post_json::<_, Value>(&format!("/api/describe/{}", arg.model), &json!({}))
+                .post_json::<_, Value>(
+                    &format!("/api/describe/{}", arg.model),
+                    &read_json_body_or_default(json!({}))?,
+                )
                 .await?,
         )?,
         crate::cli::DescribeSubcommand::Update(arg) => print_json(
             &client
-                .put_json::<_, Value>(&format!("/api/describe/{}", arg.model), &json!({}))
+                .put_json::<_, Value>(
+                    &format!("/api/describe/{}", arg.model),
+                    &read_json_body_or_default(json!({}))?,
+                )
                 .await?,
         )?,
         crate::cli::DescribeSubcommand::Delete(arg) => print_json(
@@ -178,12 +184,18 @@ async fn describe_fields(
         )?,
         crate::cli::DescribeFieldsSubcommand::BulkCreate(arg) => print_json(
             &client
-                .post_json::<_, Value>(&format!("/api/describe/{}/fields", arg.model), &json!([]))
+                .post_json::<_, Value>(
+                    &format!("/api/describe/{}/fields", arg.model),
+                    &read_json_body_or_default(json!([]))?,
+                )
                 .await?,
         )?,
         crate::cli::DescribeFieldsSubcommand::BulkUpdate(arg) => print_json(
             &client
-                .put_json::<_, Value>(&format!("/api/describe/{}/fields", arg.model), &json!([]))
+                .put_json::<_, Value>(
+                    &format!("/api/describe/{}/fields", arg.model),
+                    &read_json_body_or_default(json!([]))?,
+                )
                 .await?,
         )?,
         crate::cli::DescribeFieldsSubcommand::Get(arg) => print_json(
@@ -195,7 +207,7 @@ async fn describe_fields(
             &client
                 .post_json::<_, Value>(
                     &format!("/api/describe/{}/fields/{}", arg.model, arg.field),
-                    &json!({}),
+                    &read_json_body_or_default(json!({}))?,
                 )
                 .await?,
         )?,
@@ -203,7 +215,7 @@ async fn describe_fields(
             &client
                 .put_json::<_, Value>(
                     &format!("/api/describe/{}/fields/{}", arg.model, arg.field),
-                    &json!({}),
+                    &read_json_body_or_default(json!({}))?,
                 )
                 .await?,
         )?,
@@ -225,17 +237,26 @@ async fn data(command: DataCommand, client: &ApiClient) -> anyhow::Result<()> {
         )?,
         crate::cli::DataSubcommand::Create(arg) => print_json(
             &client
-                .post_json::<_, Value>(&format!("/api/data/{}", arg.model), &json!([]))
+                .post_json::<_, Value>(
+                    &format!("/api/data/{}", arg.model),
+                    &read_json_body_or_default(json!([]))?,
+                )
                 .await?,
         )?,
         crate::cli::DataSubcommand::Update(arg) => print_json(
             &client
-                .put_json::<_, Value>(&format!("/api/data/{}", arg.model), &json!([]))
+                .put_json::<_, Value>(
+                    &format!("/api/data/{}", arg.model),
+                    &read_json_body_or_default(json!([]))?,
+                )
                 .await?,
         )?,
         crate::cli::DataSubcommand::Patch(arg) => print_json(
             &client
-                .patch_json::<_, Value>(&format!("/api/data/{}", arg.model), &json!({}))
+                .patch_json::<_, Value>(
+                    &format!("/api/data/{}", arg.model),
+                    &read_json_body_or_default(json!({}))?,
+                )
                 .await?,
         )?,
         crate::cli::DataSubcommand::Delete(arg) => print_json(
@@ -250,7 +271,10 @@ async fn data(command: DataCommand, client: &ApiClient) -> anyhow::Result<()> {
         )?,
         crate::cli::DataSubcommand::Put(arg) => print_json(
             &client
-                .put_json::<_, Value>(&format!("/api/data/{}/{}", arg.model, arg.id), &json!({}))
+                .put_json::<_, Value>(
+                    &format!("/api/data/{}/{}", arg.model, arg.id),
+                    &read_json_body_or_default(json!({}))?,
+                )
                 .await?,
         )?,
         crate::cli::DataSubcommand::DeleteRecord(arg) => print_json(
@@ -275,12 +299,16 @@ async fn relationship(
         crate::cli::RelationshipSubcommand::Get => {
             print_json(&client.get_json::<Value>(&base).await?)?
         }
-        crate::cli::RelationshipSubcommand::Create => {
-            print_json(&client.post_json::<_, Value>(&base, &json!({})).await?)?
-        }
-        crate::cli::RelationshipSubcommand::Update => {
-            print_json(&client.put_json::<_, Value>(&base, &json!({})).await?)?
-        }
+        crate::cli::RelationshipSubcommand::Create => print_json(
+            &client
+                .post_json::<_, Value>(&base, &read_json_body_or_default(json!({}))?)
+                .await?,
+        )?,
+        crate::cli::RelationshipSubcommand::Update => print_json(
+            &client
+                .put_json::<_, Value>(&base, &read_json_body_or_default(json!({}))?)
+                .await?,
+        )?,
         crate::cli::RelationshipSubcommand::Delete => {
             print_json(&client.delete_json::<Value>(&base).await?)?
         }
@@ -296,7 +324,10 @@ async fn find(command: FindCommand, client: &ApiClient) -> anyhow::Result<()> {
     match command.command {
         crate::cli::FindSubcommand::Query(arg) => print_json(
             &client
-                .post_json::<_, Value>(&format!("/api/find/{}", arg.model), &json!({}))
+                .post_json::<_, Value>(
+                    &format!("/api/find/{}", arg.model),
+                    &read_json_body_or_default(json!({}))?,
+                )
                 .await?,
         )?,
         crate::cli::FindSubcommand::Saved(arg) => print_json(
@@ -317,7 +348,10 @@ async fn aggregate(command: AggregateCommand, client: &ApiClient) -> anyhow::Res
         )?,
         crate::cli::AggregateSubcommand::Run(arg) => print_json(
             &client
-                .post_json::<_, Value>(&format!("/api/aggregate/{}", arg.model), &json!({}))
+                .post_json::<_, Value>(
+                    &format!("/api/aggregate/{}", arg.model),
+                    &read_json_body_or_default(json!({}))?,
+                )
                 .await?,
         )?,
     }
@@ -328,17 +362,20 @@ async fn bulk(command: BulkCommand, client: &ApiClient) -> anyhow::Result<()> {
     match command.command {
         crate::cli::BulkSubcommand::Run => print_json(
             &client
-                .post_json::<_, Value>("/api/bulk", &json!({"operations": []}))
+                .post_json::<_, Value>(
+                    "/api/bulk",
+                    &read_json_body_or_default(json!({"operations": []}))?,
+                )
                 .await?,
         )?,
         crate::cli::BulkSubcommand::Export => print_json(
             &client
-                .post_json::<_, Value>("/api/bulk/export", &json!({}))
+                .post_json::<_, Value>("/api/bulk/export", &read_json_body_or_default(json!({}))?)
                 .await?,
         )?,
         crate::cli::BulkSubcommand::Import => print_json(
             &client
-                .post_json::<_, Value>("/api/bulk/import", &json!({}))
+                .post_json::<_, Value>("/api/bulk/import", &read_json_body_or_default(json!({}))?)
                 .await?,
         )?,
     }
@@ -354,12 +391,18 @@ async fn acls(command: AclsCommand, client: &ApiClient) -> anyhow::Result<()> {
         )?,
         crate::cli::AclsSubcommand::Create(arg) => print_json(
             &client
-                .post_json::<_, Value>(&format!("/api/acls/{}/{}", arg.model, arg.id), &json!({}))
+                .post_json::<_, Value>(
+                    &format!("/api/acls/{}/{}", arg.model, arg.id),
+                    &read_json_body_or_default(json!({}))?,
+                )
                 .await?,
         )?,
         crate::cli::AclsSubcommand::Update(arg) => print_json(
             &client
-                .put_json::<_, Value>(&format!("/api/acls/{}/{}", arg.model, arg.id), &json!({}))
+                .put_json::<_, Value>(
+                    &format!("/api/acls/{}/{}", arg.model, arg.id),
+                    &read_json_body_or_default(json!({}))?,
+                )
                 .await?,
         )?,
         crate::cli::AclsSubcommand::Delete(arg) => print_json(
@@ -430,7 +473,7 @@ async fn user(command: UserCommand, client: &ApiClient) -> anyhow::Result<()> {
         }
         crate::cli::UserSubcommand::Create => print_json(
             &client
-                .post_json::<_, Value>("/api/user", &json!({}))
+                .post_json::<_, Value>("/api/user", &read_json_body_or_default(json!({}))?)
                 .await?,
         )?,
         crate::cli::UserSubcommand::Get(arg) => print_json(
@@ -440,7 +483,10 @@ async fn user(command: UserCommand, client: &ApiClient) -> anyhow::Result<()> {
         )?,
         crate::cli::UserSubcommand::Update(arg) => print_json(
             &client
-                .put_json::<_, Value>(&format!("/api/user/{}", arg.id), &json!({}))
+                .put_json::<_, Value>(
+                    &format!("/api/user/{}", arg.id),
+                    &read_json_body_or_default(json!({}))?,
+                )
                 .await?,
         )?,
         crate::cli::UserSubcommand::Delete(arg) => print_json(
@@ -450,18 +496,24 @@ async fn user(command: UserCommand, client: &ApiClient) -> anyhow::Result<()> {
         )?,
         crate::cli::UserSubcommand::Password(arg) => print_json(
             &client
-                .post_json::<_, Value>(&format!("/api/user/{}/password", arg.id), &json!({}))
+                .post_json::<_, Value>(
+                    &format!("/api/user/{}/password", arg.id),
+                    &read_json_body_or_default(json!({}))?,
+                )
                 .await?,
         )?,
         crate::cli::UserSubcommand::Keys(arg) => print_json(
             &client
-                .post_json::<_, Value>(&format!("/api/user/{}/keys", arg.id), &json!({}))
+                .post_json::<_, Value>(
+                    &format!("/api/user/{}/keys", arg.id),
+                    &read_json_body_or_default(json!({}))?,
+                )
                 .await?,
         )?,
         crate::cli::UserSubcommand::Sudo => print_json(&client.auth_sudo(None).await?)?,
         crate::cli::UserSubcommand::Fake => print_json(
             &client
-                .post_json::<_, Value>("/api/user/fake", &json!({}))
+                .post_json::<_, Value>("/api/user/fake", &read_json_body_or_default(json!({}))?)
                 .await?,
         )?,
     }
@@ -475,7 +527,7 @@ async fn cron(command: CronCommand, client: &ApiClient) -> anyhow::Result<()> {
         }
         crate::cli::CronSubcommand::Create => print_json(
             &client
-                .post_json::<_, Value>("/api/cron", &json!({}))
+                .post_json::<_, Value>("/api/cron", &read_json_body_or_default(json!({}))?)
                 .await?,
         )?,
         crate::cli::CronSubcommand::Get(arg) => print_json(
@@ -485,7 +537,10 @@ async fn cron(command: CronCommand, client: &ApiClient) -> anyhow::Result<()> {
         )?,
         crate::cli::CronSubcommand::Update(arg) => print_json(
             &client
-                .patch_json::<_, Value>(&format!("/api/cron/{}", arg.pid), &json!({}))
+                .patch_json::<_, Value>(
+                    &format!("/api/cron/{}", arg.pid),
+                    &read_json_body_or_default(json!({}))?,
+                )
                 .await?,
         )?,
         crate::cli::CronSubcommand::Delete(arg) => print_json(
@@ -495,12 +550,18 @@ async fn cron(command: CronCommand, client: &ApiClient) -> anyhow::Result<()> {
         )?,
         crate::cli::CronSubcommand::Enable(arg) => print_json(
             &client
-                .post_json::<_, Value>(&format!("/api/cron/{}/enable", arg.pid), &json!({}))
+                .post_json::<_, Value>(
+                    &format!("/api/cron/{}/enable", arg.pid),
+                    &read_json_body_or_default(json!({}))?,
+                )
                 .await?,
         )?,
         crate::cli::CronSubcommand::Disable(arg) => print_json(
             &client
-                .post_json::<_, Value>(&format!("/api/cron/{}/disable", arg.pid), &json!({}))
+                .post_json::<_, Value>(
+                    &format!("/api/cron/{}/disable", arg.pid),
+                    &read_json_body_or_default(json!({}))?,
+                )
                 .await?,
         )?,
     }
@@ -552,10 +613,23 @@ fn print_text(value: &str) -> anyhow::Result<()> {
 }
 
 fn read_stdin_or_empty() -> anyhow::Result<String> {
+    if io::stdin().is_terminal() {
+        return Ok(String::new());
+    }
+
     let mut buffer = String::new();
     let mut stdin = io::stdin();
     if stdin.read_to_string(&mut buffer).is_ok() && !buffer.trim().is_empty() {
         return Ok(buffer);
     }
     Ok(String::new())
+}
+
+fn read_json_body_or_default(default: Value) -> anyhow::Result<Value> {
+    let raw = read_stdin_or_empty()?;
+    if raw.trim().is_empty() {
+        return Ok(default);
+    }
+
+    Ok(serde_json::from_str(&raw)?)
 }
