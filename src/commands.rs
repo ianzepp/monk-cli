@@ -101,9 +101,8 @@ async fn auth(
                 .auth_register(&RegisterRequest {
                     tenant: args.tenant,
                     username: args.username,
-                    database: args.database,
-                    description: args.description,
-                    adapter: args.adapter,
+                    email: args.email,
+                    password: args.password,
                 })
                 .await?;
             if let Some(token) = response.data.as_ref().map(|data| data.token.clone()) {

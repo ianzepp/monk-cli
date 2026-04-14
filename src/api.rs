@@ -37,9 +37,8 @@ pub struct LoginRequest {
 pub struct RegisterRequest {
     pub tenant: Option<String>,
     pub username: Option<String>,
-    pub database: Option<String>,
-    pub description: Option<String>,
-    pub adapter: Option<String>,
+    pub email: Option<String>,
+    pub password: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -208,6 +207,15 @@ impl ApiClient {
         self.request_json(Method::POST, path, Some(body)).await
     }
 
+    pub async fn post_json_without_auth<B, T>(&self, path: &str, body: &B) -> Result<T, MonkError>
+    where
+        B: Serialize + ?Sized,
+        T: DeserializeOwned,
+    {
+        self.request_json_without_auth(Method::POST, path, Some(body))
+            .await
+    }
+
     pub async fn post_json_with_query<B, Q, T>(
         &self,
         path: &str,
@@ -283,6 +291,20 @@ impl ApiClient {
             .await
     }
 
+    pub async fn request_json_without_auth<B, T>(
+        &self,
+        method: Method,
+        path: &str,
+        body: Option<&B>,
+    ) -> Result<T, MonkError>
+    where
+        B: Serialize + ?Sized,
+        T: DeserializeOwned,
+    {
+        self.request_json_with_query_without_auth(method, path, Option::<&()>::None, body)
+            .await
+    }
+
     pub async fn request_json_with_query<B, Q, T>(
         &self,
         method: Method,
@@ -297,6 +319,40 @@ impl ApiClient {
     {
         let url = self.endpoint(path)?;
         let request = self.request_builder(method.clone(), url.clone())?;
+        let request = if let Some(query) = query {
+            request.query(query)
+        } else {
+            request
+        };
+        let request = if let Some(body) = body {
+            request.json(body)
+        } else {
+            request
+        };
+
+        let response = request.send().await.map_err(|source| MonkError::Request {
+            method: method.clone(),
+            url: url.to_string(),
+            source,
+        })?;
+
+        self.parse_response(method, url, response).await
+    }
+
+    pub async fn request_json_with_query_without_auth<B, Q, T>(
+        &self,
+        method: Method,
+        path: &str,
+        query: Option<&Q>,
+        body: Option<&B>,
+    ) -> Result<T, MonkError>
+    where
+        B: Serialize + ?Sized,
+        Q: Serialize + ?Sized,
+        T: DeserializeOwned,
+    {
+        let url = self.endpoint(path)?;
+        let request = self.request_builder_without_auth(method.clone(), url.clone())?;
         let request = if let Some(query) = query {
             request.query(query)
         } else {
@@ -390,7 +446,7 @@ impl ApiClient {
         &self,
         request: &RegisterRequest,
     ) -> Result<ApiEnvelope<RegisterData>, MonkError> {
-        self.post_json("/auth/register", request).await
+        self.post_json_without_auth("/auth/register", request).await
     }
 
     pub async fn auth_refresh(
@@ -434,6 +490,15 @@ impl ApiClient {
 
         builder = builder.header(header::ACCEPT, self.accept_header_value());
         Ok(builder)
+    }
+
+    fn request_builder_without_auth(
+        &self,
+        method: Method,
+        url: url::Url,
+    ) -> Result<reqwest::RequestBuilder, MonkError> {
+        let builder = self.client.request(method, url);
+        Ok(builder.header(header::ACCEPT, self.accept_header_value()))
     }
 
     fn accept_header_value(&self) -> &'static str {

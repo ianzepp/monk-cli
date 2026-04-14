@@ -167,21 +167,17 @@ pub struct AuthRegisterCommand {
     #[arg(long)]
     pub tenant: Option<String>,
 
-    /// Username or email for the tenant owner
+    /// Canonical username for the tenant owner
     #[arg(long)]
     pub username: Option<String>,
 
-    /// Optional database name to provision
+    /// Email address for Auth0 user provisioning
     #[arg(long)]
-    pub database: Option<String>,
+    pub email: Option<String>,
 
-    /// Optional tenant description
+    /// Password for the tenant owner
     #[arg(long)]
-    pub description: Option<String>,
-
-    /// Optional database adapter
-    #[arg(long)]
-    pub adapter: Option<String>,
+    pub password: Option<String>,
 }
 
 #[derive(Args, Debug)]
