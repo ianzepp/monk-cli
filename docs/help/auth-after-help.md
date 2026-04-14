@@ -9,8 +9,8 @@ local session, then use `monk auth login` on later machines or fresh shells.
 
 Common uses:
 
-- `monk auth register --tenant acme --username alice`
-- `monk auth login --tenant acme`
+- `monk auth register --tenant acme --username alice --email alice@example.com --password @auth-password.txt`
+- `printf 'secret-pass' | monk auth login --tenant acme --username alice --password -`
 - `monk auth refresh`
 - `monk auth tenants`
 

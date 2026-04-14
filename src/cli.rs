@@ -151,9 +151,13 @@ pub struct AuthLoginCommand {
     #[arg(long = "tenant-id")]
     pub tenant_id: Option<String>,
 
-    /// Username or email for the local bootstrap login
+    /// Canonical username for the tenant user
     #[arg(long)]
     pub username: Option<String>,
+
+    /// Password for the tenant user
+    #[arg(long)]
+    pub password: Option<String>,
 
     /// Override the requested response format
     #[arg(long)]

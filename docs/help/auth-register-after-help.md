@@ -8,7 +8,9 @@ state on the current machine.
 Typical onboarding flow:
 
 1. `monk auth register --tenant <tenant> --username <user> --email <email> --password <password>`
-2. `monk auth login --tenant <tenant>` on later runs or other machines
+2. `monk auth login --tenant <tenant> --username <user> --password <password>` on later runs or other machines
 3. continue with `monk public llms`, `monk describe list`, or `monk data list <model>`
+
+For `--password`, use `-` to read from stdin or `@<path>` to read from a file.
 
 This branch is intentionally concise; use the command itself for the full flag list.

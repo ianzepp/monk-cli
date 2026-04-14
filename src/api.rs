@@ -30,6 +30,7 @@ pub struct LoginRequest {
     pub tenant: Option<String>,
     pub tenant_id: Option<String>,
     pub username: Option<String>,
+    pub password: Option<String>,
     pub format: Option<String>,
 }
 
@@ -52,7 +53,8 @@ pub struct AuthUser {
     pub username: String,
     pub tenant: String,
     pub tenant_id: String,
-    pub database: String,
+    #[serde(default)]
+    pub database: Option<String>,
     pub access: String,
     pub format: Option<String>,
 }
@@ -61,7 +63,8 @@ pub struct AuthUser {
 pub struct LoginData {
     pub token: String,
     pub user: AuthUser,
-    pub expires_in: u64,
+    #[serde(default)]
+    pub expires_in: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

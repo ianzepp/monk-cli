@@ -77,11 +77,13 @@ async fn auth(
 ) -> anyhow::Result<()> {
     match command.command {
         crate::cli::AuthSubcommand::Login(args) => {
+            let password = read_secret_source_option(args.password.as_deref())?;
             let response = client
                 .auth_login(&LoginRequest {
                     tenant: args.tenant,
                     tenant_id: args.tenant_id,
                     username: args.username,
+                    password,
                     format: args.format,
                 })
                 .await?;
@@ -97,12 +99,13 @@ async fn auth(
             print_json(&response)?;
         }
         crate::cli::AuthSubcommand::Register(args) => {
+            let password = read_secret_source_option(args.password.as_deref())?;
             let response = client
                 .auth_register(&RegisterRequest {
                     tenant: args.tenant,
                     username: args.username,
                     email: args.email,
-                    password: args.password,
+                    password,
                 })
                 .await?;
             if let Some(token) = response.data.as_ref().map(|data| data.token.clone()) {
@@ -783,6 +786,32 @@ fn fs_body_text(options: &FsOptions) -> anyhow::Result<String> {
         Some(source) => Ok(source.to_string()),
         None => read_stdin_or_empty(),
     }
+}
+
+fn read_secret_source_option(source: Option<&str>) -> anyhow::Result<Option<String>> {
+    source.map(read_secret_source).transpose()
+}
+
+fn read_secret_source(source: &str) -> anyhow::Result<String> {
+    let raw = if source == "-" {
+        read_stdin_or_empty()?
+    } else if let Some(path) = source.strip_prefix('@') {
+        fs::read_to_string(path)?
+    } else {
+        source.to_string()
+    };
+
+    Ok(trim_one_trailing_newline(raw))
+}
+
+fn trim_one_trailing_newline(mut value: String) -> String {
+    if value.ends_with('\n') {
+        value.pop();
+        if value.ends_with('\r') {
+            value.pop();
+        }
+    }
+    value
 }
 
 fn bulk_body(body: Value) -> anyhow::Result<Value> {

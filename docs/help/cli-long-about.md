@@ -19,8 +19,8 @@ larger set of resource-specific branches:
 
 For first-time use, the shortest onboarding path is usually:
 
-1. `monk auth register --tenant <tenant> --username <user>`
-2. `monk auth login --tenant <tenant>`
+1. `monk auth register --tenant <tenant> --username <user> --email <email> --password <password>`
+2. `monk auth login --tenant <tenant> --username <user> --password <password>`
 3. `monk public llms` or `monk docs root`
 4. `monk describe list` or `monk data list <model>`
 5. `monk health`

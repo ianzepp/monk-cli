@@ -42,6 +42,6 @@ The CLI now has a shared API helper layer plus command-family dispatch wired up 
 For a new user, the intended first steps are:
 
 1. `monk auth register --tenant <tenant> --username <user> --email <email> --password <password>`
-2. `monk auth login --tenant <tenant>`
+2. `monk auth login --tenant <tenant> --username <user> --password <password>`
 3. `monk public llms` or `monk docs root`
 4. `monk health`
