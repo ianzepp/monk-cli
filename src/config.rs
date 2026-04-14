@@ -109,6 +109,18 @@ impl MonkConfig {
         self
     }
 
+    pub fn clear_token(&mut self) {
+        self.token = None;
+    }
+
+    pub fn token(&self) -> Option<&str> {
+        self.token.as_deref()
+    }
+
+    pub fn set_token(&mut self, token: impl Into<String>) {
+        self.token = Some(token.into());
+    }
+
     pub fn base_url(&self) -> Result<url::Url, MonkError> {
         url::Url::parse(&self.base_url)
             .map_err(|_| MonkError::InvalidBaseUrl(self.base_url.clone()))

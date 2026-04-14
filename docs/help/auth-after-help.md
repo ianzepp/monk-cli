@@ -12,6 +12,8 @@ Common uses:
 - `monk auth register --tenant acme --username alice --email alice@example.com --password @auth-password.txt`
 - `printf 'secret-pass' | monk auth login --tenant acme --username alice --password -`
 - `monk auth refresh`
+- `monk auth token get`
+- `monk auth token clear`
 - `monk auth tenants`
 
-Use `--help` on `login`, `register`, `refresh`, or `tenants` for the next level down.
+Use `--help` on `login`, `register`, `refresh`, `token`, or `tenants` for the next level down.

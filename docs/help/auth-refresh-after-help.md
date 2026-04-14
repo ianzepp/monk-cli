@@ -1,6 +1,6 @@
 # Auth Refresh
 
-Exchange a saved refresh token for a new access token.
+Exchange the saved token for a new access token.
 
 Use this when the current session is stale but the saved config still has enough
 state to renew it.

@@ -8,6 +8,7 @@ const AUTH_AFTER_HELP: &str = include_str!("../docs/help/auth-after-help.md");
 const AUTH_LOGIN_AFTER_HELP: &str = include_str!("../docs/help/auth-login-after-help.md");
 const AUTH_REGISTER_AFTER_HELP: &str = include_str!("../docs/help/auth-register-after-help.md");
 const AUTH_REFRESH_AFTER_HELP: &str = include_str!("../docs/help/auth-refresh-after-help.md");
+const AUTH_TOKEN_AFTER_HELP: &str = include_str!("../docs/help/auth-token-after-help.md");
 const DOCS_AFTER_HELP: &str = include_str!("../docs/help/docs-after-help.md");
 const DESCRIBE_AFTER_HELP: &str = include_str!("../docs/help/describe-after-help.md");
 const DESCRIBE_FIELDS_AFTER_HELP: &str = include_str!("../docs/help/describe-fields-after-help.md");
@@ -136,6 +137,8 @@ pub enum AuthSubcommand {
     Register(AuthRegisterCommand),
     /// Refresh a token
     Refresh(AuthRefreshCommand),
+    /// Show, set, or clear the saved JWT
+    Token(AuthTokenCommand),
     /// List tenants available for login
     Tenants,
 }
@@ -190,6 +193,31 @@ pub struct AuthRefreshCommand {
     /// Refresh token to exchange; defaults to the saved token
     #[arg(long)]
     pub token: Option<String>,
+}
+
+#[derive(Args, Debug)]
+#[command(after_long_help = AUTH_TOKEN_AFTER_HELP)]
+pub struct AuthTokenCommand {
+    #[command(subcommand)]
+    pub command: AuthTokenSubcommand,
+}
+
+#[derive(Subcommand, Debug)]
+#[command(after_long_help = AUTH_TOKEN_AFTER_HELP)]
+pub enum AuthTokenSubcommand {
+    /// Print the saved JWT
+    Get,
+    /// Overwrite the saved JWT
+    Set(AuthTokenSetCommand),
+    /// Remove the saved JWT
+    Clear,
+}
+
+#[derive(Args, Debug)]
+#[command(after_long_help = AUTH_TOKEN_AFTER_HELP)]
+pub struct AuthTokenSetCommand {
+    /// JWT value to save; use - for stdin or @<path> for a file
+    pub token: String,
 }
 
 #[derive(Args, Debug)]

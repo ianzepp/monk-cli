@@ -121,11 +121,12 @@ async fn auth(
                 .ok_or_else(|| anyhow::anyhow!("refresh requires a token or saved config token"))?;
             let response = client.auth_refresh(&RefreshRequest { token }).await?;
             if let Some(next_token) = response.data.as_ref().map(|data| data.token.clone()) {
-                config.token = Some(next_token);
+                config.set_token(next_token);
                 config.save()?;
             }
             print_json(&response)?;
         }
+        crate::cli::AuthSubcommand::Token(command) => auth_token(command, config).await?,
         crate::cli::AuthSubcommand::Tenants => {
             print_json(&client.auth_tenants().await?)?;
         }
@@ -731,6 +732,27 @@ fn print_json<T: serde::Serialize>(value: &T) -> anyhow::Result<()> {
 
 fn print_text(value: &str) -> anyhow::Result<()> {
     println!("{value}");
+    Ok(())
+}
+
+async fn auth_token(command: crate::cli::AuthTokenCommand, config: &mut MonkConfig) -> anyhow::Result<()> {
+    match command.command {
+        crate::cli::AuthTokenSubcommand::Get => {
+            let token = config
+                .token()
+                .ok_or_else(|| anyhow::anyhow!("no saved token available"))?;
+            println!("{token}");
+        }
+        crate::cli::AuthTokenSubcommand::Set(args) => {
+            let token = read_secret_source(&args.token)?;
+            config.set_token(token);
+            config.save()?;
+        }
+        crate::cli::AuthTokenSubcommand::Clear => {
+            config.clear_token();
+            config.save()?;
+        }
+    }
     Ok(())
 }
 
