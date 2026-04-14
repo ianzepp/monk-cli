@@ -1,13 +1,17 @@
 use std::{
     fs,
     io::{self, IsTerminal, Read},
+    path::Path,
 };
 
 use reqwest::Method;
 use serde_json::{json, Map, Value};
 
 use crate::{
-    api::{ApiClient, LoginRequest, RefreshRequest, RegisterRequest},
+    api::{
+        ApiClient, DissolveConfirmRequest, DissolveRequest, LoginRequest, RefreshRequest,
+        RegisterRequest,
+    },
     cli::{
         AclsCommand, AggregateCommand, AggregateOptions, AppCommand, AuthCommand, BulkCommand,
         BulkOptions, Cli, Command, CronCommand, DataCommand, DescribeCommand, DocsCommand,
@@ -21,6 +25,7 @@ use crate::{
 
 pub async fn run(cli: Cli) -> anyhow::Result<()> {
     let mut config = MonkConfig::load_effective()?;
+    let save_path = MonkConfig::config_path().ok();
 
     if let Some(base_url) = cli.globals.base_url {
         config.base_url = base_url;
@@ -37,10 +42,7 @@ pub async fn run(cli: Cli) -> anyhow::Result<()> {
     match cli.command {
         Command::Public(command) => public(command, &client).await?,
         Command::Auth(command) => {
-            auth(command, &mut config, &client).await?;
-            if config.token.is_some() {
-                config.save()?;
-            }
+            auth(command, &mut config, &client, save_path.as_deref()).await?;
         }
         Command::Health => print_json(&client.health().await?)?,
         Command::Docs(command) => docs(command, &client).await?,
@@ -74,6 +76,7 @@ async fn auth(
     command: AuthCommand,
     config: &mut MonkConfig,
     client: &ApiClient,
+    save_path: Option<&Path>,
 ) -> anyhow::Result<()> {
     match command.command {
         crate::cli::AuthSubcommand::Login(args) => {
@@ -93,8 +96,8 @@ async fn auth(
                 .map(|data| data.token.clone())
                 .unwrap_or_default();
             if !token.is_empty() {
-                config.token = Some(token.clone());
-                config.save()?;
+                config.set_token(token.clone());
+                save_config(config, save_path)?;
             }
             print_json(&response)?;
         }
@@ -109,8 +112,8 @@ async fn auth(
                 })
                 .await?;
             if let Some(token) = response.data.as_ref().map(|data| data.token.clone()) {
-                config.token = Some(token);
-                config.save()?;
+                config.set_token(token);
+                save_config(config, save_path)?;
             }
             print_json(&response)?;
         }
@@ -122,11 +125,14 @@ async fn auth(
             let response = client.auth_refresh(&RefreshRequest { token }).await?;
             if let Some(next_token) = response.data.as_ref().map(|data| data.token.clone()) {
                 config.set_token(next_token);
-                config.save()?;
+                save_config(config, save_path)?;
             }
             print_json(&response)?;
         }
-        crate::cli::AuthSubcommand::Token(command) => auth_token(command, config).await?,
+        crate::cli::AuthSubcommand::Dissolve(command) => {
+            auth_dissolve(command, client).await?;
+        }
+        crate::cli::AuthSubcommand::Token(command) => auth_token(command, config, save_path).await?,
         crate::cli::AuthSubcommand::Tenants => {
             print_json(&client.auth_tenants().await?)?;
         }
@@ -735,7 +741,36 @@ fn print_text(value: &str) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn auth_token(command: crate::cli::AuthTokenCommand, config: &mut MonkConfig) -> anyhow::Result<()> {
+async fn auth_dissolve(command: crate::cli::AuthDissolveCommand, client: &ApiClient) -> anyhow::Result<()> {
+    match command.command {
+        crate::cli::AuthDissolveSubcommand::Request(args) => {
+            let password = read_secret_source_option(args.password.as_deref())?;
+            let response = client
+                .auth_dissolve(&DissolveRequest {
+                    tenant: args.tenant,
+                    username: args.username,
+                    password,
+                })
+                .await?;
+            print_json(&response)?;
+        }
+        crate::cli::AuthDissolveSubcommand::Confirm(args) => {
+            let response = client
+                .auth_dissolve_confirm(&DissolveConfirmRequest {
+                    confirmation_token: args.confirmation_token,
+                })
+                .await?;
+            print_json(&response)?;
+        }
+    }
+    Ok(())
+}
+
+async fn auth_token(
+    command: crate::cli::AuthTokenCommand,
+    config: &mut MonkConfig,
+    save_path: Option<&Path>,
+) -> anyhow::Result<()> {
     match command.command {
         crate::cli::AuthTokenSubcommand::Get => {
             let token = config
@@ -746,12 +781,19 @@ async fn auth_token(command: crate::cli::AuthTokenCommand, config: &mut MonkConf
         crate::cli::AuthTokenSubcommand::Set(args) => {
             let token = read_secret_source(&args.token)?;
             config.set_token(token);
-            config.save()?;
+            save_config(config, save_path)?;
         }
         crate::cli::AuthTokenSubcommand::Clear => {
             config.clear_token();
-            config.save()?;
+            save_config(config, save_path)?;
         }
+    }
+    Ok(())
+}
+
+fn save_config(config: &MonkConfig, save_path: Option<&Path>) -> anyhow::Result<()> {
+    if let Some(path) = save_path {
+        config.save_to_path(path)?;
     }
     Ok(())
 }

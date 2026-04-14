@@ -85,6 +85,31 @@ pub struct RefreshData {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct DissolveRequest {
+    pub tenant: Option<String>,
+    pub username: Option<String>,
+    pub password: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct DissolveData {
+    pub confirmation_token: String,
+    pub expires_in: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct DissolveConfirmRequest {
+    pub confirmation_token: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct DissolveConfirmData {
+    pub tenant: String,
+    pub username: String,
+    pub dissolved: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SudoData {
     pub sudo_token: String,
     pub expires_in: u64,
@@ -457,6 +482,20 @@ impl ApiClient {
         request: &RefreshRequest,
     ) -> Result<ApiEnvelope<RefreshData>, MonkError> {
         self.post_json("/auth/refresh", request).await
+    }
+
+    pub async fn auth_dissolve(
+        &self,
+        request: &DissolveRequest,
+    ) -> Result<ApiEnvelope<DissolveData>, MonkError> {
+        self.post_json_without_auth("/auth/dissolve", request).await
+    }
+
+    pub async fn auth_dissolve_confirm(
+        &self,
+        request: &DissolveConfirmRequest,
+    ) -> Result<ApiEnvelope<DissolveConfirmData>, MonkError> {
+        self.post_json_without_auth("/auth/dissolve/confirm", request).await
     }
 
     pub async fn auth_sudo(

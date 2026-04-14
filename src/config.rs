@@ -181,6 +181,17 @@ mod tests {
 
         let _ = std::fs::remove_file(&path);
     }
+
+    #[test]
+    fn token_set_and_clear_behaves_like_logout() {
+        let mut config = MonkConfig::default();
+
+        config.set_token("jwt-two");
+        assert_eq!(config.token.as_deref(), Some("jwt-two"));
+
+        config.clear_token();
+        assert_eq!(config.token, None);
+    }
 }
 
 impl OutputFormat {

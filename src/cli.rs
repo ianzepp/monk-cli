@@ -8,6 +8,8 @@ const AUTH_AFTER_HELP: &str = include_str!("../docs/help/auth-after-help.md");
 const AUTH_LOGIN_AFTER_HELP: &str = include_str!("../docs/help/auth-login-after-help.md");
 const AUTH_REGISTER_AFTER_HELP: &str = include_str!("../docs/help/auth-register-after-help.md");
 const AUTH_REFRESH_AFTER_HELP: &str = include_str!("../docs/help/auth-refresh-after-help.md");
+const AUTH_DISSOLVE_AFTER_HELP: &str = include_str!("../docs/help/auth-dissolve-after-help.md");
+const AUTH_DISSOLVE_CONFIRM_AFTER_HELP: &str = include_str!("../docs/help/auth-dissolve-confirm-after-help.md");
 const AUTH_TOKEN_AFTER_HELP: &str = include_str!("../docs/help/auth-token-after-help.md");
 const DOCS_AFTER_HELP: &str = include_str!("../docs/help/docs-after-help.md");
 const DESCRIBE_AFTER_HELP: &str = include_str!("../docs/help/describe-after-help.md");
@@ -137,6 +139,8 @@ pub enum AuthSubcommand {
     Register(AuthRegisterCommand),
     /// Refresh a token
     Refresh(AuthRefreshCommand),
+    /// Dissolve a tenant via the two-step confirmation flow
+    Dissolve(AuthDissolveCommand),
     /// Show, set, or clear the saved JWT
     Token(AuthTokenCommand),
     /// List tenants available for login
@@ -193,6 +197,46 @@ pub struct AuthRefreshCommand {
     /// Refresh token to exchange; defaults to the saved token
     #[arg(long)]
     pub token: Option<String>,
+}
+
+#[derive(Args, Debug)]
+#[command(after_long_help = AUTH_DISSOLVE_AFTER_HELP)]
+pub struct AuthDissolveCommand {
+    #[command(subcommand)]
+    pub command: AuthDissolveSubcommand,
+}
+
+#[derive(Subcommand, Debug)]
+#[command(after_long_help = AUTH_DISSOLVE_AFTER_HELP)]
+pub enum AuthDissolveSubcommand {
+    /// Request a short-lived dissolution confirmation token
+    Request(AuthDissolveRequestCommand),
+    /// Consume a confirmation token and dissolve the tenant
+    Confirm(AuthDissolveConfirmCommand),
+}
+
+#[derive(Args, Debug)]
+#[command(after_long_help = AUTH_DISSOLVE_AFTER_HELP)]
+pub struct AuthDissolveRequestCommand {
+    /// Tenant name to dissolve
+    #[arg(long)]
+    pub tenant: Option<String>,
+
+    /// Canonical username for the tenant owner
+    #[arg(long)]
+    pub username: Option<String>,
+
+    /// Password for the tenant owner
+    #[arg(long)]
+    pub password: Option<String>,
+}
+
+#[derive(Args, Debug)]
+#[command(after_long_help = AUTH_DISSOLVE_CONFIRM_AFTER_HELP)]
+pub struct AuthDissolveConfirmCommand {
+    /// Confirmation token from auth dissolve request
+    #[arg(long = "confirmation-token")]
+    pub confirmation_token: String,
 }
 
 #[derive(Args, Debug)]
