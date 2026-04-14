@@ -149,13 +149,38 @@ impl MonkConfig {
 
 #[cfg(test)]
 mod tests {
-    use super::MonkConfig;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    use super::{MonkConfig, OutputFormat};
 
     #[test]
     fn default_base_url_points_to_public_api() {
         assert_eq!(MonkConfig::default().base_url, "https://monk-api.com");
     }
 
+    #[test]
+    fn save_and_load_round_trips_token_state() {
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system clock should be after unix epoch")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("monk-config-{stamp}.json"));
+
+        let config = MonkConfig {
+            base_url: "https://example.com".to_string(),
+            token: Some("jwt-one".to_string()),
+            output_format: OutputFormat::Yaml,
+        };
+
+        config.save_to_path(&path).expect("config should save");
+        let loaded = MonkConfig::load_from_path(&path).expect("config should load");
+
+        assert_eq!(loaded.base_url, "https://example.com");
+        assert_eq!(loaded.token.as_deref(), Some("jwt-one"));
+        assert_eq!(loaded.output_format, OutputFormat::Yaml);
+
+        let _ = std::fs::remove_file(&path);
+    }
 }
 
 impl OutputFormat {
