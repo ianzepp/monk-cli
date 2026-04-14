@@ -28,11 +28,11 @@ monk describe list
 monk data list <model>
 ```
 
-Machine-readable output is available with `--json`:
+Machine-readable output is available with `--format json`:
 
 ```bash
-monk --json auth login --tenant acme --username alice --password secret-pass
-monk --json describe list
+monk --format json auth login --tenant acme --username alice --password secret-pass
+monk --format json describe list
 ```
 
 If you are automating against Monk, start from the root command tree and then

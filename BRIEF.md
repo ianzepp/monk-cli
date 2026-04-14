@@ -53,9 +53,9 @@ The CLI should start from a clean slate. The empty `monk-cli/` directory is the 
   - surface-by-surface command modules
 
 ### `monk-cli/`
-- Currently empty.
-- Not yet initialized as a Git repo.
-- Best treated as a new crate/workspace target.
+- Now populated with a Rust CLI crate.
+- Git repository is initialized.
+- Best treated as the live Monk CLI workspace.
 
 ## Proposed Product Shape
 
@@ -80,7 +80,7 @@ The CLI should start from a clean slate. The empty `monk-cli/` directory is the 
 - `monk app`
 
 ### Likely cross-cutting CLI behavior
-- `--json` or equivalent explicit machine output mode.
+- `--format json` for explicit machine output mode.
 - TTY-aware human output by default.
 - Persistent config for API base URL and auth token.
 - Central request helper for attaching headers and parsing errors.
@@ -242,8 +242,8 @@ This second discovery pass confirmed the live Monk API shape from `src/servers/h
 - `/app/:appName/*`
 
 ### Route/doc mismatches to remember
-- `whoami` is mentioned in docs, but the live canonical self-profile route is `GET /api/user/me`.
-- Cron creation exists as a route surface, but docs mark it as currently not implemented.
+- The live canonical self-profile route is `GET /api/user/me`.
+- Cron creation is implemented in the CLI and maps to the live `/api/cron` surface.
 - Some docs use older or alternate path aliases; the live Hono route tree is the source of truth.
 
 ### Command-shape consequence

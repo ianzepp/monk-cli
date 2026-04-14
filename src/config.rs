@@ -143,6 +143,7 @@ mod tests {
     fn default_base_url_points_to_public_api() {
         assert_eq!(MonkConfig::default().base_url, "https://monk-api.com");
     }
+
 }
 
 impl OutputFormat {
